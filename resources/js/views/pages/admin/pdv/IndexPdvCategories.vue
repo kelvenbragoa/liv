@@ -103,14 +103,14 @@ function saveCart() {
   }
 function addToCart(product) {
     // Verifica se o produto já foi adicionado ao carrinho
-    const existingProduct = this.selectedProducts.find(item => item.id === product.id);
+    const existingProduct = selectedProducts.value.find(item => item.id === product.id);
 
 if (existingProduct) {
   // Se o produto já estiver no carrinho, aumenta a quantidade
   existingProduct.quantity += 1;
 } else {
   // Caso contrário, adiciona o produto com a quantidade 1
-  this.selectedProducts.push({ ...product, quantity: 1 });
+  selectedProducts.value.push({ ...product, quantity: 1 });
 }
 
 // Atualiza o total
@@ -118,13 +118,13 @@ this.updateTotal();
 }
 
 function removeFromCart(index) {
-    this.selectedProducts.splice(index, 1);
+    selectedProducts.value.splice(index, 1);
     this.updateTotal();
   }
 
 function updateTotal() {
     // Calcula o total com base nas quantidades dos produtos
-    this.total = this.selectedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    total.value = selectedProducts.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 }
 function getSeverity(status) {
     switch (status) {
