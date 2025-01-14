@@ -173,7 +173,7 @@ onMounted(() => {
                     </Column>
                     <Column header="Estado" style="min-width: 12rem">
                         <template #body="{ data }">
-                            <Tag :value="data.status.name" :severity="getSeverity(data.status_id)" />
+                            <Tag :value="data.status.name" :severity="getSeverity(data.table_status_id)" />
                         </template>
                     </Column>
                     <Column header="Data" dataType="date" style="min-width: 10rem">

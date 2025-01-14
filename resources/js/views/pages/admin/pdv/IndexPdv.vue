@@ -152,7 +152,10 @@ onMounted(() => {
             <div class="grid grid-cols-12 gap-8">
                     <div class="col-span-12 lg:col-span-6 xl:col-span-3" v-for="(table,index) in retriviedData.data" :key="table.id">
                         <router-link :to="'/admin/pdv/' + table.id + '/categories'">
-                            <div class="card mb-0">
+                            <div class="card mb-0" :class="{
+         'bg-green-100': table.table_status_id === 1, 
+         'bg-red-100': table.table_status_id === 2
+     }">
                                 <div class="flex justify-between mb-4">
                                     <div>
                                         <!-- <span class="block text-muted-color font-medium mb-4 text-xxl">{{table.name}}</span> -->
@@ -169,7 +172,7 @@ onMounted(() => {
                                 </div>
                                 <div class="flex justify-between mb-4">
                                     <span class="text-primary font-medium">Capacidade: {{table.capacity}} </span>
-                                    <span><Tag :value="table.status.name" :severity="getSeverity(table.status_id)" /></span>
+                                    <span><Tag :value="table.status.name" :severity="getSeverity(table.table_status_id)" /></span>
                                 </div>
                             </div>
                         </router-link>
