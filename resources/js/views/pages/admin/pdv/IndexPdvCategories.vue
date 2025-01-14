@@ -114,12 +114,12 @@ if (existingProduct) {
 }
 
 // Atualiza o total
-this.updateTotal();
+updateTotal();
 }
 
 function removeFromCart(index) {
     selectedProducts.value.splice(index, 1);
-    this.updateTotal();
+    updateTotal();
   }
 
 function updateTotal() {
