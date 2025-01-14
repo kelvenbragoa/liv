@@ -88,7 +88,7 @@ function saveCart() {
         .then((response) => {
             // resetForm();
             // router.back();
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso', life: 3000 });
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
         })
         .catch((error) => {
             isLoadingButton.value = false;
