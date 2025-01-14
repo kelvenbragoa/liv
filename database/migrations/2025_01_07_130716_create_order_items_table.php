@@ -17,6 +17,9 @@ return new class extends Migration
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('quantity');
             $table->unsignedBigInteger('order_item_status_id');
+            $table->double('price',15,2);
+            $table->double('total',15,2);
+
 
             $table->timestamps();
         });

@@ -31,3 +31,9 @@ Route::resource('users', UserController::class);
 Route::resource('reservations', ReservationController::class);
 
 Route::resource('pdv', PdvController::class);
+Route::get('pdv/quicksell',[PdvController::class,'quicksell']);
+Route::post('pdv/quicksell',[PdvController::class,'savequicksell']);
+
+
+Route::post('receipt/{id}',[PdvController::class,'getreceipt']);
+

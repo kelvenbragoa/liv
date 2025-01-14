@@ -300,6 +300,14 @@ const router = createRouter({
                     // },
                     component: () => import('@/views/pages/admin/pdv/IndexPdvCategories.vue')
                 },
+                {
+                    path: '/admin/pdv/quicksell',
+                    name: 'admin.pdv.quicksell',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/admin/pdv/IndexPdvQuickSell.vue')
+                },
 
                 
             ]

@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class PdvController extends Controller
 {
@@ -47,11 +50,8 @@ class PdvController extends Controller
         //
         $data = $request->all();
         $table = Table::find($data['table_id']);
-        // foreach($data['products'] as $item){
-        //     dd($item['quantity']);
-        // }
-        // dd($data);
-        $counter = 0;
+        $total_consumed = 0;
+
 
         if($table->table_status_id == 1){
             $order =  Order::create([
@@ -62,25 +62,33 @@ class PdvController extends Controller
                 'order_status_id' => 1
             ]);
             foreach($data['products'] as $item){
+                $product = Product::find($item['id']);
                 OrderItem::create([
                     'order_id'=>$order->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
                     'order_item_status_id' =>1,
+                    'price'=>$product->price,
+                    'total'=>$product->price * $item['quantity']
                 ]);
             }
+            $total_consumed = $data['total'];
         }
         if($table->table_status_id == 2){
 
             $last_order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
-            $last_order->update([
-                'total'=>$data['total']
-            ]);
+            
             foreach($data['products'] as $item){
+                
                 $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $item['id'])->first();
+                $product = Product::find($item['id']);
+
                 if($orderItem){
+                    $quantity_updated = $orderItem->quantity + $item['quantity'];
+                    
                     $orderItem->update([
-                        'quantity' => $orderItem->quantity + $item['quantity'],
+                        'quantity' => $quantity_updated,
+                        'total'=>$orderItem->price * $quantity_updated,
                     ]);
                 }else{
                     OrderItem::create([
@@ -88,19 +96,38 @@ class PdvController extends Controller
                         'product_id' => $item['id'],
                         'quantity' => $item['quantity'],
                         'order_item_status_id' =>1,
+                        'price'=>$product->price,
+                        'total'=>$product->price * $item['quantity']
                     ]);
                 }
                 
             }
+
+            $last_order->update([
+                'total'=>OrderItem::where('order_id', $last_order->id)->sum('total')
+            ]);
+            $total_consumed = OrderItem::where('order_id', $last_order->id)->sum('total');
         }
         $table->update([
             'table_status_id'=>2
         ]);
-        
 
-        return response()->json([
-            'table'=>$table
+        // $table = Table::find($id);
+        $order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
+        $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        $pdf = Pdf::loadView('pdf.receipt', compact('table','order','orderitens'))->setOptions([
+            'setPaper'=>'a4',
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
         ]);
+        return $pdf->setPaper('a4')->stream('receipt.pdf');
+        
+        // $this->getreceipt($table->id);
+        // return response()->json([
+        //     'table'=>$table,
+        //     'total_consumed'=>$total_consumed
+        // ]);
     }
 
     /**
@@ -110,7 +137,56 @@ class PdvController extends Controller
     {
         //
         $categories = Category::with('sub_categories.products')->get();
-        return response()->json(["categories"=>$categories]);
+        $total_consumed = Order::where('table_id', $id)->where('order_status_id', 1)->sum('total');
+        return response()->json([
+            "categories"=>$categories,
+            "total_consumed"=>$total_consumed
+        ]);
+    }
+
+    public function savequicksell(Request $request){
+        $data = $request->all();
+        $total_consumed = 0;
+
+
+            $order =  Order::create([
+                // 'user_id' => Auth::user()->id,
+                'user_id'=>1,
+                'total'=>$data['total'],
+                'order_status_id' => 1
+            ]);
+            foreach($data['products'] as $item){
+                $product = Product::find($item['id']);
+                OrderItem::create([
+                    'order_id'=>$order->id,
+                    'product_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'order_item_status_id' =>1,
+                    'price'=>$product->price,
+                    'total'=>$product->price * $item['quantity']
+                ]);
+            }
+            $total_consumed = $data['total'];
+  
+        // $table = Table::find($id);
+        $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens'))->setOptions([
+            // 'setPaper'=>'a4',
+            'setPaper' => [0, 0, 640, 2376],
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->setPaper('a4')->stream('receiptquicksell.pdf');
+    }
+
+    public function quicksell(){
+        $categories = Category::with('sub_categories.products')->get();
+        $total_consumed = 0;
+        return response()->json([
+            "categories"=>$categories,
+            "total_consumed"=>$total_consumed
+        ]);
     }
 
     /**
@@ -135,5 +211,18 @@ class PdvController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function getreceipt($id){
+        $table = Table::find($id);
+        $order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
+        $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        $pdf = Pdf::loadView('pdf.receipt', compact('table','order','orderitens'))->setOptions([
+            'setPaper'=>'a4',
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->setPaper('a4')->stream('receipt.pdf');
     }
 }

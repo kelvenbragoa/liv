@@ -48,31 +48,6 @@ const nestedMenuitems = [
       },
     ]
   },
-  {
-    label: 'Opções',
-    items: [
-      { 
-        label: 'Agrupar Mesa', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  },
-  {
-    label: 'Conta',
-    items: [
-      { 
-        label: 'Fechamento da Conta', 
-        icon: 'pi pi-fw pi-lock', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-      { 
-        label: 'Finalizar da Conta', 
-        icon: 'pi pi-fw pi-check', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  }
 ];
 
 function goBackUsingBack() {
@@ -120,12 +95,11 @@ function saveCart() {
         total: product.price * product.quantity
       })),
       total: total.value,
-      table_id: router.currentRoute.value.params.id
     };
 
     isLoadingButton.value = true;
     axios
-        .post(`/api/pdv`, cartData,{
+        .post(`/api/pdv/quicksell`, cartData,{
             headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -223,7 +197,7 @@ function getSeverity(status) {
 
 const getData = async (page = 1) => {
     axios
-        .get(`/api/pdv/${router.currentRoute.value.params.id}`, {
+        .get(`/api/pdv/quicksell`, {
             params: {
                 query: searchQuery.value
             }

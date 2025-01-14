@@ -24,6 +24,45 @@ const rowsPerPage = ref(15);
 const totalRecords = ref(0);
 const displayConfirmation = ref(false);
 
+// Definindo os itens do Menubar
+const nestedMenuitems = [
+  {
+    label: 'Venda Rápida',
+    items: [
+      { 
+        label: 'Inicar Venda Rápida', 
+        icon: 'pi pi-fw pi-shopping-cart', 
+        command: () => { router.push('/admin/pdv/quicksell') }  // Abre o dialog ao clicar
+      },
+    ]
+  },
+  {
+    label: 'Pedidos',
+    items: [
+      { 
+        label: 'Mesas', 
+        icon: 'pi pi-fw pi-folder-open', 
+        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+      },
+    ]
+  },
+  {
+    label: 'Caixa',
+    items: [
+      { 
+        label: 'Fecho de caixa', 
+        icon: 'pi pi-fw pi-lock', 
+        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+      },
+      { 
+        label: 'Relatório de caixa', 
+        icon: 'pi pi-fw pi-check', 
+        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+      },
+    ]
+  }
+];
+
 function goBackUsingBack() {
     if (router) {
         router.back();
@@ -149,13 +188,20 @@ onMounted(() => {
     
         
         <div v-else>
+            <div class="mb-2">
+                        <Menubar :model="nestedMenuitems">
+                            <template #end>
+                                <p>Total Venda Hoje: 0 MT</p>
+                            </template>
+                        </Menubar>
+                    </div>
             <div class="grid grid-cols-12 gap-8">
                     <div class="col-span-12 lg:col-span-6 xl:col-span-3" v-for="(table,index) in retriviedData.data" :key="table.id">
                         <router-link :to="'/admin/pdv/' + table.id + '/categories'">
                             <div class="card mb-0" :class="{
-         'bg-green-100': table.table_status_id === 1, 
-         'bg-red-100': table.table_status_id === 2
-     }">
+                                    'bg-green-100': table.table_status_id === 1, 
+                                    'bg-red-100': table.table_status_id === 2
+                                }">
                                 <div class="flex justify-between mb-4">
                                     <div>
                                         <!-- <span class="block text-muted-color font-medium mb-4 text-xxl">{{table.name}}</span> -->
