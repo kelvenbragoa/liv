@@ -1,6 +1,11 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import AppAdminLayout from '@/layout_admin/AppAdminLayout.vue';
 
+import AppWaiterLayout from '@/layout_waiter/AppWaiterLayout.vue';
+import AppKitchenLayout from '@/layout_kitchen/AppKitchenLayout.vue';
+import AppBarLayout from '@/layout_bar/AppBarLayout.vue';
+
+
 import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
@@ -310,6 +315,72 @@ const router = createRouter({
                 },
 
                 
+            ]
+        },
+        {
+            path: '/bar/dashboard',
+            component: AppBarLayout,
+            children: [
+                {
+                    path: '/bar/dashboard',
+                    name: 'bar.dashboard',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/bar/Dashboard.vue')
+                },
+                {
+                    path: '/bar/pdv',
+                    name: 'bar.pdv',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/bar/pdv/IndexPdv.vue')
+                },
+            ]
+        },
+        {
+            path: '/kitchen/dashboard',
+            component: AppKitchenLayout,
+            children: [
+                {
+                    path: '/kitchen/dashboard',
+                    name: 'kitchen.dashboard',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/kitchen/Dashboard.vue')
+                },
+                {
+                    path: '/kitchen/pdv',
+                    name: 'kitchen.pdv',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/kitchen/pdv/IndexPdv.vue')
+                },
+            ]
+        },
+        {
+            path: '/waiter/dashboard',
+            component: AppWaiterLayout,
+            children: [
+                {
+                    path: '/waiter/dashboard',
+                    name: 'waiter.dashboard',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/waiter/Dashboard.vue')
+                },
+                {
+                    path: '/waiter/pdv',
+                    name: 'waiter.pdv',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/waiter/pdv/IndexPdv.vue')
+                },
             ]
         },
         {

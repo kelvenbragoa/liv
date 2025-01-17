@@ -4,11 +4,11 @@ import { ProductService } from '@/service/ProductService';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { useForm } from 'vee-validate';
+
 // import { debounce } from 'lodash';
 import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash-es';
-import * as yup from 'yup';
+
 import moment from 'moment';
 
 const router = useRouter();
@@ -27,17 +27,7 @@ const categories = ref(null);
 const selectedProducts = ref([]);
 const total = ref(0);
 const total_consumed = ref(0);
-const payment_methods = ref([]);
 const isLoadingButton = ref(false);
-// const payment_method_id = ref(1);
-const schema = yup.object({
-    payment_method_id: yup.string().required().trim().label('Categoria'),
-});
-const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
-    validationSchema: schema
-});
-const [payment_method_id] = defineField('payment_method_id');
-
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
 
@@ -111,8 +101,7 @@ function saveCart() {
     axios.post(`/api/pdv/quicksell`, cartData, {
     headers: {
         'Content-Type': 'multipart/form-data'
-    },
-    responseType:'blob'
+    }
     })
     .then((response) => {
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -216,7 +205,7 @@ const getData = async (page = 1) => {
             retriviedData.value = response.data;
             total_consumed.value = response.data.total_consumed;
             categories.value = response.data.categories;
-            payment_methods.value = response.data.payment_methods;
+
 
             isLoadingDiv.value = false;
 
@@ -300,7 +289,6 @@ onMounted(() => {
                     </div>
                     <!-- </div> -->
                     <div v-if="total > 0" class="mt-4">
-                        <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" placeholder="Selecionar" :class="{ 'p-invalid': errors.payment_method_id }" />
                         <strong>Total: {{ total }} MT</strong>
                         <button :disabled="isLoadingButton" @click="saveCart" class="bg-blue-500 text-white px-4 py-2 rounded-full mt-1" style="width: 100%">Adicionar a conta<i class="pi pi-print"></i></button>
                         <div class="flex flex-col gap-4 text-center" v-if="isLoadingButton">

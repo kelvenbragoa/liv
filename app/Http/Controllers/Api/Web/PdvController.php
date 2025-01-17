@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Table;
 use Illuminate\Http\Request;
@@ -138,9 +139,12 @@ class PdvController extends Controller
         //
         $categories = Category::with('sub_categories.products')->get();
         $total_consumed = Order::where('table_id', $id)->where('order_status_id', 1)->sum('total');
+        $payment_methods = PaymentMethod::all();
+
         return response()->json([
             "categories"=>$categories,
-            "total_consumed"=>$total_consumed
+            "total_consumed"=>$total_consumed,
+            "payment_methods"=>$payment_methods
         ]);
     }
 
@@ -183,9 +187,11 @@ class PdvController extends Controller
     public function quicksell(){
         $categories = Category::with('sub_categories.products')->get();
         $total_consumed = 0;
+        $payment_methods = PaymentMethod::all();
         return response()->json([
             "categories"=>$categories,
-            "total_consumed"=>$total_consumed
+            "total_consumed"=>$total_consumed,
+            "payment_methods"=>$payment_methods
         ]);
     }
 
