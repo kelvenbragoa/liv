@@ -29,14 +29,14 @@ const total = ref(0);
 const total_consumed = ref(0);
 const payment_methods = ref([]);
 const isLoadingButton = ref(false);
-// const payment_method_id = ref(1);
-const schema = yup.object({
-    payment_method_id: yup.string().required().trim().label('Categoria'),
-});
-const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
-    validationSchema: schema
-});
-const [payment_method_id] = defineField('payment_method_id');
+const payment_method_id = ref(1);
+// const schema = yup.object({
+//     payment_method_id: yup.string().required().trim().label('Categoria'),
+// });
+// const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
+//     validationSchema: schema
+// });
+// const [payment_method_id] = defineField('payment_method_id');
 
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
@@ -105,6 +105,7 @@ function saveCart() {
         total: product.price * product.quantity
       })),
       total: total.value,
+      payment_method_id: payment_method_id.value
     };
 
     isLoadingButton.value = true;
@@ -123,11 +124,13 @@ function saveCart() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url); // Libera a URL criada
-        router.back();
-        loadingprint.value = false;
+        // loadingprint.value = false;
         toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
+        router.back();
+
     })
     .catch((error) => {
+        console.log(error)
         toast.add({ severity: 'error', summary: 'Erro', detail: error.response.data.message, life: 3000 });
         if (error.response.data.errors) {
             setErrors(error.response.data.errors);
@@ -217,6 +220,7 @@ const getData = async (page = 1) => {
             total_consumed.value = response.data.total_consumed;
             categories.value = response.data.categories;
             payment_methods.value = response.data.payment_methods;
+            payment_method_id.value = 1;
 
             isLoadingDiv.value = false;
 
@@ -300,7 +304,7 @@ onMounted(() => {
                     </div>
                     <!-- </div> -->
                     <div v-if="total > 0" class="mt-4">
-                        <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" placeholder="Selecionar" :class="{ 'p-invalid': errors.payment_method_id }" />
+                        <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" placeholder="Selecionar" />
                         <strong>Total: {{ total }} MT</strong>
                         <button :disabled="isLoadingButton" @click="saveCart" class="bg-blue-500 text-white px-4 py-2 rounded-full mt-1" style="width: 100%">Adicionar a conta<i class="pi pi-print"></i></button>
                         <div class="flex flex-col gap-4 text-center" v-if="isLoadingButton">

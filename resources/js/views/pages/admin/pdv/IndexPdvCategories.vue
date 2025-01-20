@@ -28,6 +28,7 @@ const selectedProducts = ref([]);
 const total = ref(0);
 const total_consumed = ref(0);
 const isLoadingButton = ref(false);
+const loadingprint = ref(false);
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
 
@@ -128,7 +129,8 @@ function saveCart() {
         .post(`/api/pdv`, cartData,{
             headers: {
             'Content-Type': 'multipart/form-data'
-          }
+          },
+          responseType:'blob'
         })
         .then((response) => {
             // resetForm();
@@ -144,7 +146,7 @@ function saveCart() {
         })
         .catch((error) => {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error.response.data.message}`, life: 3000 });
+            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
             if (error.response.data.errors) {
                 setErrors(error.response.data.errors);
             }

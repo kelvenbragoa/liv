@@ -54,9 +54,11 @@ class ProductController extends Controller
     {
         //
         $data = $request->all();
+        $category = Category::find($data['category_id']);
         $product = Product::create([
             'category_id' => $data['category_id'],
             'sub_category_id' => $data['sub_category_id'],
+            'department_id' => $category->department_id,
             'price' => $data['price'],
             'name'=>$data['name'],
             'image'=>null,

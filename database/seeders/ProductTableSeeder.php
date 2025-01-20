@@ -35,6 +35,7 @@ class ProductTableSeeder extends Seeder
             $productData[] = [
                 "name" => $name,
                 "image" => null,
+                "department_id"=>1,
                 "category_id" => $categoryIds[array_rand($categoryIds)],  // Categoria aleatória
                 "sub_category_id" => $subcategoryIds[array_rand($subcategoryIds)],  // Categoria aleatória
                 "price" => rand(100, 1000),  // Preço aleatório entre 1,00 e 10,00

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Table;
@@ -69,6 +70,7 @@ class PdvController extends Controller
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
                     'order_item_status_id' =>1,
+                    'department_id' => $product->department_id,
                     'price'=>$product->price,
                     'total'=>$product->price * $item['quantity']
                 ]);
@@ -96,6 +98,7 @@ class PdvController extends Controller
                         'order_id'=>$last_order->id,
                         'product_id' => $item['id'],
                         'quantity' => $item['quantity'],
+                        'department_id' => $product->department_id,
                         'order_item_status_id' =>1,
                         'price'=>$product->price,
                         'total'=>$product->price * $item['quantity']
@@ -164,6 +167,7 @@ class PdvController extends Controller
                 OrderItem::create([
                     'order_id'=>$order->id,
                     'product_id' => $item['id'],
+                    'department_id' => $product->department_id,
                     'quantity' => $item['quantity'],
                     'order_item_status_id' =>1,
                     'price'=>$product->price,
@@ -174,6 +178,12 @@ class PdvController extends Controller
   
         // $table = Table::find($id);
         $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        $payment = Payment::create([
+            "order_id"=>$order->id,
+            "payment_method_id"=>$data["payment_method_id"],
+            "amount"=>$data['total'],
+        ]);
 
         $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens'))->setOptions([
             // 'setPaper'=>'a4',
