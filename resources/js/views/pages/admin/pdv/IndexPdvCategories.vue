@@ -525,12 +525,12 @@ onMounted(() => {
       <ul class="space-y-2">
         <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
             <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total.toFixed(2) }} <i class="pi pi-trash"></i></span>
+            <span>MZN {{ item.total }} <i class="pi pi-trash"></i></span>
         </li>
       </ul>
       <p class="mt-4 text-lg font-semibold">
         <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+        <span class="text-blue-500">MZN {{ total_consumed }}</span>
       </p>
       <div class="mt-4 flex justify-end">
         <Button label="Fechar" @click="openReceiptDialog = false" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
@@ -544,12 +544,12 @@ onMounted(() => {
       <ul class="space-y-2">
         <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
             <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total.toFixed(2) }} <i class="pi pi-trash"></i></span>
+            <span>MZN {{ item.total }} <i class="pi pi-trash"></i></span>
         </li>
       </ul>
       <p class="mt-4 text-lg font-semibold">
         <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+        <span class="text-blue-500">MZN {{ total_consumed }}</span>
       </p>
       <div class="mt-4 flex justify-end">
         <Button label="Fechar Conta" @click="closeAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
@@ -564,14 +564,14 @@ onMounted(() => {
       <ul class="space-y-2">
         <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
             <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total.toFixed(2) }}</span>
+            <span>MZN {{ item.total }}</span>
         </li>
       </ul>
       <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" class="mt-2" placeholder="Selecionar" />
 
       <p class="mt-4 text-lg font-semibold">
         <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+        <span class="text-blue-500">MZN {{ total_consumed }}</span>
       </p>
       <div class="mt-4 flex justify-end">
         <Button label="Pagar a Conta" @click="payAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
