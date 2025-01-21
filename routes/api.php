@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Mobile\AuthMobileController;
+use App\Http\Controllers\Api\Mobile\TableMobileController;
 use App\Http\Controllers\Api\Web\AuthWebController;
 use App\Http\Controllers\Api\Web\CategoryController;
 use App\Http\Controllers\Api\Web\CustomerController;
@@ -44,8 +46,22 @@ Route::get('pdv/closeaccount/{id}',[PdvController::class,'closeaccount']);
 Route::post('payaccount',[PdvController::class,'payaccount']);
 
 
+
 Route::resource('payments', PaymentController::class);
 Route::resource('orders', OrderController::class);
+
+
+Route::post('/barman-login', [AuthMobileController::class, 'login']);
+
+Route::resource('mobile-tables', TableMobileController::class);
+
+Route::post('createorder',[TableMobileController::class,'createorder']);
+
+Route::get('consumption/{id}',[TableMobileController::class,'consumption']);
+
+
+
+
 
 
 

@@ -20,4 +20,8 @@ class Order extends Model
     public function status(){
         return $this->hasOne('App\Models\OrderStatus', 'id', 'order_status_id');
     }
+
+    public function user(){
+        return $this->hasOne('App\Models\User', 'id', 'user_id');
+    }
 }
