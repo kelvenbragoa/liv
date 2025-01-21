@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -13,6 +14,17 @@ class PaymentController extends Controller
     public function index()
     {
         //
+        $searchQuery = request('query');
+
+            $payments = Payment::query()
+            ->when(request('query'),function($query,$searchQuery){
+                $query->where('id','like',"%{$searchQuery}%");
+            })
+            ->with('method')
+            ->orderBy('created_at','desc')
+            ->paginate();
+
+            return response()->json($payments);
     }
 
     /**
@@ -37,6 +49,9 @@ class PaymentController extends Controller
     public function show(string $id)
     {
         //
+        $payment = Payment::with('method')->find($id);
+
+        return response()->json($payment);
     }
 
     /**

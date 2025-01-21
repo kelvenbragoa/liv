@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Web\AuthWebController;
 use App\Http\Controllers\Api\Web\CategoryController;
 use App\Http\Controllers\Api\Web\CustomerController;
+use App\Http\Controllers\Api\Web\OrderController;
+use App\Http\Controllers\Api\Web\PaymentController;
 use App\Http\Controllers\Api\Web\PaymentMethodController;
 use App\Http\Controllers\Api\Web\PdvController;
 use App\Http\Controllers\Api\Web\ProductController;
@@ -35,5 +37,15 @@ Route::get('pdv/quicksell',[PdvController::class,'quicksell']);
 Route::post('pdv/quicksell',[PdvController::class,'savequicksell']);
 
 
-Route::post('receipt/{id}',[PdvController::class,'getreceipt']);
+Route::post('getreceipt/{id}',[PdvController::class,'getreceipt']);
+
+Route::get('pdv/closeaccount/{id}',[PdvController::class,'closeaccount']);
+
+Route::post('payaccount',[PdvController::class,'payaccount']);
+
+
+Route::resource('payments', PaymentController::class);
+Route::resource('orders', OrderController::class);
+
+
 

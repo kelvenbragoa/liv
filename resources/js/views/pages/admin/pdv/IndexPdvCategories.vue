@@ -28,9 +28,17 @@ const selectedProducts = ref([]);
 const total = ref(0);
 const total_consumed = ref(0);
 const isLoadingButton = ref(false);
+const order_items = ref([]);
 const loadingprint = ref(false);
+const payment_method_id = ref(1);
+const payment_methods = ref([]);
+
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
+const openReceiptDialog = ref(false); // Controla a visibilidade do dialog
+const openPrintReceipt = ref(false); // Controla a visibilidade do dialog
+const closeAccountDialog = ref(false); // Controla a visibilidade do dialog
+const payAccountDialog = ref(false); // Controla a visibilidade
 
 // Definindo os itens do Menubar
 const nestedMenuitems = [
@@ -40,37 +48,40 @@ const nestedMenuitems = [
       { 
         label: 'Ver consumo', 
         icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+        command: () => { openReceiptDialog.value = true }  // Abre o dialog ao clicar
       },
       { 
         label: 'Imprimir Consumo', 
         icon: 'pi pi-fw pi-print', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+        command: () => { 
+            printReceipt();
+            // openFileDialog.value = true 
+        }  // Abre o dialog ao clicar
       },
     ]
   },
-  {
-    label: 'Opções',
-    items: [
-      { 
-        label: 'Agrupar Mesa', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  },
+//   {
+//     label: 'Opções',
+//     items: [
+//       { 
+//         label: 'Agrupar Mesa', 
+//         icon: 'pi pi-fw pi-folder-open', 
+//         command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+//       },
+//     ]
+//   },
   {
     label: 'Conta',
     items: [
       { 
         label: 'Fechamento da Conta', 
         icon: 'pi pi-fw pi-lock', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+        command: () => { closeAccountDialog.value = true }  // Abre o dialog ao clicar
       },
       { 
         label: 'Finalizar da Conta', 
         icon: 'pi pi-fw pi-check', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+        command: () => { payAccountDialog.value = true }  // Abre o dialog ao clicar
       },
     ]
   }
@@ -133,7 +144,6 @@ function saveCart() {
           responseType:'blob'
         })
         .then((response) => {
-            // resetForm();
             router.back();
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
@@ -143,6 +153,75 @@ function saveCart() {
             link.click();
             loadingprint.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
+        })
+        .catch((error) => {
+            isLoadingButton.value = false;
+            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
+            if (error.response.data.errors) {
+                setErrors(error.response.data.errors);
+            }
+        })
+        .finally(() => {
+            isLoadingButton.value = false;
+        });
+  }
+
+  function closeAccount() {
+    // Exemplo de dados para salvar
+
+    isLoadingButton.value = true;
+    axios
+        .get(`/api/pdv/closeaccount/${router.currentRoute.value.params.id}`,{  
+          responseType:'blob'
+        })
+        .then((response) => {
+            // router.back();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'recibo.pdf');
+            document.body.appendChild(link);
+            link.click();
+            closeAccountDialog.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
+        })
+        .catch((error) => {
+            isLoadingButton.value = false;
+            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
+            if (error.response.data.errors) {
+                setErrors(error.response.data.errors);
+            }
+        })
+        .finally(() => {
+            isLoadingButton.value = false;
+        });
+  }
+
+  function payAccount() {
+    // Exemplo de dados para salvar
+    const payData = {
+      payment_method_id: payment_method_id.value,
+      table_id: router.currentRoute.value.params.id
+    };
+
+    isLoadingButton.value = true;
+    axios
+        .post(`/api/payaccount`, payData,{
+            headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          responseType:'blob'
+        })
+        .then((response) => {
+            router.back();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'recibo.pdf');
+            document.body.appendChild(link);
+            link.click();
+            payAccountDialog.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
         })
         .catch((error) => {
             isLoadingButton.value = false;
@@ -223,6 +302,30 @@ function getSeverity(status) {
     }
 }
 
+const printReceipt = async () => {
+    axios
+        .post(`/api/getreceipt/${router.currentRoute.value.params.id}`, {
+          responseType:'blob'
+        })
+        .then((response) => {
+            router.back();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'consumo.pdf');
+            document.body.appendChild(link);
+            link.click();
+            openPrintReceipt.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            goBackUsingBack();
+        });
+};
+
 const getData = async (page = 1) => {
     axios
         .get(`/api/pdv/${router.currentRoute.value.params.id}`, {
@@ -234,8 +337,9 @@ const getData = async (page = 1) => {
             retriviedData.value = response.data;
             total_consumed.value = response.data.total_consumed;
             categories.value = response.data.categories;
-
-
+            order_items.value = response.data.order_items;
+            payment_methods.value = response.data.payment_methods;
+            payment_method_id.value = 1;
             isLoadingDiv.value = false;
 
         })
@@ -414,4 +518,64 @@ onMounted(() => {
         <p>Here you can manage your files or perform specific actions.</p>
         <Button label="Close" @click="openFileDialog = false" />
     </Dialog>
+
+    <Dialog header="Consumo da Mesa" v-model:visible="openReceiptDialog" style="width: 30vw">
+    <div class="p-4">
+      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
+      <ul class="space-y-2">
+        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
+            <span>{{ item.quantity }} x {{ item.product.name }}</span>
+            <span>MZN {{ item.total.toFixed(2) }} <i class="pi pi-trash"></i></span>
+        </li>
+      </ul>
+      <p class="mt-4 text-lg font-semibold">
+        <span>Total: </span>
+        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+      </p>
+      <div class="mt-4 flex justify-end">
+        <Button label="Fechar" @click="openReceiptDialog = false" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
+      </div>
+    </div>
+  </Dialog>
+
+  <Dialog header="Fechar a conta" v-model:visible="closeAccountDialog" style="width: 30vw">
+    <div class="p-4">
+      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
+      <ul class="space-y-2">
+        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
+            <span>{{ item.quantity }} x {{ item.product.name }}</span>
+            <span>MZN {{ item.total.toFixed(2) }} <i class="pi pi-trash"></i></span>
+        </li>
+      </ul>
+      <p class="mt-4 text-lg font-semibold">
+        <span>Total: </span>
+        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+      </p>
+      <div class="mt-4 flex justify-end">
+        <Button label="Fechar Conta" @click="closeAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
+      </div>
+    </div>
+  </Dialog>
+
+
+  <Dialog header="Fechar a conta" v-model:visible="payAccountDialog" style="width: 30vw">
+    <div class="p-4">
+      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
+      <ul class="space-y-2">
+        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
+            <span>{{ item.quantity }} x {{ item.product.name }}</span>
+            <span>MZN {{ item.total.toFixed(2) }}</span>
+        </li>
+      </ul>
+      <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" class="mt-2" placeholder="Selecionar" />
+
+      <p class="mt-4 text-lg font-semibold">
+        <span>Total: </span>
+        <span class="text-blue-500">MZN {{ total_consumed.toFixed(2) }}</span>
+      </p>
+      <div class="mt-4 flex justify-end">
+        <Button label="Pagar a Conta" @click="payAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
+      </div>
+    </div>
+  </Dialog>
 </template>

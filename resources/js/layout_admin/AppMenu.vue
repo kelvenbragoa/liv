@@ -18,9 +18,9 @@ const model = ref([
             { label: 'Usuários', icon: 'pi pi-fw pi-home', to: '/admin/users' },
             { label: 'Ponto de Venda', icon: 'pi pi-fw pi-home', to: '/admin/pdv' },
 
-            { label: 'Reservas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            { label: 'Pagamentos', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            { label: 'Encomendas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            // { label: 'Reservas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'Pagamentos', icon: 'pi pi-fw pi-home', to: '/admin/payments' },
+            { label: 'Encomendas', icon: 'pi pi-fw pi-home', to: '/admin/orders' },
         ]
     },
     // {

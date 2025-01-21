@@ -58,11 +58,11 @@
     </style>
 </head>
 <body>
-    @if($kitchenItems->isNotEmpty())
     <div class="header">
         <h1>LIV BEIRA</h1>
         <p>Maquinino,Beira</p>
         <p>Telefone: +258 84 000 000</p>
+
     </div>
     <hr>
     <div class="content">
@@ -71,88 +71,38 @@
             <p>Pedido Nº: {{ $order->id }}</p>
             <p>Mesa Nº: {{ $order->table->name }}</p>
             <p>Atendente: Nome do Usuário</p>
-            <p>Departamento: Cozinha</p>
-
         </div>
         <table class="items">
             <thead>
                 <tr>
                     <th>Qtd</th>
                     <th>Produto</th>
-                    {{-- <th>Preço</th>
-                    <th>Total</th> --}}
+                    <th>Preço</th>
+                    <th>Total</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($kitchenItems as $item)
+                @foreach ($orderitens as $item)
                 <tr>
                     <td>{{ $item->quantity }}</td>
                     <td>{{ $item->product->name }}</td>
-                    {{-- <td>{{ number_format($item->price, 2) }}</td>
-                    <td>{{ number_format($item->quantity * $item->price, 2) }}</td> --}}
+                    <td>MZN {{ number_format($item->price, 2) }}</td>
+                    <td>MZN {{ number_format($item->quantity * $item->price, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
-        {{-- <div class="total">
+        <div class="total">
             <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
-        </div> --}}
+        </div>
     </div>
     <hr>
     <div class="footer">
         <p>Obrigado pela preferência!</p>
         <p>Visite-nos novamente!</p>
     </div>
-    @if($barItems->isNotEmpty())
-    <div class="break-page"></div>
-    @endif
-@endif
-    @if($barItems->isNotEmpty())
-
-        <div class="header">
-            <h1>LIV BEIRA</h1>
-            <p>Maquinino,Beira</p>
-            <p>Telefone: +258 84 000 000</p>
-            <p>Departamento: Bar</p>
-
-        </div>
-        <hr>
-        <div class="content">
-            <div class="details">
-                <p>Data: {{ $order->created_at->format('d-m-Y H:i') }}</p>
-                <p>Pedido Nº: {{ $order->id }}</p>
-                <p>Mesa Nº: {{ $order->table->name }}</p>
-                <p>Atendente: Nome do Usuário</p>
-            </div>
-            <table class="items">
-                <thead>
-                    <tr>
-                        <th>Qtd</th>
-                        <th>Produto</th>
-                        {{-- <th>Preço</th>
-                        <th>Total</th> --}}
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($barItems as $item)
-                    <tr>
-                        <td>{{ $item->quantity }}</td>
-                        <td>{{ $item->product->name }}</td>
-                        {{-- <td>{{ number_format($item->price, 2) }}</td>
-                        <td>{{ number_format($item->quantity * $item->price, 2) }}</td> --}}
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            {{-- <div class="total">
-                <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
-            </div> --}}
-        </div>
-        <hr>
-        <div class="footer">
-            <p>Obrigado pela preferência!</p>
-            <p>Visite-nos novamente!</p>
-        </div>
-    @endif
+   
 </body>
 </html>
+
+

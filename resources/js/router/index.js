@@ -314,6 +314,41 @@ const router = createRouter({
                     component: () => import('@/views/pages/admin/pdv/IndexPdvQuickSell.vue')
                 },
 
+                {
+                    path: '/admin/payments',
+                    name: 'admin.payments',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/admin/payments/IndexPayments.vue')
+                },
+                {
+                    path: '/admin/payments/:id',
+                    name: 'admin.payments.show',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/admin/payments/ShowPayments.vue')
+                },
+
+                {
+                    path: '/admin/orders',
+                    name: 'admin.orders',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/admin/orders/IndexOrders.vue')
+                },
+
+                {
+                    path: '/admin/orders/:id',
+                    name: 'admin.orders.show',
+                    // meta: {
+                    //     requiresAuth: true
+                    // },
+                    component: () => import('@/views/pages/admin/orders/ShowOrders.vue')
+                },
+
                 
             ]
         },

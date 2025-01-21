@@ -36,16 +36,16 @@ const nestedMenuitems = [
       },
     ]
   },
-  {
-    label: 'Pedidos',
-    items: [
-      { 
-        label: 'Mesas', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  },
+//   {
+//     label: 'Pedidos',
+//     items: [
+//       { 
+//         label: 'Mesas', 
+//         icon: 'pi pi-fw pi-folder-open', 
+//         command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
+//       },
+//     ]
+//   },
   {
     label: 'Caixa',
     items: [

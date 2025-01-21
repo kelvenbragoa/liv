@@ -27,12 +27,12 @@ class PaymentMethodTableSeeder extends Seeder
                 "created_at"=>now(),
                 "updated_at"=>now(),
             ],
-            [
-                "name"=>"Dividido",
-                "status_id"=>1,
-                "created_at"=>now(),
-                "updated_at"=>now(),
-            ],
+            // [
+            //     "name"=>"Dividido",
+            //     "status_id"=>1,
+            //     "created_at"=>now(),
+            //     "updated_at"=>now(),
+            // ],
             [
                 "name"=>"Emola",
                 "status_id"=>1,

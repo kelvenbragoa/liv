@@ -54,6 +54,8 @@ class PdvController extends Controller
         $table = Table::find($data['table_id']);
         $total_consumed = 0;
 
+        $newBarItems = [];
+        $newKitchenItems = [];
 
         if($table->table_status_id == 1){
             $order =  Order::create([
@@ -65,7 +67,7 @@ class PdvController extends Controller
             ]);
             foreach($data['products'] as $item){
                 $product = Product::find($item['id']);
-                OrderItem::create([
+                $orderItem = OrderItem::create([
                     'order_id'=>$order->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
@@ -74,6 +76,11 @@ class PdvController extends Controller
                     'price'=>$product->price,
                     'total'=>$product->price * $item['quantity']
                 ]);
+                if ($product->department_id == 1) {
+                    $newKitchenItems[] = $orderItem;
+                } elseif ($product->department_id == 2) {
+                    $newBarItems[] = $orderItem;
+                }
             }
             $total_consumed = $data['total'];
         }
@@ -94,7 +101,7 @@ class PdvController extends Controller
                         'total'=>$orderItem->price * $quantity_updated,
                     ]);
                 }else{
-                    OrderItem::create([
+                    $orderItem = OrderItem::create([
                         'order_id'=>$last_order->id,
                         'product_id' => $item['id'],
                         'quantity' => $item['quantity'],
@@ -103,6 +110,11 @@ class PdvController extends Controller
                         'price'=>$product->price,
                         'total'=>$product->price * $item['quantity']
                     ]);
+                    if ($product->department_id == 1) {
+                        $newKitchenItems[] = $orderItem;
+                    } elseif ($product->department_id == 2) {
+                        $newBarItems[] = $orderItem;
+                    }
                 }
                 
             }
@@ -116,22 +128,18 @@ class PdvController extends Controller
             'table_status_id'=>2
         ]);
 
-        // $table = Table::find($id);
         $order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
         $orderitens = OrderItem::where('order_id',$order->id)->get();
 
-        $pdf = Pdf::loadView('pdf.receipt', compact('table','order','orderitens'))->setOptions([
-            'setPaper'=>'a4',
+        $barItems = $orderitens->where('department_id', 2);
+        $kitchenItems = $orderitens->where('department_id', 1);
+
+
+        $pdf = Pdf::loadView('pdf.receipt', compact('order','orderitens','barItems','kitchenItems'))->setOptions([
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper('a4')->stream('receipt.pdf');
-        
-        // $this->getreceipt($table->id);
-        // return response()->json([
-        //     'table'=>$table,
-        //     'total_consumed'=>$total_consumed
-        // ]);
+        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receipt.pdf');
     }
 
     /**
@@ -141,13 +149,22 @@ class PdvController extends Controller
     {
         //
         $categories = Category::with('sub_categories.products')->get();
-        $total_consumed = Order::where('table_id', $id)->where('order_status_id', 1)->sum('total');
+        $order = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->first();
+        $order_id = 0;
+        if ($order) {
+            $order_id = $order->id;
+        }
+
+        
+        $total_consumed = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->sum('total');
         $payment_methods = PaymentMethod::all();
+        $orderItems = OrderItem::where('order_id',$order_id)->with('product')->get();
 
         return response()->json([
             "categories"=>$categories,
             "total_consumed"=>$total_consumed,
-            "payment_methods"=>$payment_methods
+            "payment_methods"=>$payment_methods,
+            "order_items"=>$orderItems
         ]);
     }
 
@@ -185,13 +202,16 @@ class PdvController extends Controller
             "amount"=>$data['total'],
         ]);
 
-        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens'))->setOptions([
+        $barItems = $orderitens->where('department_id', 2);
+        $kitchenItems = $orderitens->where('department_id', 1);
+
+        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens','barItems','kitchenItems'))->setOptions([
             // 'setPaper'=>'a4',
-            'setPaper' => [0, 0, 640, 2376],
+            // 'setPaper' => [0, 0, 226.77, 841.89],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper('a4')->stream('receiptquicksell.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receiptquicksell.pdf');
     }
 
     public function quicksell(){
@@ -229,16 +249,84 @@ class PdvController extends Controller
         //
     }
 
-    public function getreceipt($id){
+    public function getreceipt(string $id) {
+
+        $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
+        if (!$order) {
+            abort(404, 'Order not found');
+        }
+        $orderitens = OrderItem::with('product')->where('order_id', $order->id)->get();
+        $table = $order->table; // Supondo que o relacionamento exista
+    
+        $pdf = Pdf::loadView('pdf.receiptgeneral', compact('order', 'orderitens', 'table'))->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => true,
+        ]);
+    
+        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receiptgeneral.pdf');
+    }
+
+
+    public function closeaccount(string $id){
         $table = Table::find($id);
-        $order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
+        $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
+
+        $order->update([
+            "order_status_id"=>2
+        ]);
+
+        $table->update([
+            "table_status_id"=>5
+        ]);
+
         $orderitens = OrderItem::where('order_id',$order->id)->get();
 
-        $pdf = Pdf::loadView('pdf.receipt', compact('table','order','orderitens'))->setOptions([
-            'setPaper'=>'a4',
+        $pdf = Pdf::loadView('pdf.finalreceipt', compact('order','orderitens'))->setOptions([
+            // 'setPaper'=>'a4',
+            // 'setPaper' => [0, 0, 226.77, 841.89],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper('a4')->stream('receipt.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('finalreceipt.pdf');
+
+
+
+    }
+
+    public function payaccount(Request $request){
+        $data = $request->all();
+        $table = Table::find($data['table_id']);
+        $order = Order::where('table_id', $data['table_id'])->where('order_status_id', 2)->first();
+
+        $order->update([
+            "order_status_id"=>3
+        ]);
+
+        $table->update([
+            "table_status_id"=>1
+        ]);
+
+        $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        foreach($orderitens as $item){
+            $item->update([
+                'order_item_status_id'=>4
+            ]);
+        }
+
+        $payment = Payment::create([
+            "order_id"=>$order->id,
+            "payment_method_id"=>$data["payment_method_id"],
+            "amount"=>$order->total
+        ]);
+
+        $pdf = Pdf::loadView('pdf.customerreceipt', compact('order','orderitens','payment'))->setOptions([
+            // 'setPaper'=>'a4',
+            // 'setPaper' => [0, 0, 226.77, 841.89],
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('customerreceipt.pdf');
+
     }
 }

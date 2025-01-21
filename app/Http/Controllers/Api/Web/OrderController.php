@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -13,6 +14,19 @@ class OrderController extends Controller
     public function index()
     {
         //
+        $searchQuery = request('query');
+
+            $orders = Order::query()
+            ->when(request('query'),function($query,$searchQuery){
+                $query->where('id','like',"%{$searchQuery}%");
+            })
+            ->with('table')
+            ->with('itens')
+            ->with('status')
+            ->orderBy('created_at','desc')
+            ->paginate();
+
+            return response()->json($orders);
     }
 
     /**
@@ -37,6 +51,9 @@ class OrderController extends Controller
     public function show(string $id)
     {
         //
+        $order = Order::with('table')->with('itens')->with('status')->find($id);
+
+        return response()->json($order);
     }
 
     /**
