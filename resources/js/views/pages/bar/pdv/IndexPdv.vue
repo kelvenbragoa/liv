@@ -179,8 +179,12 @@ const changeStatus = () => {
 
     axios
         .get(`/api/barchangestatus/${dataIdBeingChange.value}`)
-        .then(() => {
-            getData();
+        .then((response) => {
+            pending.value = response.data.order_itens_pending;
+            gettingready.value = response.data.order_itens_getting_ready;
+            ready.value = response.data.order_itens_ready;
+            delivered.value = response.data.order_itens_delivered;
+            loadingButtonDelete.value = false;
             closeConfirmation();
             toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao transitar o estado.', life: 3000 });
         })
@@ -380,6 +384,6 @@ onMounted(() => {
     <Dialog header="Deseja avançar o pedido para o próximo estado?" v-model:visible="openChangeStatusDialog" style="width: 30vw">
         <p>Ao clicar em avançar, seu pedido será adicionado em outra tabela de referência.</p>
         <Button class="m-4" label="Fechar" severity="danger" @click="openChangeStatusDialog = false" />
-        <Button class="m-4" label="Proximo Estado" @click="changeStatus" />
+        <Button class="m-4" label="Proximo Estado" :disabled="loadingButtonDelete == true" @click="changeStatus" />
     </Dialog>
 </template>
