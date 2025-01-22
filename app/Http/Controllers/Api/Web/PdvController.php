@@ -331,4 +331,63 @@ class PdvController extends Controller
         return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('customerreceipt.pdf');
 
     }
+
+
+
+    public function indexKitchen(){
+        $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+        $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+        $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+        $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+
+        return response()->json([
+            "order_itens_pending"=>$order_itens_pending,
+            "order_itens_getting_ready"=>$order_itens_getting_ready,
+            "order_itens_ready"=>$order_itens_ready,
+            "order_itens_delivered"=>$order_itens_delivered
+        ]);
+    }
+
+    public function changestatus(string $id)
+{
+    $order_item = OrderItem::find($id);
+
+    if (!$order_item) {
+        return response()->json(['message' => 'Order item not found'], 404);
+    }
+
+    $currentStatus = $order_item->order_item_status_id;
+
+    switch ($currentStatus) {
+        case 1:
+            $nextStatus = 2;
+            break;
+        case 2:
+            $nextStatus = 3;
+            break;
+        case 3:
+            $nextStatus = 4;
+            break;
+        case 4:
+            $nextStatus = 4;
+            break;
+        default:
+            return response()->json(['message' => 'Invalid status'], 400);
+    }
+
+    $order_item->update(['order_item_status_id' => $nextStatus]);
+
+
+    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+    $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+    $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+
+    return response()->json([
+        "order_itens_pending"=>$order_itens_pending,
+        "order_itens_getting_ready"=>$order_itens_getting_ready,
+        "order_itens_ready"=>$order_itens_ready,
+        "order_itens_delivered"=>$order_itens_delivered
+    ]);
+}
 }

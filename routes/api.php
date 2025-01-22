@@ -59,6 +59,11 @@ Route::post('createorder',[TableMobileController::class,'createorder']);
 
 Route::get('consumption/{id}',[TableMobileController::class,'consumption']);
 
+Route::get('pdvkitchen',[PdvController::class,'indexKitchen']);
+
+Route::get('changestatus/{id}',[PdvController::class,'changestatus']);
+
+
 
 
 
