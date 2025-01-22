@@ -23,6 +23,8 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('login',[AuthWebController::class,'login']);
+Route::post('/barman-login', [AuthMobileController::class, 'login']);
+
 
 Route::middleware([Sanctum::class])->group(function () {
 Route::resource('categories', CategoryController::class);
@@ -53,7 +55,6 @@ Route::resource('payments', PaymentController::class);
 Route::resource('orders', OrderController::class);
 
 
-Route::post('/barman-login', [AuthMobileController::class, 'login']);
 
 Route::resource('mobile-tables', TableMobileController::class);
 
