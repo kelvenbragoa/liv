@@ -76,7 +76,7 @@
           <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
 
-        <router-link to="/auth/login" class="btn-book-a-table d-none d-xl-block" href="#book-a-table">Entrar</router-link>
+        <a href="/auth/login" class="btn-book-a-table d-none d-xl-block" href="#book-a-table">Entrar</a>
 
       </div>
 
