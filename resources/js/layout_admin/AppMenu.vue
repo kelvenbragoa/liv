@@ -4,25 +4,66 @@ import { ref } from 'vue';
 import AppMenuItem from './AppMenuItem.vue';
 
 const model = ref([
-    {
-        label: 'Home',
-        items: [
-            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/admin/dashboard' },
-            { label: 'Categorias', icon: 'pi pi-fw pi-home', to: '/admin/categories' },
-            { label: 'SubCategorias', icon: 'pi pi-fw pi-home', to: '/admin/subcategories' },
+                    {
+                        label: 'Home',
+                        items: [
+                            { label: 'Dashboard', icon: 'pi pi-fw pi-chart-bar', to: '/admin/dashboard' },
+                        ]
+                    },
+                    {
+                        label: 'Produtos',
+                        items: [
+                            { label: 'Categorias', icon: 'pi pi-fw pi-tags', to: '/admin/categories' },
+                            { label: 'SubCategorias', icon: 'pi pi-fw pi-sitemap', to: '/admin/subcategories' },
+                            { label: 'Produtos', icon: 'pi pi-fw pi-box', to: '/admin/products' },
+                        ]
+                    },
+                    {
+                        label: 'Clientes e Mesas',
+                        items: [
+                            { label: 'Clientes', icon: 'pi pi-fw pi-users', to: '/admin/customers' },
+                            { label: 'Mesas', icon: 'pi pi-fw pi-table', to: '/admin/tables' },
+                        ]
+                    },
+                    {
+                        label: 'Pagamentos',
+                        items: [
+                            { label: 'Métodos de Pagamento', icon: 'pi pi-fw pi-wallet', to: '/admin/paymentmethods' },
+                            { label: 'Pagamentos', icon: 'pi pi-fw pi-money-bill', to: '/admin/payments' },
+                        ]
+                    },
+                    {
+                        label: 'Pedidos',
+                        items: [
+                            { label: 'Encomendas', icon: 'pi pi-fw pi-clipboard', to: '/admin/orders' },
+                        ]
+                    },
+                    {
+                        label: 'Administração',
+                        items: [
+                            { label: 'Usuários', icon: 'pi pi-fw pi-user', to: '/admin/users' },
+                            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-shopping-cart', to: '/admin/pdv' },
+                        ]
+                    }
 
-            { label: 'Produtos', icon: 'pi pi-fw pi-home', to: '/admin/products' },
-            { label: 'Clientes', icon: 'pi pi-fw pi-home', to: '/admin/customers' },
-            { label: 'Mesas', icon: 'pi pi-fw pi-home', to: '/admin/tables' },
-            { label: 'Metodos de Pagamento', icon: 'pi pi-fw pi-home', to: '/admin/paymentmethods' },
-            { label: 'Usuários', icon: 'pi pi-fw pi-home', to: '/admin/users' },
-            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-home', to: '/admin/pdv' },
+    // {
+    //     label: 'Home',
+    //     items: [
+    //         { label: 'Dashboard', icon: 'pi pi-fw pi-chart-bar', to: '/admin/dashboard' },  // Indicador de dashboard
+    //         { label: 'Categorias', icon: 'pi pi-fw pi-tags', to: '/admin/categories' },  // Ícone de tags para categorias
+    //         { label: 'SubCategorias', icon: 'pi pi-fw pi-sitemap', to: '/admin/subcategories' },  // Representação hierárquica
+    //         { label: 'Produtos', icon: 'pi pi-fw pi-box', to: '/admin/products' },  // Ícone de caixa para produtos
+    //         { label: 'Clientes', icon: 'pi pi-fw pi-users', to: '/admin/customers' },  // Ícone de usuários para clientes
+    //         { label: 'Mesas', icon: 'pi pi-fw pi-table', to: '/admin/tables' },  // Ícone de mesa
+    //         { label: 'Métodos de Pagamento', icon: 'pi pi-fw pi-wallet', to: '/admin/paymentmethods' },  // Ícone de carteira
+    //         { label: 'Usuários', icon: 'pi pi-fw pi-user', to: '/admin/users' },  // Ícone de usuário para gerenciamento de usuários
+    //         { label: 'Pagamentos', icon: 'pi pi-fw pi-money-bill', to: '/admin/payments' },  // Nota de dinheiro para pagamentos
+    //         { label: 'Encomendas', icon: 'pi pi-fw pi-clipboard', to: '/admin/orders' },  // Ícone de lista para encomendas
+    //         { label: 'Ponto de Venda', icon: 'pi pi-fw pi-shopping-cart', to: '/admin/pdv' },  // Carrinho de compras para PDV
 
-            // { label: 'Reservas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            { label: 'Pagamentos', icon: 'pi pi-fw pi-home', to: '/admin/payments' },
-            { label: 'Encomendas', icon: 'pi pi-fw pi-home', to: '/admin/orders' },
-        ]
-    },
+    //     ]
+    // },
+
     // {
     //     label: 'UI Components',
     //     items: [

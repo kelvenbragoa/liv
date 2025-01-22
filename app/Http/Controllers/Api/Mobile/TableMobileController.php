@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TableMobileController extends Controller
 {
@@ -58,7 +59,8 @@ class TableMobileController extends Controller
                     'order_item_status_id' =>1,
                     'department_id' => $product->department_id,
                     'price'=>$product->price,
-                    'total'=>$data['quantity'] * $product->price
+                    'total'=>$data['quantity'] * $product->price,
+                    'user_id'=>Auth::user()->id
                 ]);
         }
 
@@ -67,17 +69,17 @@ class TableMobileController extends Controller
             $last_order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
             
                 
-                $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $data['product_id'])->first();
+                // $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $data['product_id'])->first();
                 $product = Product::find($data['product_id']);
 
-                if($orderItem){
-                    $quantity_updated = $orderItem->quantity + $data['quantity'];
+                // if($orderItem){
+                //     $quantity_updated = $orderItem->quantity + $data['quantity'];
                     
-                    $orderItem->update([
-                        'quantity' => $quantity_updated,
-                        'total'=>$orderItem->price * $quantity_updated,
-                    ]);
-                }else{
+                //     $orderItem->update([
+                //         'quantity' => $quantity_updated,
+                //         'total'=>$orderItem->price * $quantity_updated,
+                //     ]);
+                // }else{
                     $orderItem = OrderItem::create([
                         'order_id'=>$last_order->id,
                         'product_id' => $data['product_id'],
@@ -85,9 +87,10 @@ class TableMobileController extends Controller
                         'department_id' => $product->department_id,
                         'order_item_status_id' =>1,
                         'price'=>$product->price,
-                        'total'=>$product->price * $data['quantity']
+                        'total'=>$product->price * $data['quantity'],
+                        'user_id'=>Auth::user()->id
                     ]);
-                }
+                // }
 
                 $last_order->update([
                     'total'=>OrderItem::where('order_id', $last_order->id)->sum('total')

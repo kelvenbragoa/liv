@@ -62,8 +62,8 @@ class PdvController extends Controller
         if($table->table_status_id == 1){
             $order =  Order::create([
                 'table_id' => $table->id,
-                // 'user_id' => Auth::user()->id,
-                'user_id'=>1,
+                'user_id' => Auth::user()->id,
+                // 'user_id'=>1,
                 'total'=>$data['total'],
                 'order_status_id' => 1
             ]);
@@ -92,17 +92,17 @@ class PdvController extends Controller
             
             foreach($data['products'] as $item){
                 
-                $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $item['id'])->first();
+                // $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $item['id'])->first();
                 $product = Product::find($item['id']);
 
-                if($orderItem){
-                    $quantity_updated = $orderItem->quantity + $item['quantity'];
+                // if($orderItem){
+                //     $quantity_updated = $orderItem->quantity + $item['quantity'];
                     
-                    $orderItem->update([
-                        'quantity' => $quantity_updated,
-                        'total'=>$orderItem->price * $quantity_updated,
-                    ]);
-                }else{
+                //     $orderItem->update([
+                //         'quantity' => $quantity_updated,
+                //         'total'=>$orderItem->price * $quantity_updated,
+                //     ]);
+                // }else{
                     $orderItem = OrderItem::create([
                         'order_id'=>$last_order->id,
                         'product_id' => $item['id'],
@@ -110,14 +110,15 @@ class PdvController extends Controller
                         'department_id' => $product->department_id,
                         'order_item_status_id' =>1,
                         'price'=>$product->price,
-                        'total'=>$product->price * $item['quantity']
+                        'total'=>$product->price * $item['quantity'],
+                        'user_id'=>Auth::user()->id
                     ]);
                     if ($product->department_id == 1) {
                         $newKitchenItems[] = $orderItem;
                     } elseif ($product->department_id == 2) {
                         $newBarItems[] = $orderItem;
                     }
-                }
+                // }
                 
             }
 
@@ -151,14 +152,25 @@ class PdvController extends Controller
     {
         //
         $categories = Category::with('sub_categories.products')->get();
-        $order = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->first();
+        $order = Order::where('table_id', $id)
+        ->where(function($query) {
+            $query->where('order_status_id', 1)
+                ->orWhere('order_status_id', 2);
+        })
+        ->first();
         $order_id = 0;
         if ($order) {
             $order_id = $order->id;
         }
 
         
-        $total_consumed = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->sum('total');
+        $total_consumed = Order::where('table_id', $id)
+        ->where(function($query) {
+            $query->where('order_status_id', 1)
+                ->orWhere('order_status_id', 2);
+        })
+        ->sum('total');
+
         $payment_methods = PaymentMethod::all();
         $orderItems = OrderItem::where('order_id',$order_id)->with('product')->get();
 
@@ -176,8 +188,8 @@ class PdvController extends Controller
 
 
             $order =  Order::create([
-                // 'user_id' => Auth::user()->id,
-                'user_id'=>1,
+                'user_id' => Auth::user()->id,
+                // 'user_id'=>1,
                 'total'=>$data['total'],
                 'order_status_id' => 1
             ]);

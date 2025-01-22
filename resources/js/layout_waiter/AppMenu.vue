@@ -7,20 +7,8 @@ const model = ref([
     {
         label: 'Home',
         items: [
-            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/waiter/dashboard' },
-            // { label: 'Categorias', icon: 'pi pi-fw pi-home', to: '/admin/categories' },
-            // { label: 'SubCategorias', icon: 'pi pi-fw pi-home', to: '/admin/subcategories' },
-
-            // { label: 'Produtos', icon: 'pi pi-fw pi-home', to: '/admin/products' },
-            // { label: 'Clientes', icon: 'pi pi-fw pi-home', to: '/admin/customers' },
-            // { label: 'Mesas', icon: 'pi pi-fw pi-home', to: '/admin/tables' },
-            // { label: 'Metodos de Pagamento', icon: 'pi pi-fw pi-home', to: '/admin/paymentmethods' },
-            // { label: 'Usuários', icon: 'pi pi-fw pi-home', to: '/admin/users' },
-            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-home', to: '/waiter/pdv' },
-
-            // { label: 'Reservas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            // { label: 'Pagamentos', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            // { label: 'Encomendas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'Dashboard', icon: 'pi pi-fw pi-chart-bar', to: '/waiter/dashboard' },
+            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-shopping-cart', to: '/waiter/pdv' },
         ]
     },
     // {

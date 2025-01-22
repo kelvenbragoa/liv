@@ -34,7 +34,7 @@ class ProductTableSeeder extends Seeder
         foreach ($productNames as $name) {
             $productData[] = [
                 "name" => $name,
-                "image" => null,
+                "image" => 'image/pizza.png',
                 "department_id"=>1,
                 "category_id" => $categoryIds[array_rand($categoryIds)],  // Categoria aleatória
                 "sub_category_id" => $subcategoryIds[array_rand($subcategoryIds)],  // Categoria aleatória

@@ -39,7 +39,7 @@ class CategoriesTableSeeder extends Seeder
                 $categoryData[] = [
                     "name" => $categoryName,
                     "department_id"=>1,
-                    "image" => null,
+                    "image" => 'image/pizza.png',
                     "created_at" => now(),
                     "updated_at" => now(),
                 ];
@@ -49,7 +49,7 @@ class CategoriesTableSeeder extends Seeder
                 $categoryData1[] = [
                     "name" => $subcategoryName1,
                     "category_id" => 1,
-                    "image" => null,
+                    "image" => 'image/pizza.png',
                     "created_at" => now(),
                     "updated_at" => now(),
                 ];
@@ -59,7 +59,7 @@ class CategoriesTableSeeder extends Seeder
                 $categoryData2[] = [
                     "name" => $subcategoryName2,
                     "category_id" => 2,
-                    "image" => null,
+                    "image" => 'image/pizza.png',
                     "created_at" => now(),
                     "updated_at" => now(),
                 ];
