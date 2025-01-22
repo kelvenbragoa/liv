@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Web\ReservationController;
 use App\Http\Controllers\Api\Web\SubCategoryController;
 use App\Http\Controllers\Api\Web\TableController;
 use App\Http\Controllers\Api\Web\UserController;
+use App\Http\Middleware\Sanctum;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,7 @@ Route::get('/user', function (Request $request) {
 
 Route::post('login',[AuthWebController::class,'login']);
 
+Route::middleware([Sanctum::class])->group(function () {
 Route::resource('categories', CategoryController::class);
 Route::resource('subcategories', SubCategoryController::class);
 Route::resource('products', ProductController::class);
@@ -67,6 +69,11 @@ Route::get('pdvbar',[PdvController::class,'indexBar']);
 
 Route::get('barchangestatus/{id}',[PdvController::class,'barchangestatus']);
 
+Route::get('closeaccount/{id}',[TableMobileController::class,'closeaccount']);
+
+
+
+});
 
 
 

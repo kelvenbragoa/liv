@@ -18,7 +18,14 @@ class AuthMobileController extends Controller
         ]);
 
         if (Auth::attempt($loginUserData)) {
+
+            
             $user = User::where('email',$loginUserData['email'])->first();
+            if($user->role_id != 3){
+                return response()->json([
+                    'message' => 'Usuario no autorizado'
+                ],403);
+            }
             $token = $user->createToken($user->name.'-AuthToken')->plainTextToken;
 
             $array = array(

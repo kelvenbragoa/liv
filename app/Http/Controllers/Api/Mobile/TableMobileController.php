@@ -32,8 +32,13 @@ class TableMobileController extends Controller
     }
 
     public function createorder(Request $request){
+
         $data = $request->all();
         $table = Table::find($data['table_id']);
+
+        if($table->table_status_id == 5){
+            return response()->json(['message'=>'A mesa esta finalizada.'],200);
+        }
         $product = Product::find($data['product_id']);
 
         if($table->table_status_id == 1){
@@ -110,9 +115,16 @@ class TableMobileController extends Controller
     public function consumption(string $id){
         $table = Table::find($id);
 
-
-        $categories = Category::with('sub_categories.products')->get();
-        $order = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->with('itens.product')->with('status')->with('table')->with('user')->first();
+        $order = Order::where('table_id', $table->id)
+        ->where(function($query) {
+            $query->where('order_status_id', 1)
+                ->orWhere('order_status_id', 2);
+        })
+        ->with('itens.product')
+        ->with('status')
+        ->with('table')
+        ->with('user')
+        ->first();
         $order_id = 0;
         if ($order) {
             $order_id = $order->id;
@@ -124,6 +136,28 @@ class TableMobileController extends Controller
         return response()->json([
             "order"=>$order
         ]);
+
+    }
+
+    public function closeaccount(string $id){
+        $table = Table::find($id);
+        $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
+
+        $order->update([
+            "order_status_id"=>2
+        ]);
+
+        $table->update([
+            "table_status_id"=>5
+        ]);
+
+        $orderitens = OrderItem::where('order_id',$order->id)->get();
+
+        return response()->json([
+            "message"=>"Conta fechada com sucesso",
+        ]);
+
+
 
     }
     public function create()
