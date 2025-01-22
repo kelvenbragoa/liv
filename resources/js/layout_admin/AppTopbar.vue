@@ -1,8 +1,27 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
 import AppConfigurator from './AppConfigurator.vue';
+import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+
+const router = useRouter();
+
+const logout = () => {
+    axios.post(`api/logout`)
+    .then((response) => {
+        localStorage.removeItem('token'); // Remova o token armazenado
+        localStorage.removeItem('user');  // Remova as informações do usuário
+        router.replace('/auth/login'); // Redirecione para a página de login
+    })
+    .catch((error) => {
+        console.error('Erro ao fazer logout:', error); // Lide com erros de logout
+        localStorage.removeItem('token'); // Limpeza mesmo em caso de erro
+        localStorage.removeItem('user');
+        router.replace('/auth/login'); // Redirecione para a página de login
+    });
+};
+
 </script>
 
 <template>
@@ -68,10 +87,10 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
                     </router-link>
-                    <!-- <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button> -->
+                    <button @click="logout()" type="button" class="layout-topbar-action p-button p-button-text">
+                        <i class="pi pi-sign-out"></i>
+                        <span>Sair</span>
+                    </button>
                 </div>
             </div>
         </div>

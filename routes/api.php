@@ -32,6 +32,8 @@ Route::resource('subcategories', SubCategoryController::class);
 Route::resource('products', ProductController::class);
 Route::resource('customers', CustomerController::class);
 Route::resource('tables', TableController::class);
+Route::post('logout',[AuthWebController::class,'logout']);
+
 
 Route::resource('paymentmethods', PaymentMethodController::class);
 

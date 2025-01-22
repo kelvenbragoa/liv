@@ -18,74 +18,74 @@ const router = createRouter({
                 {
                     path: '/admin/dashboard',
                     name: 'admin.dashboard',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/Dashboard.vue')
                 },
                 {
                     path: '/admin/categories',
                     name: 'admin.categories',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/categories/IndexCategories.vue')
                 },
                 {
                     path: '/admin/categories/create',
                     name: 'admin.categories.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/categories/CreateCategories.vue')
                 },
                 {
                     path: '/admin/categories/:id',
                     name: 'admin.categories.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/categories/ShowCategories.vue')
                 },
                 {
                     path: '/admin/categories/:id/edit',
                     name: 'admin.categories.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/categories/EditCategories.vue')
                 },
 
                 {
                     path: '/admin/subcategories',
                     name: 'admin.subcategories',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/subcategories/IndexSubCategories.vue')
                 },
                 {
                     path: '/admin/subcategories/create',
                     name: 'admin.subcategories.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/subcategories/CreateSubCategories.vue')
                 },
                 {
                     path: '/admin/subcategories/:id',
                     name: 'admin.subcategories.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/subcategories/ShowSubCategories.vue')
                 },
                 {
                     path: '/admin/subcategories/:id/edit',
                     name: 'admin.subcategories.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/subcategories/EditSubCategories.vue')
                 },
 
@@ -93,33 +93,33 @@ const router = createRouter({
                 {
                     path: '/admin/products',
                     name: 'admin.products',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/products/IndexProducts.vue')
                 },
                 {
                     path: '/admin/products/create',
                     name: 'admin.products.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/products/CreateProducts.vue')
                 },
                 {
                     path: '/admin/products/:id',
                     name: 'admin.products.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/products/ShowProducts.vue')
                 },
                 {
                     path: '/admin/products/:id/edit',
                     name: 'admin.products.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/products/EditProducts.vue')
                 },
 
@@ -127,225 +127,225 @@ const router = createRouter({
                 {
                     path: '/admin/customers',
                     name: 'admin.customers',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/customers/IndexCustomers.vue')
                 },
                 {
                     path: '/admin/customers/create',
                     name: 'admin.customers.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/customers/CreateCustomers.vue')
                 },
                 {
                     path: '/admin/customers/:id',
                     name: 'admin.customers.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/customers/ShowCustomers.vue')
                 },
                 {
                     path: '/admin/customers/:id/edit',
                     name: 'admin.customers.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/customers/EditCustomers.vue')
                 },
 
                 {
                     path: '/admin/tables',
                     name: 'admin.tables',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/tables/IndexTables.vue')
                 },
                 {
                     path: '/admin/tables/create',
                     name: 'admin.tables.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/tables/CreateTables.vue')
                 },
                 {
                     path: '/admin/tables/:id',
                     name: 'admin.tables.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/tables/ShowTables.vue')
                 },
                 {
                     path: '/admin/tables/:id/edit',
                     name: 'admin.tables.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/tables/EditTables.vue')
                 },
 
                 {
                     path: '/admin/paymentmethods',
                     name: 'admin.paymentmethods',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/paymentmethods/IndexPaymentMethods.vue')
                 },
                 {
                     path: '/admin/paymentmethods/create',
                     name: 'admin.paymentmethods.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/paymentmethods/CreatePaymentMethods.vue')
                 },
                 {
                     path: '/admin/paymentmethods/:id',
                     name: 'admin.paymentmethods.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/paymentmethods/ShowPaymentMethods.vue')
                 },
                 {
                     path: '/admin/paymentmethods/:id/edit',
                     name: 'admin.paymentmethods.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/paymentmethods/EditPaymentMethods.vue')
                 },
 
                 {
                     path: '/admin/users',
                     name: 'admin.users',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/users/IndexUsers.vue')
                 },
                 {
                     path: '/admin/users/create',
                     name: 'admin.users.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/users/CreateUsers.vue')
                 },
                 {
                     path: '/admin/users/:id',
                     name: 'admin.users.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/users/ShowUsers.vue')
                 },
                 {
                     path: '/admin/users/:id/edit',
                     name: 'admin.users.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/users/EditUsers.vue')
                 },
 
                 {
                     path: '/admin/reservations',
                     name: 'admin.reservations',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/reservations/IndexReservations.vue')
                 },
                 {
                     path: '/admin/reservations/create',
                     name: 'admin.reservations.create',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/reservations/CreateReservations.vue')
                 },
                 {
                     path: '/admin/reservations/:id',
                     name: 'admin.reservations.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/reservations/ShowReservations.vue')
                 },
                 {
                     path: '/admin/reservations/:id/edit',
                     name: 'admin.reservations.edit',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/reservations/EditReservations.vue')
                 },
 
                 {
                     path: '/admin/pdv',
                     name: 'admin.pdv',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/pdv/IndexPDV.vue')
                 },
                 {
                     path: '/admin/pdv/:id/categories',
                     name: 'admin.pdv.categories',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/pdv/IndexPdvCategories.vue')
                 },
                 {
                     path: '/admin/pdv/quicksell',
                     name: 'admin.pdv.quicksell',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/pdv/IndexPdvQuickSell.vue')
                 },
 
                 {
                     path: '/admin/payments',
                     name: 'admin.payments',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/payments/IndexPayments.vue')
                 },
                 {
                     path: '/admin/payments/:id',
                     name: 'admin.payments.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/payments/ShowPayments.vue')
                 },
 
                 {
                     path: '/admin/orders',
                     name: 'admin.orders',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/orders/IndexOrders.vue')
                 },
 
                 {
                     path: '/admin/orders/:id',
                     name: 'admin.orders.show',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/admin/orders/ShowOrders.vue')
                 },
 
@@ -359,17 +359,17 @@ const router = createRouter({
                 {
                     path: '/bar/dashboard',
                     name: 'bar.dashboard',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/bar/Dashboard.vue')
                 },
                 {
                     path: '/bar/pdv',
                     name: 'bar.pdv',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/bar/pdv/IndexPdv.vue')
                 },
             ]
@@ -381,17 +381,17 @@ const router = createRouter({
                 {
                     path: '/kitchen/dashboard',
                     name: 'kitchen.dashboard',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/kitchen/Dashboard.vue')
                 },
                 {
                     path: '/kitchen/pdv',
                     name: 'kitchen.pdv',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/kitchen/pdv/IndexPdv.vue')
                 },
             ]
@@ -403,17 +403,17 @@ const router = createRouter({
                 {
                     path: '/waiter/dashboard',
                     name: 'waiter.dashboard',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/waiter/Dashboard.vue')
                 },
                 {
                     path: '/waiter/pdv',
                     name: 'waiter.pdv',
-                    // meta: {
-                    //     requiresAuth: true
-                    // },
+                    meta: {
+                        requiresAuth: true
+                    },
                     component: () => import('@/views/pages/waiter/pdv/IndexPdv.vue')
                 },
             ]
