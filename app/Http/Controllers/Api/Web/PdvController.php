@@ -390,4 +390,50 @@ class PdvController extends Controller
         "order_itens_delivered"=>$order_itens_delivered
     ]);
 }
+
+
+public function indexBar(){
+    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+    
+    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+
+    return response()->json([
+        "order_itens_pending"=>$order_itens_pending,
+        
+        "order_itens_delivered"=>$order_itens_delivered
+    ]);
+}
+
+public function barchangestatus(string $id)
+{
+$order_item = OrderItem::find($id);
+
+if (!$order_item) {
+    return response()->json(['message' => 'Order item not found'], 404);
+}
+
+$currentStatus = $order_item->order_item_status_id;
+
+switch ($currentStatus) {
+    case 1:
+        $nextStatus = 4;
+        break;
+    case 4:
+        $nextStatus = 4;
+        break;
+    default:
+        return response()->json(['message' => 'Invalid status'], 400);
+}
+
+$order_item->update(['order_item_status_id' => $nextStatus]);
+
+
+$order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+$order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+
+return response()->json([
+    "order_itens_pending"=>$order_itens_pending,
+    "order_itens_delivered"=>$order_itens_delivered
+]);
+}
 }

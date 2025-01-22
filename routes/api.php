@@ -63,6 +63,10 @@ Route::get('pdvkitchen',[PdvController::class,'indexKitchen']);
 
 Route::get('changestatus/{id}',[PdvController::class,'changestatus']);
 
+Route::get('pdvbar',[PdvController::class,'indexBar']);
+
+Route::get('barchangestatus/{id}',[PdvController::class,'barchangestatus']);
+
 
 
 

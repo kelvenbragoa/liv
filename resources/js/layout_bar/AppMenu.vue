@@ -7,7 +7,7 @@ const model = ref([
     {
         label: 'Home',
         items: [
-            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/bar/dashboard' },
             // { label: 'Categorias', icon: 'pi pi-fw pi-home', to: '/admin/categories' },
             // { label: 'SubCategorias', icon: 'pi pi-fw pi-home', to: '/admin/subcategories' },
 
@@ -16,7 +16,7 @@ const model = ref([
             // { label: 'Mesas', icon: 'pi pi-fw pi-home', to: '/admin/tables' },
             // { label: 'Metodos de Pagamento', icon: 'pi pi-fw pi-home', to: '/admin/paymentmethods' },
             // { label: 'Usuários', icon: 'pi pi-fw pi-home', to: '/admin/users' },
-            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-home', to: '/admin/pdv' },
+            { label: 'Ponto de Venda', icon: 'pi pi-fw pi-home', to: '/bar/pdv' },
 
             // { label: 'Reservas', icon: 'pi pi-fw pi-home', to: '/dashboard' },
             // { label: 'Pagamentos', icon: 'pi pi-fw pi-home', to: '/dashboard' },
