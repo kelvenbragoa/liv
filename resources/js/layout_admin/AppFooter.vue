@@ -1,7 +1,7 @@
 <script setup></script>
 
 <template>
-    <div class="layout-footer">
+    <!-- <div class="layout-footer">
         Liv
-    </div>
+    </div> -->
 </template>
