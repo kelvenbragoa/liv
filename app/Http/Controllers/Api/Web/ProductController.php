@@ -162,6 +162,11 @@ class ProductController extends Controller
         $data = $request->all();
         $product = Product::find($id);
 
+        $category = Category::find($data['category_id']);
+        if (!$category) {
+            return response()->json(['error' => 'Categoria não encontrada'], 404);
+        }
+
         $imageName = $product->image;
 
         if ($request->hasFile('image')) {
@@ -171,6 +176,7 @@ class ProductController extends Controller
         }
 
         $data['image'] = $imageName;
+        $data['department_id'] = $category->department_id;
         
         $product->update($data);
         return response()->json($product);
