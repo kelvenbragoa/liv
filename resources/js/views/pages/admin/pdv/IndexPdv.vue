@@ -220,6 +220,7 @@ onMounted(() => {
                                     <span class="text-primary font-medium">Capacidade: {{table.capacity}} </span>
                                     <span><Tag :value="table.status.name" :severity="getSeverity(table.table_status_id)" /></span>
                                 </div>
+                                <small>Consumo: {{ table.last_order != null ? table.last_order.total : 0 }} MT</small>
                             </div>
                         </router-link>
                     </div>

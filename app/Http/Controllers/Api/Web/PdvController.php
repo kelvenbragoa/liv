@@ -30,6 +30,7 @@ class PdvController extends Controller
                 $query->where('name','like',"%{$searchQuery}%");
             })
             ->with('status')
+            ->with('last_order')
             ->orderBy('name','asc')
             ->paginate();
 
