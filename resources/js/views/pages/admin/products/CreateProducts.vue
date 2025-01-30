@@ -31,6 +31,7 @@ const filtered_sub_categories = ref(null);
 const isLoadingButton = ref(false);
 
 
+
 const schema = yup.object({
     category_id: yup.string().required().trim().label('Categoria'),
     name: yup.string().required().trim().label('Name'),
@@ -81,6 +82,11 @@ function getSeverity(status) {
             return null;
     }
 }
+
+const onFileUpload = (event) => {
+    image.value = event.files[0];
+    console.log(image.value);
+};
 
 const onSubmit = handleSubmit((values) => {
     if (image.value != null) {
@@ -216,6 +222,11 @@ onMounted(() => {
                         <label for="name1">SubCategoria</label>
                         <Select v-model="sub_category_id" :options="filtered_sub_categories" optionLabel="name" optionValue="id" placeholder="Selecionar" :class="{ 'p-invalid': errors.sub_category_id }" />
                         <small id="sub_category_id-help" class="p-error">{{ errors.sub_category_id }}</small>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="name1">Imagem</label>
+                        <FileUpload mode="basic" name="image[]" accept="image/*" auto :maxFileSize="1000000" customUpload @uploader="onFileUpload" />
+
                     </div>
                     <Button label="Submeter" class="mr-2 mb-2" @click="onSubmit" :disabled="isLoadingButton"></Button>
                     <ProgressSpinner style="width: 35px; height: 35px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" v-if="isLoadingButton" />

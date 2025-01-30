@@ -466,7 +466,7 @@ onMounted(() => {
                                         <div class="card mb-0 bg-gray-100">
                                         <!-- Imagem do Produto -->
                                         <div class="mb-4">
-                                            <img :src="product.image ? `/storage/${product.image}` : '/image/image.png'" alt="Imagem do Produto" class="w-full h-32 rounded-t-lg">
+                                            <img :src="product.image ? `/${product.image}` : '/image/image.png'" alt="Imagem do Produto" class="w-full h-32 rounded-t-lg">
                                         </div>
 
                                         <!-- Informações do Produto -->

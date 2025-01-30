@@ -125,6 +125,7 @@ const getData = async (page = 1) => {
             price.value = retriviedData.value.price;
             category_id.value = retriviedData.value.category_id;
             sub_category_id.value = retriviedData.value.sub_category_id;
+            image.value = retriviedData.value.image;
 
             categories.value = response.data.categories;
             sub_categories.value = response.data.sub_categories;
@@ -157,6 +158,11 @@ const deleteData = () => {
         .finally(() => {
             loadingButtonDelete.value = false;
         });
+};
+
+const onFileUpload = (event) => {
+    image.value = event.files[0];
+    console.log(image.value);
 };
 
 const onPageChange = (event) => {
@@ -226,6 +232,14 @@ onMounted(() => {
                         <Select v-model="sub_category_id" :options="filtered_sub_categories" optionLabel="name" optionValue="id" placeholder="Selecionar" :class="{ 'p-invalid': errors.sub_category_id }" />
                         <small id="sub_category_id-help" class="p-error">{{ errors.sub_category_id }}</small>
                     </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="name1">Imagem</label>
+                        <FileUpload mode="basic" name="image[]" accept="image/*" auto :maxFileSize="1000000" customUpload @uploader="onFileUpload" />
+
+                    </div>
+                    <div class="col-6 lg:col-3 xl:col-3">
+                            <img :src="'/'+image" alt="" weigth="100" height="100" style="border-radius: 15px" />
+                        </div>
                     <Button label="Submeter" class="mr-2 mb-2" @click="onSubmit" :disabled="isLoadingButton"></Button>
                     <ProgressSpinner style="width: 35px; height: 35px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" v-if="isLoadingButton" />
                 </form>
