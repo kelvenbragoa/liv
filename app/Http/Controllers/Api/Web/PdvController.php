@@ -71,6 +71,7 @@ class PdvController extends Controller
                 $product = Product::find($item['id']);
                 $orderItem = OrderItem::create([
                     'order_id'=>$order->id,
+                    'user_id' => Auth::user()->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
                     'order_item_status_id' =>1,
@@ -202,6 +203,7 @@ class PdvController extends Controller
                     'quantity' => $item['quantity'],
                     'order_item_status_id' =>1,
                     'price'=>$product->price,
+                    'user_id' => Auth::user()->id,
                     'total'=>$product->price * $item['quantity']
                 ]);
             }
