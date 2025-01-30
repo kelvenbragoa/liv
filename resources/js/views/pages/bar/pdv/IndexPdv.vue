@@ -2,7 +2,7 @@
 import { CustomerService } from '@/service/CustomerService';
 import { ProductService } from '@/service/ProductService';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
+import { onBeforeMount, reactive, ref, onMounted, watch, onUnmounted } from 'vue';
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 
 
@@ -25,6 +25,8 @@ const rowsPerPage = ref(15);
 const totalRecords = ref(0);
 const displayConfirmation = ref(false);
 const openChangeStatusDialog = ref(false); // Controla a visibilidade do dialog
+let interval;
+
 
 
 const pending = ref([]);
@@ -211,6 +213,13 @@ watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
     getData();
+    interval = setInterval(() => {
+    getData();
+  }, 30000); 
+});
+
+onUnmounted(() => {
+  clearInterval(interval); // Para o intervalo ao destruir o componente
 });
 
 </script>
@@ -245,7 +254,7 @@ onMounted(() => {
                                                 <!-- <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ item.order.table ? tem.order.table.name : ''  }}</span> -->
 
                                                 <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ item.order.table ? item.order.table.name : "Pedido Rápido" }} | #{{ item.order.id }}</span>
-                                                <div class="text-lg font-medium mt-2">{{ item.product.name }}</div>
+                                                <div class="text-lg font-medium mt-2">{{ item.quantity }} * {{ item.product.name }}</div>
                                                 <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }}</span>
                                             </div>
                                         </div>

@@ -2,7 +2,7 @@
 import { CustomerService } from '@/service/CustomerService';
 import { ProductService } from '@/service/ProductService';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
+import { onBeforeMount, reactive, ref, onMounted, watch, onUnmounted } from 'vue';
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 
 // import { debounce } from 'lodash';
@@ -11,6 +11,7 @@ import { debounce } from 'lodash-es';
 
 import moment from 'moment';
 
+let interval;
 const router = useRouter();
 const toast = useToast();
 const loading1 = ref(null);
@@ -172,6 +173,13 @@ watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
     getData();
+interval = setInterval(() => {
+    getData();
+  }, 30000); 
+});
+
+onUnmounted(() => {
+  clearInterval(interval); // Para o intervalo ao destruir o componente
 });
 
 </script>
