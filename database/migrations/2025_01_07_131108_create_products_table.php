@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('category_id');
             $table->unsignedBigInteger('sub_category_id');
             $table->double('price',15,2);
+            $table->integer('stock')->default(0);
             $table->timestamps();
         });
     }

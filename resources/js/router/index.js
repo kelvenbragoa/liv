@@ -349,6 +349,213 @@ const router = createRouter({
                     component: () => import('@/views/pages/admin/orders/ShowOrders.vue')
                 },
 
+
+                {
+                    path: '/admin/centerstocks',
+                    name: 'admin.centerstocks',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/centerstocks/IndexCenterStocks.vue')
+                },
+                {
+                    path: '/admin/centerstocks/create',
+                    name: 'admin.centerstocks.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/centerstocks/CreateCenterStocks.vue')
+                },
+                {
+                    path: '/admin/centerstocks/:id',
+                    name: 'admin.centerstocks.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/centerstocks/ShowCenterStocks.vue')
+                },
+                {
+                    path: '/admin/centerstocks/:id/edit',
+                    name: 'admin.centerstocks.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/centerstocks/EditCenterStocks.vue')
+                },
+
+
+                {
+                    path: '/admin/suppliers',
+                    name: 'admin.suppliers',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/suppliers/IndexSuppliers.vue')
+                },
+                {
+                    path: '/admin/suppliers/create',
+                    name: 'admin.suppliers.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/suppliers/CreateSuppliers.vue')
+                },
+                {
+                    path: '/admin/suppliers/:id',
+                    name: 'admin.suppliers.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/suppliers/ShowSuppliers.vue')
+                },
+                {
+                    path: '/admin/suppliers/:id/edit',
+                    name: 'admin.suppliers.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/suppliers/EditSuppliers.vue')
+                },
+
+
+                {
+                    path: '/admin/stocktransfers',
+                    name: 'admin.stocktransfers',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stocktransfers/IndexStockTransfers.vue')
+                },
+                {
+                    path: '/admin/stocktransfers/create',
+                    name: 'admin.stocktransfers.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stocktransfers/CreateStockTransfers.vue')
+                },
+                {
+                    path: '/admin/stocktransfers/:id',
+                    name: 'admin.stocktransfers.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stocktransfers/ShowStockTransfers.vue')
+                },
+                {
+                    path: '/admin/stocktransfers/:id/edit',
+                    name: 'admin.stocktransfers.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stocktransfers/EditStockTransfers.vue')
+                },
+
+
+
+
+                {
+                    path: '/admin/inventories',
+                    name: 'admin.inventories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/inventories/IndexInventories.vue')
+                },
+                {
+                    path: '/admin/inventories/create',
+                    name: 'admin.inventories.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/inventories/CreateInventories.vue')
+                },
+                {
+                    path: '/admin/inventories/:id',
+                    name: 'admin.inventories.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/inventories/ShowInventories.vue')
+                },
+                {
+                    path: '/admin/inventories/:id/edit',
+                    name: 'admin.inventories.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/inventories/EditInventories.vue')
+                },
+
+
+                {
+                    path: '/admin/entrynotes',
+                    name: 'admin.entrynotes',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/entrynotes/IndexEntryNotes.vue')
+                },
+                {
+                    path: '/admin/entrynotes/create',
+                    name: 'admin.entrynotes.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/entrynotes/CreateEntryNotes.vue')
+                },
+                {
+                    path: '/admin/entrynotes/:id',
+                    name: 'admin.entrynotes.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/entrynotes/ShowEntryNotes.vue')
+                },
+                {
+                    path: '/admin/entrynotes/:id/edit',
+                    name: 'admin.entrynotes.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/entrynotes/EditEntryNotes.vue')
+                },
+
+
+                {
+                    path: '/admin/exitnotes',
+                    name: 'admin.exitnotes',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/exitnotes/IndexExitNotes.vue')
+                },
+                {
+                    path: '/admin/exitnotes/create',
+                    name: 'admin.exitnotes.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/exitnotes/CreateExitNotes.vue')
+                },
+                {
+                    path: '/admin/exitnotes/:id',
+                    name: 'admin.exitnotes.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/exitnotes/ShowExitNotes.vue')
+                },
+                {
+                    path: '/admin/exitnotes/:id/edit',
+                    name: 'admin.exitnotes.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/exitnotes/EditExitNotes.vue')
+                },
+
+
                 
             ]
         },

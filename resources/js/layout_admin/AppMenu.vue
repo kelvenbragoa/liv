@@ -44,6 +44,17 @@ const model = ref([
                             { label: 'Usuários', icon: 'pi pi-fw pi-user', to: '/admin/users' },
                             { label: 'Ponto de Venda', icon: 'pi pi-fw pi-shopping-cart', to: '/admin/pdv' },
                         ]
+                    },
+                    {
+                        label: 'Stock',
+                        items: [
+                            { label: 'Centro de Stock', icon: 'pi pi-fw pi-box', to: '/admin/centerstocks' },
+                            { label: 'Transferência de Stock', icon: 'pi pi-sync', to: '/admin/stocktransfers' },
+                            { label: 'Nota de Entrada', icon: 'pi pi-fw pi-sign-in', to: '/admin/entrynotes' },
+                            { label: 'Nota de Saída', icon: 'pi pi-fw pi-sign-out', to: '/admin/exitnotes' },
+                            { label: 'Inventário', icon: 'pi pi-fw pi-clipboard', to: '/admin/inventories' },
+                            { label: 'Fornecedores', icon: 'pi pi-fw pi-users', to: '/admin/suppliers' },
+                        ]
                     }
 
     // {

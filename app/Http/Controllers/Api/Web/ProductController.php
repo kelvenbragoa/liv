@@ -25,6 +25,7 @@ class ProductController extends Controller
             })
             ->with('category.department')
             ->with('subcategory')
+            // ->with('stock')
             ->orderBy('name','asc')
             ->paginate();
 
