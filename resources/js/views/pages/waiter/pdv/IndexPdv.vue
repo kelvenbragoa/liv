@@ -32,7 +32,7 @@ const nestedMenuitems = [
       { 
         label: 'Inicar Venda Rápida', 
         icon: 'pi pi-fw pi-shopping-cart', 
-        command: () => { router.push('/admin/pdv/quicksell') }  // Abre o dialog ao clicar
+        command: () => { router.push('/waiter/pdv/quicksell') }  // Abre o dialog ao clicar
       },
     ]
   },
@@ -197,7 +197,7 @@ onMounted(() => {
                     </div>
             <div class="grid grid-cols-12 gap-8">
                     <div class="col-span-12 lg:col-span-6 xl:col-span-3" v-for="(table,index) in retriviedData.data" :key="table.id">
-                        <router-link :to="'/admin/pdv/' + table.id + '/categories'">
+                        <router-link :to="'/waiter/pdv/' + table.id + '/categories'">
                             <div class="card mb-0" :class="{
                                     'bg-green-100': table.table_status_id === 1, 
                                     'bg-red-100': table.table_status_id === 2
