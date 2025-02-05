@@ -623,6 +623,22 @@ const router = createRouter({
                     },
                     component: () => import('@/views/pages/waiter/pdv/IndexPdv.vue')
                 },
+                {
+                    path: '/waiter/pdv/:id/categories',
+                    name: 'waiter.pdv.categories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/pdv/IndexPdvCategories.vue')
+                },
+                {
+                    path: '/waiter/pdv/quicksell',
+                    name: 'waiter.pdv.quicksell',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/pdv/IndexPdvQuickSell.vue')
+                },
             ]
         },
         {
