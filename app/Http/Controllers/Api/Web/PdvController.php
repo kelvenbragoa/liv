@@ -287,16 +287,19 @@ class PdvController extends Controller
 
     public function getreceipt(string $id) {
 
+        
         $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
         if (!$order) {
             abort(404, 'Order not found');
         }
-        $orderitens = OrderItem::with('product')->where('order_id', $order->id)->get();
-        $table = $order->table; // Supondo que o relacionamento exista
+
+        $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
+        // $table = $order->table; // Supondo que o relacionamento exista
+
     
-        $pdf = Pdf::loadView('pdf.receiptgeneral', compact('order', 'orderitens', 'table'))->setOptions([
+        $pdf = Pdf::loadView('pdf.receiptgeneral', compact('order', 'orderitens'))->setOptions([
             'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => true,
+            'isRemoteEnabled' => 'true',
         ]);
     
         return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receiptgeneral.pdf');
