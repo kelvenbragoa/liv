@@ -241,7 +241,7 @@ class PdvController extends Controller
         $barItems = $orderitens->where('department_id', 2);
         $kitchenItems = $orderitens->where('department_id', 1);
 
-        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens','barItems','kitchenItems'))->setOptions([
+        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens','barItems','kitchenItems','payment'))->setOptions([
             // 'setPaper'=>'a4',
             // 'setPaper' => [0, 0, 226.77, 841.89],
             'defaultFont' => 'sans-serif',

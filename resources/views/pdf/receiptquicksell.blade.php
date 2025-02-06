@@ -279,8 +279,8 @@ border-right:2px solid white;
                     <tr>
                         <th>Qtd</th>
                         <th>Produto</th>
-                        {{-- <th>Preço</th>
-                        <th>Total</th> --}}
+                        <th>Preço</th>
+                        <th>Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -288,15 +288,16 @@ border-right:2px solid white;
                     <tr>
                         <td>{{ $item->quantity }}</td>
                         <td>{{ $item->product->name }}</td>
-                        {{-- <td>{{ number_format($item->price, 2) }}</td>
-                        <td>{{ number_format($item->quantity * $item->price, 2) }}</td> --}}
+                        <td>{{ number_format($item->price, 2) }}</td>
+                        <td>{{ number_format($item->quantity * $item->price, 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
-            {{-- <div class="total">
+            <div class="total">
                 <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
-            </div> --}}
+                <p>Metódo Pagamento: {{ $payment->method->name}}</p>
+            </div>
         </div>
         <hr>
         <div class="footer">
