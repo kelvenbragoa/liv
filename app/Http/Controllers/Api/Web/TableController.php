@@ -22,7 +22,7 @@ class TableController extends Controller
             })
             ->with('status')
             ->orderBy('name','asc')
-            ->paginate();
+            ->paginate(50);
 
             return response()->json($tables);
     }
