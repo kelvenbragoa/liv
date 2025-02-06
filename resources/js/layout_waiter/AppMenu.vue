@@ -9,6 +9,7 @@ const model = ref([
         items: [
             { label: 'Dashboard', icon: 'pi pi-fw pi-chart-bar', to: '/waiter/dashboard' },
             { label: 'Ponto de Venda', icon: 'pi pi-fw pi-shopping-cart', to: '/waiter/pdv' },
+            { label: 'Entregas', icon: 'pi pi-fw pi-list', to: '/waiter/delivery' },
         ]
     },
     // {

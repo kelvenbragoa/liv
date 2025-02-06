@@ -180,6 +180,11 @@ onMounted(() => {
                             {{ data.category.department.name }}
                         </template>
                     </Column>
+                    <Column header="Stock" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.quantity_in_principal_stock }}
+                        </template>
+                    </Column>
                     <Column header="Data" dataType="date" style="min-width: 10rem">
                         <template #body="{ data }">
                             {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}

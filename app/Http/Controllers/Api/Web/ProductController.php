@@ -25,7 +25,7 @@ class ProductController extends Controller
             })
             ->with('category.department')
             ->with('subcategory')
-            // ->with('stock')
+            ->withQuantityInPrincipalStock()
             ->orderBy('name','asc')
             ->paginate();
 
@@ -132,6 +132,7 @@ class ProductController extends Controller
         $product = Product::
         with('category.department')
         ->with('subcategory')
+        ->withQuantityInPrincipalStock()
         ->find($id);
 
         return response()->json($product);

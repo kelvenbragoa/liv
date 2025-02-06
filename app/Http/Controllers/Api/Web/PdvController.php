@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashRegister;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -60,16 +61,27 @@ class PdvController extends Controller
         $newBarItems = [];
         $newKitchenItems = [];
 
+        // $openCashRegister = CashRegister::where('user_id', Auth::id())
+        // ->where('status_id', 1) // 1 = Aberto
+        // ->first();
+
+        // if (!$openCashRegister) {
+        //     return response()->json([
+        //         'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+        //     ], 403); // Código HTTP 403 - Proibido
+        // }
+
         if($table->table_status_id == 1){
             $order =  Order::create([
                 'table_id' => $table->id,
                 'user_id' => Auth::user()->id,
-                // 'user_id'=>1,
                 'total'=>$data['total'],
-                'order_status_id' => 1
+                'order_status_id' => 1,
+                // 'cash_register_id' => $openCashRegister->id
             ]);
             foreach($data['products'] as $item){
-                $product = Product::find($item['id']);
+                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
+
                 $orderItem = OrderItem::create([
                     'order_id'=>$order->id,
                     'user_id' => Auth::user()->id,
@@ -78,7 +90,8 @@ class PdvController extends Controller
                     'order_item_status_id' =>1,
                     'department_id' => $product->department_id,
                     'price'=>$product->price,
-                    'total'=>$product->price * $item['quantity']
+                    'total'=>$product->price * $item['quantity'],
+                    // 'cash_register_id' => $openCashRegister->id
                 ]);
                 if ($product->department_id == 1) {
                     $newKitchenItems[] = $orderItem;
@@ -94,18 +107,9 @@ class PdvController extends Controller
             
             foreach($data['products'] as $item){
                 
-                // $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $item['id'])->first();
-                $product = Product::find($item['id']);
+                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
 
-                // if($orderItem){
-                //     $quantity_updated = $orderItem->quantity + $item['quantity'];
-                    
-                //     $orderItem->update([
-                //         'quantity' => $quantity_updated,
-                //         'total'=>$orderItem->price * $quantity_updated,
-                //     ]);
-                // }else{
-                    $orderItem = OrderItem::create([
+                $orderItem = OrderItem::create([
                         'order_id'=>$last_order->id,
                         'product_id' => $item['id'],
                         'quantity' => $item['quantity'],
@@ -113,13 +117,14 @@ class PdvController extends Controller
                         'order_item_status_id' =>1,
                         'price'=>$product->price,
                         'total'=>$product->price * $item['quantity'],
-                        'user_id'=>Auth::user()->id
-                    ]);
-                    if ($product->department_id == 1) {
-                        $newKitchenItems[] = $orderItem;
-                    } elseif ($product->department_id == 2) {
-                        $newBarItems[] = $orderItem;
-                    }
+                        'user_id'=>Auth::user()->id,
+                        // 'cash_register_id' => $openCashRegister->id
+                ]);
+                if ($product->department_id == 1) {
+                    $newKitchenItems[] = $orderItem;
+                } elseif ($product->department_id == 2) {
+                    $newBarItems[] = $orderItem;
+                }
                 // }
                 
             }
@@ -188,15 +193,28 @@ class PdvController extends Controller
         $data = $request->all();
         $total_consumed = 0;
 
+        // $openCashRegister = CashRegister::where('user_id', Auth::id())
+        // ->where('status_id', 1) // 1 = Aberto
+        // ->first();
+
+        // if (!$openCashRegister) {
+        //     return response()->json([
+        //         'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+        //     ], 403); // Código HTTP 403 - Proibido
+        // }
+
+
+
 
             $order =  Order::create([
                 'user_id' => Auth::user()->id,
                 // 'user_id'=>1,
                 'total'=>$data['total'],
-                'order_status_id' => 1
+                'order_status_id' => 1,
+                // 'cash_register_id' => $openCashRegister->id
             ]);
             foreach($data['products'] as $item){
-                $product = Product::find($item['id']);
+                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
                 OrderItem::create([
                     'order_id'=>$order->id,
                     'product_id' => $item['id'],
@@ -205,7 +223,8 @@ class PdvController extends Controller
                     'order_item_status_id' =>1,
                     'price'=>$product->price,
                     'user_id' => Auth::user()->id,
-                    'total'=>$product->price * $item['quantity']
+                    'total'=>$product->price * $item['quantity'],
+                    // 'cash_register_id' => $openCashRegister->id
                 ]);
             }
             $total_consumed = $data['total'];
@@ -443,8 +462,8 @@ switch ($currentStatus) {
 $order_item->update(['order_item_status_id' => $nextStatus]);
 
 
-$order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
-$order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+$order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+$order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
 
 return response()->json([
     "order_itens_pending"=>$order_itens_pending,

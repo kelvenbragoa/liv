@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashRegister;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -37,6 +38,16 @@ class TableMobileController extends Controller
         $data = $request->all();
         $table = Table::find($data['table_id']);
 
+        // $openCashRegister = CashRegister::where('user_id', Auth::id())
+        // ->where('status_id', 1) // 1 = Aberto
+        // ->first();
+
+        // if (!$openCashRegister) {
+        //     return response()->json([
+        //         'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+        //     ], 403); // Código HTTP 403 - Proibido
+        // }
+
         if($table->table_status_id == 5){
             return response()->json(['message'=>'A mesa esta finalizada.'],200);
         }
@@ -48,7 +59,8 @@ class TableMobileController extends Controller
                 // 'user_id' => Auth::user()->id,
                 'user_id'=>$data['user_id'],
                 'total'=>$data['quantity'] * $product->price,
-                'order_status_id' => 1
+                'order_status_id' => 1,
+                // 'cash_register_id' => $openCashRegister->id
             ]);
 
                 $product = Product::find($data['product_id']);
@@ -60,7 +72,8 @@ class TableMobileController extends Controller
                     'department_id' => $product->department_id,
                     'price'=>$product->price,
                     'total'=>$data['quantity'] * $product->price,
-                    'user_id'=>Auth::user()->id
+                    'user_id'=>Auth::user()->id,
+                    // 'cash_register_id' => $openCashRegister->id
                 ]);
         }
 
@@ -88,7 +101,8 @@ class TableMobileController extends Controller
                         'order_item_status_id' =>1,
                         'price'=>$product->price,
                         'total'=>$product->price * $data['quantity'],
-                        'user_id'=>Auth::user()->id
+                        'user_id'=>Auth::user()->id,
+                        // 'cash_register_id' => $openCashRegister->id
                     ]);
                 // }
 

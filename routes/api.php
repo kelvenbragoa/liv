@@ -78,6 +78,7 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('payments', PaymentController::class);
     Route::resource('orders', OrderController::class);
 
+    Route::post('orderitem/{id}',[OrderController::class,'deleteorderitem']);
 
 
     Route::resource('mobile-tables', TableMobileController::class);

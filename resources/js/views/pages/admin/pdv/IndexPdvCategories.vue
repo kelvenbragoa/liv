@@ -32,6 +32,10 @@ const order_items = ref([]);
 const loadingprint = ref(false);
 const payment_method_id = ref(1);
 const payment_methods = ref([]);
+const selectedItemToDelete = ref(null);
+const confirmationCode = ref(null);
+const correct_code = '13579';
+
 
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
@@ -39,6 +43,7 @@ const openReceiptDialog = ref(false); // Controla a visibilidade do dialog
 const openPrintReceipt = ref(false); // Controla a visibilidade do dialog
 const closeAccountDialog = ref(false); // Controla a visibilidade do dialog
 const payAccountDialog = ref(false); // Controla a visibilidade
+const deleteDialog = ref(false); // Controla a visibilidade do dialog
 
 // Definindo os itens do Menubar
 const nestedMenuitems = [
@@ -92,6 +97,42 @@ function goBackUsingBack() {
         router.back();
     }
 }
+
+const confirmDelete = (item) => {
+    selectedItemToDelete.value = item;
+    deleteDialog.value = true;
+};
+
+const deleteItem = () => {
+    // loadingButtonDelete.value = true;
+
+    if (confirmationCode.value !== correct_code) {
+        toast.add({ severity: 'error', summary: `Erro`, detail: 'Código de confirmação inválido', life: 3000 });
+        return;
+    }else{
+
+    axios
+        .post(`/api/orderitem/${selectedItemToDelete.value}`)
+        .then((response) => {
+            retriviedData.value = response.data;
+            total_consumed.value = response.data.total_consumed;
+            categories.value = response.data.categories;
+            order_items.value = response.data.order_items;
+            payment_methods.value = response.data.payment_methods;
+            payment_method_id.value = 1;
+            deleteDialog.value = false;
+
+            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
+        })
+        .catch((error) => {
+            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
+            // loadingButtonDelete.value = false;
+        })
+        .finally(() => {
+            // loadingButtonDelete.value = false;
+        });
+    }
+};
 
 const closeConfirmation = () => {
     displayConfirmation.value = false;
@@ -235,26 +276,6 @@ function saveCart() {
         });
   }
 
-  // axios({
-    //     url:`/download-mcscr/+${router.currentRoute.value.params.id}`,
-    //     responseType:'blob'
-    // }).then((response)=>{
-    //     const url = window.URL.createObjectURL(new Blob([response.data]));
-    //     const link = document.createElement('a');
-    //     link.href = url;
-    //     link.setAttribute('download', 'mcscr-nr-'+retrievedData.value.id+'.pdf');
-    //     document.body.appendChild(link);
-    //     link.click();
-    //     loadingprint.value = false;
-    //     toastr.success('Documento baixado com sucesso');
-    // }).catch((error)=>{
-    
-    //     loadingprint.value = false;
-    //     toastr.error('Ocorreu um erro ao tentar baixar o documento. '+error.response.data.message);
-       
-    // }).finally(()=>{
-    //     loadingprint.value = false;
-    // })
 function addToCart(product) {
     // Verifica se o produto já foi adicionado ao carrinho
     const existingProduct = selectedProducts.value.find(item => item.id === product.id);
@@ -525,7 +546,7 @@ onMounted(() => {
       <ul class="space-y-2">
         <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
             <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total }} <i class="pi pi-trash"></i></span>
+            <span>MZN {{ item.total }} <i class="pi pi-trash" @click="confirmDelete(item.id)"></i></span>
         </li>
       </ul>
       <p class="mt-4 text-lg font-semibold">
@@ -538,13 +559,26 @@ onMounted(() => {
     </div>
   </Dialog>
 
+  <Dialog header="Confirmar Exclusão" v-model:visible="deleteDialog" style="width: 20vw">
+    <div class="p-4">
+      <p class="mb-4">Insira o código para confirmar a exclusão do item <strong></strong>.</p>
+      <input v-model="confirmationCode" type="password" placeholder="Código de confirmação" class="w-full p-2 border rounded" />
+      <div class="mt-4 flex justify-end space-x-2">
+        <Button label="Cancelar" @click="deleteDialog = false" class="bg-gray-300 hover:bg-gray-400 text-black font-semibold px-4 py-2 rounded" />
+        <Button label="Confirmar" @click="deleteItem" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded" />
+      </div>
+    </div>
+  </Dialog>
+
   <Dialog header="Fechar a conta" v-model:visible="closeAccountDialog" style="width: 30vw">
     <div class="p-4">
       <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
       <ul class="space-y-2">
         <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
             <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total }} <i class="pi pi-trash"></i></span>
+            <span>MZN {{ item.total }} 
+                <!-- <i class="pi pi-trash"></i> -->
+            </span>
         </li>
       </ul>
       <p class="mt-4 text-lg font-semibold">

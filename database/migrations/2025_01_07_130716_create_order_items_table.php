@@ -21,8 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->double('price',15,2);
             $table->double('total',15,2);
-
-
+            $table->unsignedBigInteger('cash_register_id');
             $table->timestamps();
         });
     }

@@ -1,7 +1,25 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
 import AppConfigurator from './AppConfigurator.vue';
+import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 
+
+const router = useRouter();
+
+const logout = () => {
+    axios.post(`api/logout`)
+    .then((response) => {
+        localStorage.removeItem('token'); // Remova o token armazenado
+        localStorage.removeItem('user');  // Remova as informações do usuário
+        router.replace('/auth/login'); // Redirecione para a página de login
+    })
+    .catch((error) => {
+        console.error('Erro ao fazer logout:', error); // Lide com erros de logout
+        localStorage.removeItem('token'); // Limpeza mesmo em caso de erro
+        localStorage.removeItem('user');
+        router.replace('/auth/login'); // Redirecione para a página de login
+    });
+};
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 </script>
 
@@ -11,7 +29,7 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
             <button class="layout-menu-button layout-topbar-action" @click="toggleMenu">
                 <i class="pi pi-bars"></i>
             </button>
-            <router-link to="/" class="layout-topbar-logo">
+            <router-link to="/waiter/dashboard" class="layout-topbar-logo">
                 <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         fill-rule="evenodd"
@@ -60,17 +78,17 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
+                    <router-link to="/waiter/delivery" class="layout-topbar-action">
+                        <i class="pi pi-list"></i>
+                        <span>Pdv</span>
+                    </router-link>
+                    <router-link to="/waiter/pdv" class="layout-topbar-action">
                         <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
+                        <span>Pdv</span>
+                    </router-link>
+                    <button @click="logout()" type="button" class="layout-topbar-action p-button p-button-text">
+                        <i class="pi pi-sign-out"></i>
+                        <span>Sair</span>
                     </button>
                 </div>
             </div>
