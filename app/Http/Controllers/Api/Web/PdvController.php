@@ -32,7 +32,7 @@ class PdvController extends Controller
             })
             ->with('status')
             ->with('last_order')
-            ->orderBy('name','asc')
+            ->orderBy('id','asc')
             ->paginate(50);
 
             return response()->json($tables);
