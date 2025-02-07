@@ -30,6 +30,8 @@ const total_consumed = ref(0);
 const payment_methods = ref([]);
 const isLoadingButton = ref(false);
 const payment_method_id = ref(1);
+const showDialog = ref(false);
+const pdfUrl = ref(null);
 // const schema = yup.object({
 //     payment_method_id: yup.string().required().trim().label('Categoria'),
 // });
@@ -95,6 +97,20 @@ function getSeverity2(status) {
             return 'info';
     }
 }
+
+function printPDF() {
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+    }
+}
+function closeDialog() {
+    showDialog.value = true;
+    router.back();
+
+}
+
 function saveCart() {
     // Exemplo de dados para salvar
     const cartData = {
@@ -116,17 +132,22 @@ function saveCart() {
     responseType:'blob'
     })
     .then((response) => {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'recibo.pdf');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url); // Libera a URL criada
+        
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+        showDialog.value = true;  // Abre o diálogo modal
+        // const url = window.URL.createObjectURL(new Blob([response.data]));
+        // const link = document.createElement('a');
+        // link.href = url;
+        // link.setAttribute('download', 'recibo.pdf');
+        // document.body.appendChild(link);
+        // link.click();
+        // document.body.removeChild(link);
+        // URL.revokeObjectURL(url); // Libera a URL criada
         // loadingprint.value = false;
         toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
-        router.back();
+        // router.back();
+        // 
 
     })
     .catch((error) => {
@@ -400,5 +421,13 @@ onMounted(() => {
     <Dialog header="Open File" v-model:visible="openFileDialog" style="width: 30vw">
         <p>Here you can manage your files or perform specific actions.</p>
         <Button label="Close" @click="openFileDialog = false" />
+    </Dialog>
+    <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
+      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+      
+      <template #footer>
+        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
+      </template>
     </Dialog>
 </template>

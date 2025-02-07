@@ -78,7 +78,7 @@
             <div class="details">
                 <p>Data: {{ $order->created_at->format('d-m-Y H:i') }}</p>
                 <p>Pedido Nº: {{ $order->id }}</p>
-                <p>Atendente: Nome do Usuário</p>
+                <p>Atendente: {{ $order->user->name }}</p>
                 <p>Departamento: Cozinha</p>
             </div>
             <table class="items">
@@ -86,17 +86,26 @@
                     <tr>
                         <th>Qtd</th>
                         <th>Produto</th>
+                        <th>Preço</th>
+                        <th>Total</th>
+                    </tr>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($kitchenItems as $item)
-                    <tr>
-                        <td>{{ $item->quantity }}</td>
-                        <td>{{ $item->product->name }}</td>
-                    </tr>
+                        <tr>
+                            <td>{{ $item->quantity }}</td>
+                            <td>{{ $item->product->name }}</td>
+                            <td>{{ number_format($item->price, 2) }}</td>
+                            <td>{{ number_format($item->quantity * $item->price, 2) }}</td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
+            <div class="total">
+                <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
+                <p>Método Pagamento: {{ $payment->method->name }}</p>
+            </div>
         </div>
         <hr>
         <div class="footer">
@@ -120,7 +129,7 @@
             <div class="details">
                 <p>Data: {{ $order->created_at->format('d-m-Y H:i') }}</p>
                 <p>Pedido Nº: {{ $order->id }}</p>
-                <p>Atendente: Nome do Usuário</p>
+                <p>Atendente: {{ $order->user->name }}</p>
             </div>
             <table class="items">
                 <thead>

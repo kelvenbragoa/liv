@@ -186,14 +186,19 @@ function saveCart() {
           responseType:'blob'
         })
         .then((response) => {
-            router.back();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'recibo.pdf');
-            document.body.appendChild(link);
-            link.click();
+            // router.back();
+            // const url = window.URL.createObjectURL(new Blob([response.data]));
+            // const link = document.createElement('a');
+            // link.href = url;
+            // link.setAttribute('download', 'recibo.pdf');
+            // document.body.appendChild(link);
+            // link.click();
             loadingprint.value = false;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialog.value = true;  // Abre o diálogo modal
+            openPrintReceipt.value = false;
+            // toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
         })
         .catch((error) => {
@@ -218,18 +223,36 @@ function saveCart() {
         })
         .then((response) => {
             // router.back();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'recibo.pdf');
-            document.body.appendChild(link);
-            link.click();
+            // const url = window.URL.createObjectURL(new Blob([response.data]));
+            // const link = document.createElement('a');
+            // link.href = url;
+            // link.setAttribute('download', 'recibo.pdf');
+            // document.body.appendChild(link);
+            // link.click();
+            // closeAccountDialog.value = false;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialog.value = true;  // Abre o diálogo modal
             closeAccountDialog.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
         })
-        .catch((error) => {
+        .catch(async (error) => {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
+            let errorMessage = 'Ocorreu um erro inesperado.';
+
+            if (error.response && error.response.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const json = JSON.parse(text);
+                    errorMessage = json.message || json.error || errorMessage;
+                } catch (e) {
+                    console.error('Erro ao processar o blob:', e);
+                }
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
             if (error.response.data.errors) {
                 setErrors(error.response.data.errors);
             }
@@ -239,7 +262,7 @@ function saveCart() {
         });
   }
 
-  function payAccount() {
+function payAccount() {
     // Exemplo de dados para salvar
     const payData = {
       payment_method_id: payment_method_id.value,
@@ -255,19 +278,41 @@ function saveCart() {
           responseType:'blob'
         })
         .then((response) => {
-            router.back();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'recibo.pdf');
-            document.body.appendChild(link);
-            link.click();
-            payAccountDialog.value = false;
+            if (pdfUrl.value) {
+                URL.revokeObjectURL(pdfUrl.value);
+            }
+            // router.back();
+            // const url = window.URL.createObjectURL(new Blob([response.data]));
+            // const link = document.createElement('a');
+            // link.href = url;
+            // link.setAttribute('download', 'recibo.pdf');
+            // document.body.appendChild(link);
+            // link.click();
+            // payAccountDialog.value = false;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialog.value = true;  // Abre o diálogo modal
+            openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
         })
-        .catch((error) => {
+        .catch(async (error) => {
+            console.log(error)
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
+            let errorMessage = 'Ocorreu um erro inesperado.';
+
+            if (error.response && error.response.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const json = JSON.parse(text);
+                    errorMessage = json.message || json.error || errorMessage;
+                } catch (e) {
+                    console.error('Erro ao processar o blob:', e);
+                }
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
             if (error.response.data.errors) {
                 setErrors(error.response.data.errors);
             }
@@ -417,6 +462,12 @@ const onPageChange = (event) => {
     rowsPerPage.value = event.rows;
     getData(currentPage.value);
 };
+
+function closeDialog() {
+    showDialog.value = true;
+    router.back();
+
+}
 
 const debouncedSearch = debounce(() => {
     getData(currentPage.value);
@@ -635,12 +686,12 @@ onMounted(() => {
     </div>
   </Dialog>
 
-  <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }">
+  <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
       <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
       
       <template #footer>
         <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="showDialog = false" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
       </template>
     </Dialog>
 </template>

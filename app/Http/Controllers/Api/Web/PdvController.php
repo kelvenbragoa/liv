@@ -311,6 +311,12 @@ class PdvController extends Controller
         $table = Table::find($id);
         $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
 
+        if(!$order){
+            return response()->json([
+                'message' => 'A sua conta já foi encerrada. Pode Finalizar a conta.'
+            ], 404);
+        }
+
         $order->update([
             "order_status_id"=>2
         ]);
@@ -337,6 +343,12 @@ class PdvController extends Controller
         $data = $request->all();
         $table = Table::find($data['table_id']);
         $order = Order::where('table_id', $data['table_id'])->where('order_status_id', 2)->first();
+
+        if(!$order){
+            return response()->json([
+                'message' => 'Por favor, primeiro finalize o pedido para poder fechar a conta da mesa.'
+            ], 404);
+        }
 
         $order->update([
             "order_status_id"=>3
