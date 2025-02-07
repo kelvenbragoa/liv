@@ -19,4 +19,6 @@ class OrderItem extends Model
     public function order(){
         return $this->hasOne('App\Models\Order', 'id', 'order_id');
     }
+
+    
 }

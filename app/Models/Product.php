@@ -17,6 +17,11 @@ class Product extends Model
         return $this->hasOne('App\Models\SubCategory', 'id', 'sub_category_id');
     }
 
+    public function orderitens()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     public function stockCenterProducts()
     {
         return $this->hasMany(StockCenterProduct::class);

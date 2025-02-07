@@ -7,13 +7,37 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
+use App\Models\Product;
+use App\Models\Table;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class OrderController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+    public function report(){
+        $orders = Order::with('table')
+        ->with('itens')
+        ->with('status')
+        ->orderBy('created_at','desc')
+        ->get();
+        $products = Product::get();
+        $tables = Table::get();
+
+        $users = User::get();
+
+        $pdf = Pdf::loadView('pdf.report', compact('orders','products','tables','users'))->setOptions([
+            'setPaper'=>'a4',
+            // 'setPaper' => [0, 0, 226.77, 500],
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->stream('report.pdf');
+    }
     public function index()
     {
         //

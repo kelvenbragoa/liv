@@ -72,6 +72,7 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::get('pdv/closeaccount/{id}',[PdvController::class,'closeaccount']);
 
     Route::post('payaccount',[PdvController::class,'payaccount']);
+    Route::post('order/report',[OrderController::class,'report']);
 
 
 
