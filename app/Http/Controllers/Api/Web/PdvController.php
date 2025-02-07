@@ -149,7 +149,7 @@ class PdvController extends Controller
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receipt.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receipt.pdf');
     }
 
     /**
@@ -242,12 +242,10 @@ class PdvController extends Controller
         $kitchenItems = $orderitens->where('department_id', 1);
 
         $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens','barItems','kitchenItems','payment'))->setOptions([
-            // 'setPaper'=>'a4',
-            // 'setPaper' => [0, 0, 226.77, 841.89],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receiptquicksell.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptquicksell.pdf');
     }
 
     public function quicksell(){
@@ -298,11 +296,14 @@ class PdvController extends Controller
 
     
         $pdf = Pdf::loadView('pdf.receiptgeneral', compact('order', 'orderitens'))->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
+            'dpi' => 96, 
             'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => 'true',
         ]);
     
-        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('receiptgeneral.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptgeneral.pdf');
     }
 
 
@@ -322,11 +323,11 @@ class PdvController extends Controller
 
         $pdf = Pdf::loadView('pdf.finalreceipt', compact('order','orderitens'))->setOptions([
             // 'setPaper'=>'a4',
-            // 'setPaper' => [0, 0, 226.77, 841.89],
+            // 'setPaper' => [0, 0, 226.77, 500],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('finalreceipt.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('finalreceipt.pdf');
 
 
 
@@ -361,11 +362,11 @@ class PdvController extends Controller
 
         $pdf = Pdf::loadView('pdf.customerreceipt', compact('order','orderitens','payment'))->setOptions([
             // 'setPaper'=>'a4',
-            // 'setPaper' => [0, 0, 226.77, 841.89],
+            // 'setPaper' => [0, 0, 226.77, 500],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper([0, 0, 226.77, 841.89])->stream('customerreceipt.pdf');
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('customerreceipt.pdf');
 
     }
 

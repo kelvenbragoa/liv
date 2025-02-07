@@ -35,7 +35,8 @@ const payment_methods = ref([]);
 const selectedItemToDelete = ref(null);
 const confirmationCode = ref(null);
 const correct_code = '13579';
-
+const showDialog = ref(false);
+const pdfUrl = ref(null);
 
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
@@ -323,17 +324,40 @@ function getSeverity(status) {
     }
 }
 
+function printPDF() {
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+    }
+}
+
 function printReceipt () {
     axios
     .post(`/api/getreceipt/${router.currentRoute.value.params.id}`, {}, { responseType: 'blob' })
         .then((response) => {
             // router.back();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'consumo.pdf');
-            document.body.appendChild(link);
-            link.click();
+            // const url = window.URL.createObjectURL(new Blob([response.data]));
+            // const link = document.createElement('a');
+            // link.href = url;
+            // link.setAttribute('download', 'consumo.pdf');
+            // document.body.appendChild(link);
+            // link.click();
+            // ✅ Garantir o tipo correto do Blob como PDF
+            // const blob = new Blob([response.data], { type: 'application/pdf' });
+            // const url = window.URL.createObjectURL(blob);
+
+            // // 🖨️ Abre o PDF em uma nova aba
+            // const printWindow = window.open(url, '_blank');
+            // if (printWindow) {
+            //     printWindow.onload = () => {
+            //         printWindow.focus();
+            //         printWindow.print();
+            //     };
+            // }
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialog.value = true;  // Abre o diálogo modal
             openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
 
@@ -610,4 +634,13 @@ onMounted(() => {
       </div>
     </div>
   </Dialog>
+
+  <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }">
+      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+      
+      <template #footer>
+        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="showDialog = false" />
+      </template>
+    </Dialog>
 </template>
