@@ -8,7 +8,7 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const router = useRouter();
 
 const logout = () => {
-    axios.post(`api/logout`)
+    axios.post(`/api/logout`)
     .then((response) => {
         localStorage.removeItem('token'); // Remova o token armazenado
         localStorage.removeItem('user');  // Remova as informações do usuário

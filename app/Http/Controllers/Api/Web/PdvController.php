@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\StockCenter;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +36,45 @@ class PdvController extends Controller
             ->orderBy('id','asc')
             ->paginate(50);
 
-            return response()->json($tables);
+            $openCashRegister = CashRegister::where('user_id', Auth::id())
+            ->where('cash_register_status_id', 1) // 1 = Aberto
+            ->first();
+            if ($openCashRegister) {
+                $total = $openCashRegister->orderItens()->sum('total');
+
+            // $quicksells = Order::with('itens')->whereNull('table_id')->where('cash_register_id',$openCashRegister->id)->get();
+        
+                return response()->json([
+                    'tables'=>$tables,
+                    'cash_register'=>$openCashRegister,
+                    'totalcash'=>$total,
+                    // 'quicksells'=>$quicksells
+                ]);
+            }
+
+
+            return response()->json([
+                'tables'=>$tables,
+                'cash_register'=>$openCashRegister,
+                'totalcash'=>0
+            ]);
+    }
+
+    public function listquicksells(){
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+            ->where('cash_register_status_id', 1) // 1 = Aberto
+            ->first();
+        if (!$openCashRegister) {
+            $quicksells = Order::with('itens.product')->with('status')->with('user')->whereNull('table_id')->where('cash_register_id',0)->orderBy('id','desc')->paginate();
+            return response()->json([
+                'quicksells'=>$quicksells
+            ]);
+        }
+        $quicksells = Order::with('itens.product')->with('status')->with('user')->whereNull('table_id')->where('cash_register_id',$openCashRegister->id)->orderBy('id','desc')->paginate();
+        return response()->json([
+            'quicksells'=>$quicksells
+        ]);
+
     }
 
     /**
@@ -61,15 +100,30 @@ class PdvController extends Controller
         $newBarItems = [];
         $newKitchenItems = [];
 
-        // $openCashRegister = CashRegister::where('user_id', Auth::id())
-        // ->where('status_id', 1) // 1 = Aberto
-        // ->first();
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+        ->where('cash_register_status_id', 1) // 1 = Aberto
+        ->first();
 
-        // if (!$openCashRegister) {
-        //     return response()->json([
-        //         'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
-        //     ], 403); // Código HTTP 403 - Proibido
-        // }
+        if (!$openCashRegister) {
+            return response()->json([
+                'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+            ], 403); // Código HTTP 403 - Proibido
+        }
+
+        if($table->table_status_id == 5){
+            return response()->json(['message'=>'A mesa esta finalizada.'],403);
+        }
+
+        foreach ($data['products'] as $item) {
+            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
+        
+            // Correção do operador de comparação e da propriedade
+            if ($product->quantity_in_principal_stock < $item['quantity'] || $product->quantity_in_principal_stock == 0) {
+                return response()->json([
+                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
+                ], 403); // Código HTTP 403 - Proibido
+            }
+        }
 
         if($table->table_status_id == 1){
             $order =  Order::create([
@@ -77,9 +131,10 @@ class PdvController extends Controller
                 'user_id' => Auth::user()->id,
                 'total'=>$data['total'],
                 'order_status_id' => 1,
-                // 'cash_register_id' => $openCashRegister->id
+                'cash_register_id' => $openCashRegister->id
             ]);
             foreach($data['products'] as $item){
+
                 $product = Product::withQuantityInPrincipalStock()->find($item['id']);
 
                 $orderItem = OrderItem::create([
@@ -91,12 +146,23 @@ class PdvController extends Controller
                     'department_id' => $product->department_id,
                     'price'=>$product->price,
                     'total'=>$product->price * $item['quantity'],
-                    // 'cash_register_id' => $openCashRegister->id
+                    'cash_register_id' => $openCashRegister->id
                 ]);
                 if ($product->department_id == 1) {
                     $newKitchenItems[] = $orderItem;
                 } elseif ($product->department_id == 2) {
                     $newBarItems[] = $orderItem;
+                }
+                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
+                if ($principalStockCenter) {
+                    $stockCenterProduct = $product->stockCenterProducts()
+                        ->where('stock_center_id', $principalStockCenter->id)
+                        ->first();
+
+                    if ($stockCenterProduct) {
+                        $stockCenterProduct->quantity -= $item['quantity'];
+                        $stockCenterProduct->save();
+                    }
                 }
             }
             $total_consumed = $data['total'];
@@ -118,7 +184,7 @@ class PdvController extends Controller
                         'price'=>$product->price,
                         'total'=>$product->price * $item['quantity'],
                         'user_id'=>Auth::user()->id,
-                        // 'cash_register_id' => $openCashRegister->id
+                        'cash_register_id' => $openCashRegister->id
                 ]);
                 if ($product->department_id == 1) {
                     $newKitchenItems[] = $orderItem;
@@ -126,6 +192,17 @@ class PdvController extends Controller
                     $newBarItems[] = $orderItem;
                 }
                 // }
+                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
+                if ($principalStockCenter) {
+                    $stockCenterProduct = $product->stockCenterProducts()
+                        ->where('stock_center_id', $principalStockCenter->id)
+                        ->first();
+
+                    if ($stockCenterProduct) {
+                        $stockCenterProduct->quantity -= $item['quantity'];
+                        $stockCenterProduct->save();
+                    }
+                }
                 
             }
 
@@ -158,7 +235,19 @@ class PdvController extends Controller
     public function show(string $id)
     {
         //
-        $categories = Category::with('sub_categories.products')->get();
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+        ->where('cash_register_status_id', 1) // 1 = Aberto
+        ->first();
+
+        if (!$openCashRegister) {
+            return response()->json([
+                'message' => 'Não é possível realizar ou iniciar a venda. Abra o caixa primeiro.'
+            ], 403); // Código HTTP 403 - Proibido
+        }
+
+        $categories = Category::with(['sub_categories.products' => function($query) {
+            $query->withQuantityInPrincipalStock();
+        }])->get();
         $order = Order::where('table_id', $id)
         ->where(function($query) {
             $query->where('order_status_id', 1)
@@ -193,15 +282,26 @@ class PdvController extends Controller
         $data = $request->all();
         $total_consumed = 0;
 
-        // $openCashRegister = CashRegister::where('user_id', Auth::id())
-        // ->where('status_id', 1) // 1 = Aberto
-        // ->first();
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+        ->where('cash_register_status_id', 1) // 1 = Aberto
+        ->first();
 
-        // if (!$openCashRegister) {
-        //     return response()->json([
-        //         'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
-        //     ], 403); // Código HTTP 403 - Proibido
-        // }
+        if (!$openCashRegister) {
+            return response()->json([
+                'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+            ], 403); // Código HTTP 403 - Proibido
+        }
+
+        foreach ($data['products'] as $item) {
+            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
+        
+            // Correção do operador de comparação e da propriedade
+            if ($product->quantity_in_principal_stock < $item['quantity'] || $product->quantity_in_principal_stock == 0) {
+                return response()->json([
+                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
+                ], 403); // Código HTTP 403 - Proibido
+            }
+        }
 
 
 
@@ -210,8 +310,8 @@ class PdvController extends Controller
                 'user_id' => Auth::user()->id,
                 // 'user_id'=>1,
                 'total'=>$data['total'],
-                'order_status_id' => 1,
-                // 'cash_register_id' => $openCashRegister->id
+                'order_status_id' => 3,
+                'cash_register_id' => $openCashRegister->id
             ]);
             foreach($data['products'] as $item){
                 $product = Product::withQuantityInPrincipalStock()->find($item['id']);
@@ -224,8 +324,19 @@ class PdvController extends Controller
                     'price'=>$product->price,
                     'user_id' => Auth::user()->id,
                     'total'=>$product->price * $item['quantity'],
-                    // 'cash_register_id' => $openCashRegister->id
+                    'cash_register_id' => $openCashRegister->id
                 ]);
+                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
+                if ($principalStockCenter) {
+                    $stockCenterProduct = $product->stockCenterProducts()
+                        ->where('stock_center_id', $principalStockCenter->id)
+                        ->first();
+
+                    if ($stockCenterProduct) {
+                        $stockCenterProduct->quantity -= $item['quantity'];
+                        $stockCenterProduct->save();
+                    }
+                }
             }
             $total_consumed = $data['total'];
   
@@ -236,6 +347,8 @@ class PdvController extends Controller
             "order_id"=>$order->id,
             "payment_method_id"=>$data["payment_method_id"],
             "amount"=>$data['total'],
+            "cash_register_id" => $openCashRegister->id,
+            "user_id" => Auth::user()->id
         ]);
 
         $barItems = $orderitens->where('department_id', 2);
@@ -249,7 +362,18 @@ class PdvController extends Controller
     }
 
     public function quicksell(){
-        $categories = Category::with('sub_categories.products')->get();
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+        ->where('cash_register_status_id', 1) // 1 = Aberto
+        ->first();
+
+        if (!$openCashRegister) {
+            return response()->json([
+                'message' => 'Não é possível realizar ou iniciar a venda. Abra o caixa primeiro.'
+            ], 403); // Código HTTP 403 - Proibido
+        }
+        $categories = Category::with(['sub_categories.products' => function($query) {
+            $query->withQuantityInPrincipalStock();
+        }])->get();
         $total_consumed = 0;
         $payment_methods = PaymentMethod::all();
         return response()->json([
@@ -286,9 +410,11 @@ class PdvController extends Controller
     public function getreceipt(string $id) {
 
         
-        $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
+        $order = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->first();
         if (!$order) {
-            abort(404, 'Order not found');
+            return response()->json([
+                'message' => 'Não existe conta aberta nesta mesa'
+            ], 404);
         }
 
         $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
@@ -306,6 +432,31 @@ class PdvController extends Controller
         return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptgeneral.pdf');
     }
 
+    public function getquickreceipt(string $id) {
+
+        
+        $order = Order::find($id);
+        if (!$order) {
+            return response()->json([
+                'message' => 'Não existe conta aberta nesta mesa'
+            ], 404);
+        }
+
+        $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
+        // $table = $order->table; // Supondo que o relacionamento exista
+
+    
+        $pdf = Pdf::loadView('pdf.receiptquicktable', compact('order', 'orderitens'))->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
+            'dpi' => 96, 
+            'defaultFont' => 'sans-serif',
+        ]);
+    
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptquicktable.pdf');
+    }
+
 
     public function closeaccount(string $id){
         $table = Table::find($id);
@@ -318,7 +469,9 @@ class PdvController extends Controller
         }
 
         $order->update([
-            "order_status_id"=>2
+            "order_status_id"=>2,
+            "closed_by_user_id"=>Auth::user()->id,
+
         ]);
 
         $table->update([
@@ -344,14 +497,25 @@ class PdvController extends Controller
         $table = Table::find($data['table_id']);
         $order = Order::where('table_id', $data['table_id'])->where('order_status_id', 2)->first();
 
+        $openCashRegister = CashRegister::where('user_id', Auth::id())
+        ->where('cash_register_status_id', 1) // 1 = Aberto
+        ->first();
+
+        if (!$openCashRegister) {
+            return response()->json([
+                'message' => 'Não é possível realizar a venda. Abra o caixa primeiro.'
+            ], 403); // Código HTTP 403 - Proibido
+        }
+
         if(!$order){
             return response()->json([
-                'message' => 'Por favor, primeiro finalize o pedido para poder fechar a conta da mesa.'
+                'message' => 'Por favor, primeiro feche o pedido para poder finalizar a conta da mesa.'
             ], 404);
         }
 
         $order->update([
-            "order_status_id"=>3
+            "order_status_id"=>3,
+            "fineshed_by_user_id"=>Auth::user()->id,
         ]);
 
         $table->update([
@@ -369,7 +533,9 @@ class PdvController extends Controller
         $payment = Payment::create([
             "order_id"=>$order->id,
             "payment_method_id"=>$data["payment_method_id"],
-            "amount"=>$order->total
+            "amount"=>$order->total,
+            "cash_register_id" => $openCashRegister->id,
+            "user_id" => Auth::user()->id
         ]);
 
         $pdf = Pdf::loadView('pdf.customerreceipt', compact('order','orderitens','payment'))->setOptions([

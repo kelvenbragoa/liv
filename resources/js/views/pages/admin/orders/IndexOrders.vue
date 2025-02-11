@@ -198,7 +198,7 @@ onMounted(() => {
                     <template #header>
                         <div class="flex justify-between">
                             
-                                <Button label="Relatorio" class="mr-2 mb-2" @click="report()">Relatório<i class="pi pi-print"></i></Button>
+                                <!-- <Button label="Relatorio" class="mr-2 mb-2" @click="report()">Relatório<i class="pi pi-print"></i></Button> -->
                             
                             <IconField>
                                 <InputIcon>
@@ -232,7 +232,7 @@ onMounted(() => {
                     </Column>
                     <Column header="Efetuada por" style="min-width: 12rem">
                         <template #body="{ data }">
-                            {{ data.user_id }}
+                            {{ data.user.name }}
                         </template>
                     </Column>
                     <Column header="Data" dataType="date" style="min-width: 10rem">

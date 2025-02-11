@@ -556,6 +556,60 @@ const router = createRouter({
                 },
 
 
+
+                {
+                    path: '/admin/cashregisters',
+                    name: 'admin.cashregisters',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/cashregisters/IndexCashRegisters.vue')
+                },
+                {
+                    path: '/admin/cashregisters/create',
+                    name: 'admin.cashregisters.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/cashregisters/CreateCashRegisters.vue')
+                },
+                {
+                    path: '/admin/cashregisters/:id',
+                    name: 'admin.cashregisters.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/cashregisters/ShowCashRegisters.vue')
+                },
+                {
+                    path: '/admin/cashregisters/:id/edit',
+                    name: 'admin.cashregisters.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/cashregisters/EditCashRegisters.vue')
+                },
+
+                {
+                    path: '/admin/cashregisters/dashboard',
+                    name: 'admin.cashregisters.dashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/pdv/IndexCashRegisterDashboard.vue')
+                },
+                {
+                    path: '/admin/dailydashboard',
+                    name: 'admin.dailydashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/cashregisters/DailyDashboard.vue')
+                },
+
+                
+
+
                 
             ]
         },
@@ -647,6 +701,15 @@ const router = createRouter({
                         requiresAuth: true
                     },
                     component: () => import('@/views/pages/waiter/pdv/IndexDelivery.vue')
+                },
+
+                {
+                    path: '/waiter/cashregisters/dashboard',
+                    name: 'waiter.cashregisters.dashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/waiter/pdv/IndexCashRegisterDashboard.vue')
                 },
             ]
         },

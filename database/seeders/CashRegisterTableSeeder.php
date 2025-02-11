@@ -25,6 +25,26 @@ class CashRegisterTableSeeder extends Seeder
                 "created_at"=>now(),
                 "updated_at"=>now(),
             ],
+            [
+                "name"=>"Em Reconciliação",
+                "created_at"=>now(),
+                "updated_at"=>now(),
+            ],
+            [
+                "name"=>"Aguardando Abertura",
+                "created_at"=>now(),
+                "updated_at"=>now(),
+            ],
+            [
+                "name"=>"Aguardando Fechamento",
+                "created_at"=>now(),
+                "updated_at"=>now(),
+            ],
+            [
+                "name"=>"Cancelado",
+                "created_at"=>now(),
+                "updated_at"=>now(),
+            ]
         ]);
     }
 }

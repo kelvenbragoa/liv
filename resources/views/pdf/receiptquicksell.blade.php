@@ -80,6 +80,7 @@
                 <p>Pedido Nº: {{ $order->id }}</p>
                 <p>Atendente: {{ $order->user->name }}</p>
                 <p>Departamento: Cozinha</p>
+                <p>Pedido Rápido</p>
             </div>
             <table class="items">
                 <thead>
@@ -130,6 +131,7 @@
                 <p>Data: {{ $order->created_at->format('d-m-Y H:i') }}</p>
                 <p>Pedido Nº: {{ $order->id }}</p>
                 <p>Atendente: {{ $order->user->name }}</p>
+                <p>Pedido Rápido</p>
             </div>
             <table class="items">
                 <thead>

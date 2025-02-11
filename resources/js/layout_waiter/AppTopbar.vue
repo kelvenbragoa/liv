@@ -7,7 +7,7 @@ import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 const router = useRouter();
 
 const logout = () => {
-    axios.post(`api/logout`)
+    axios.post(`/api/logout`)
     .then((response) => {
         localStorage.removeItem('token'); // Remova o token armazenado
         localStorage.removeItem('user');  // Remova as informações do usuário
@@ -57,18 +57,10 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <div class="relative">
-                    <!-- <button
-                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-                        type="button"
-                        class="layout-topbar-action layout-topbar-action-highlight"
-                    >
-                        <i class="pi pi-palette"></i>
-                    </button> -->
-                    <AppConfigurator />
-                </div>
+                
             </div>
-
+            
+            
             <button
                 class="layout-topbar-menu-button layout-topbar-action"
                 v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"

@@ -163,6 +163,10 @@ const getProducts = (stockcenter) => {
    .then((response)=>{
 
     stockcenterproducts.value = response.data.stockcenterproducts;
+
+    stockcenterproducts.forEach(product => {
+        product.transferQuantity = product.quantity;
+    });
     loadingproduct.value=false;
    })
    .catch((error)=>{
@@ -206,7 +210,7 @@ onMounted(() => {
                 <div class="w-full">
                     <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
                 </div>
-                <div class="font-semibold text-xl">Centro de Stock</div>
+                <div class="font-semibold text-xl">Inventário</div>
                 <small class="p-error">Os campos marcados * sao considerados campos obrigatorios.</small>
                 <form @submit="onSubmit">
                     <div class="flex flex-col gap-2">

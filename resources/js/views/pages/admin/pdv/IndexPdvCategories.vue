@@ -201,9 +201,23 @@ function saveCart() {
             // toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
         })
-        .catch((error) => {
+        .catch(async (error) =>  {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error}`, life: 3000 });
+            let errorMessage = 'Ocorreu um erro inesperado.';
+
+            if (error.response && error.response.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const json = JSON.parse(text);
+                    errorMessage = json.message || json.error || errorMessage;
+                } catch (e) {
+                    console.error('Erro ao processar o blob:', e);
+                }
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
             if (error.response.data.errors) {
                 setErrors(error.response.data.errors);
             }
@@ -322,22 +336,47 @@ function payAccount() {
         });
   }
 
+// function addToCart(product) {
+//     // Verifica se o produto já foi adicionado ao carrinho
+//     const existingProduct = selectedProducts.value.find(item => item.id === product.id);
+
+//     if (existingProduct) {
+//     // Se o produto já estiver no carrinho, aumenta a quantidade
+//     existingProduct.quantity += 1;
+//     } else {
+//     // Caso contrário, adiciona o produto com a quantidade 1
+//     selectedProducts.value.push({ ...product, quantity: 1 });
+//     }
+
+//     // Atualiza o total
+//     updateTotal();
+// }
 function addToCart(product) {
     // Verifica se o produto já foi adicionado ao carrinho
     const existingProduct = selectedProducts.value.find(item => item.id === product.id);
 
-if (existingProduct) {
-  // Se o produto já estiver no carrinho, aumenta a quantidade
-  existingProduct.quantity += 1;
-} else {
-  // Caso contrário, adiciona o produto com a quantidade 1
-  selectedProducts.value.push({ ...product, quantity: 1 });
-}
+    // Verifica o estoque disponível
+    const availableStock = product.quantity_in_principal_stock ?? 0;
 
-// Atualiza o total
-updateTotal();
-}
+    if (existingProduct) {
+        if (existingProduct.quantity < availableStock) {
+            // Se o estoque permitir, aumenta a quantidade
+            existingProduct.quantity += 1;
+        } else {
+            // Exibe um alerta quando o limite do estoque for atingido
+        }
+    } else {
+        if (availableStock > 0) {
+            // Adiciona o produto ao carrinho com a quantidade 1
+            selectedProducts.value.push({ ...product, quantity: 1 });
+        } else {
+            toast.add({ severity: 'error', summary: 'Stock Insuficiente', detail: `Produto sem estoque disponível.`, life: 3000 });
+        }
+    }
 
+    // Atualiza o total
+    updateTotal();
+}
 function removeFromCart(index) {
     selectedProducts.value.splice(index, 1);
     updateTotal();
@@ -407,10 +446,28 @@ function printReceipt () {
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
 
         })
-        .catch((error) => {
+        .catch(async (error) => {
             isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
-            goBackUsingBack();
+            console.log(error)
+            isLoadingButton.value = false;
+            let errorMessage = 'Ocorreu um erro inesperado.';
+
+            if (error.response && error.response.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const json = JSON.parse(text);
+                    errorMessage = json.message || json.error || errorMessage;
+                } catch (e) {
+                    console.error('Erro ao processar o blob:', e);
+                }
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
+                    if (error.response.data.errors) {
+                        setErrors(error.response.data.errors);
+                    }
         });
 };
 
@@ -433,7 +490,7 @@ const getData = async (page = 1) => {
         })
         .catch((error) => {
             isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
             goBackUsingBack();
         });
 };
@@ -564,15 +621,17 @@ onMounted(() => {
                                         </div>
 
                                         <!-- Informações do Produto -->
-                                        <div class="flex justify-between mb-4">
-                                            <div>
+                                        <div class="flex justify-between mb-2">
                                             <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">
                                                 {{ product.name }}
                                             </div>
-                                            </div>
                                         </div>
-                                        <div class="flex justify-between mb-4">
+                                       
+                                        <div class="flex justify-between mb-2">
                                             <span class="text-primary font-medium">Preço: {{ product.price }} MT</span>
+                                        </div>
+                                        <div class="flex justify-between mb-2">
+                                            <small>Stock:{{ product.quantity_in_principal_stock }}</small>
                                         </div>
                                         <button @click="addToCart(product)" class="bg-blue-500 text-white px-4 py-2 rounded-full mt-1">
                                             Adicionar

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StockCenter;
+use App\Models\StockCenterProduct;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -114,6 +116,24 @@ class ProductController extends Controller
             'name' => $validated['name'],
             'image' => $imageName,
         ]);
+
+        $allStockCenters = StockCenter::all();
+        $allProducts = Product::all();
+
+        foreach ($allStockCenters as $stockCenter) {
+            foreach ($allProducts as $product) {
+                $exists = StockCenterProduct::where('product_id', $product->id)
+                    ->where('stock_center_id', $stockCenter->id)
+                    ->exists();
+                if (!$exists) {
+                    StockCenterProduct::create([
+                        'product_id' => $product->id,
+                        'stock_center_id' => $stockCenter->id,
+                        'quantity' => 0,
+                    ]);
+                }
+            }
+        }
 
         // Retornar a resposta JSON
         return response()->json([

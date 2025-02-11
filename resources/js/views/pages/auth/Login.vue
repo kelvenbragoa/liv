@@ -26,18 +26,27 @@ const loginUser = () => {
             localStorage.setItem('token', response.data.access_token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
             toast.add({ severity: 'success', summary: 'Successo', detail: 'Message Detail', life: 3000 });
+
             if (response.data.user.role_id == 1 || response.data.user.role_id == 2) {
-                router.replace('/admin/dashboard');
-            }
-            if (response.data.user.role_id == 3) {
-                router.replace('/waiter/dashboard');
-            }
-            if (response.data.user.role_id == 4) {
-                router.replace('/kitchen/dashboard');
-            }
-            if (response.data.user.role_id == 5) {
-                router.replace('/bar/dashboard');
-            }
+                window.location.href = '/admin/dashboard';
+            } else if (response.data.user.role_id == 3) {
+                window.location.href = '/waiter/pdv';
+            } else if (response.data.user.role_id == 4) {
+                window.location.href = '/kitchen/pdv';
+            } else if (response.data.user.role_id == 5) {
+                window.location.href = '/bar/pdv'};
+            // if (response.data.user.role_id == 1 || response.data.user.role_id == 2) {
+            //     router.replace('/admin/dashboard');
+            // }
+            // if (response.data.user.role_id == 3) {
+            //     router.replace('/waiter/dashboard');
+            // }
+            // if (response.data.user.role_id == 4) {
+            //     router.replace('/kitchen/dashboard');
+            // }
+            // if (response.data.user.role_id == 5) {
+            //     router.replace('/bar/dashboard');
+            // }
             // if (response.data.user.role_id == 2) {
             //     if (response.data.user.is_promotor == 1) {
             //         router.replace('/promotor/dashboard');

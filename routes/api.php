@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Mobile\AuthMobileController;
 use App\Http\Controllers\Api\Mobile\TableMobileController;
 use App\Http\Controllers\Api\Web\AuthWebController;
+use App\Http\Controllers\Api\Web\CashRegisterController;
 use App\Http\Controllers\Api\Web\CategoryController;
 use App\Http\Controllers\Api\Web\CenterStocksController;
 use App\Http\Controllers\Api\Web\CustomerController;
@@ -63,11 +64,17 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('reservations', ReservationController::class);
 
     Route::resource('pdv', PdvController::class);
+    Route::get('pdvquicksellslist',[PdvController::class,'listquicksells']);
+
+
     Route::get('pdv/quicksell',[PdvController::class,'quicksell']);
     Route::post('pdv/quicksell',[PdvController::class,'savequicksell']);
+    
+
 
 
     Route::post('getreceipt/{id}',[PdvController::class,'getreceipt']);
+    Route::post('getquickreceipt/{id}',[PdvController::class,'getquickreceipt']);
 
     Route::get('pdv/closeaccount/{id}',[PdvController::class,'closeaccount']);
 
@@ -80,13 +87,12 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('orders', OrderController::class);
 
     Route::post('orderitem/{id}',[OrderController::class,'deleteorderitem']);
+    Route::post('quickorderdelete/{id}',[OrderController::class,'deleteorder']);
+
+    
 
 
-    Route::resource('mobile-tables', TableMobileController::class);
 
-    Route::post('createorder',[TableMobileController::class,'createorder']);
-
-    Route::get('consumption/{id}',[TableMobileController::class,'consumption']);
 
     Route::get('pdvkitchen',[PdvController::class,'indexKitchen']);
 
@@ -96,7 +102,54 @@ Route::middleware([Sanctum::class])->group(function () {
 
     Route::get('barchangestatus/{id}',[PdvController::class,'barchangestatus']);
 
+
+    Route::post('cashregisters/open',[CashRegisterController::class,'open']);
+    // Route::resource('cashregisters', CashRegisterController::class);
+
+    Route::get('cashregister',[CashRegisterController::class,'index']);
+    Route::get('cashregister/{id}',[CashRegisterController::class,'show']);
+
+
+    Route::post('cashregisters/close',[CashRegisterController::class,'close']);
+
+    Route::get('cashregisters/dashboard',[CashRegisterController::class,'dashboard']);
+
+    Route::get('cashregisters/dailydashboard',[CashRegisterController::class,'dailydashboard']);
+    Route::get('daily/quicksellreport',[CashRegisterController::class,'quicksellreportdaily']);
+    Route::get('daily/tablesellreport',[CashRegisterController::class,'tablesellreportdaily']);
+    Route::get('daily/paymentreport',[CashRegisterController::class,'paymentreportdaily']);
+
+
+    
+
+    Route::get('cashregisters/quicksellreport',[CashRegisterController::class,'quicksellreport']);
+    Route::get('cashregisters/tablesellreport',[CashRegisterController::class,'tablesellreport']);
+    Route::get('cashregisters/paymentreport',[CashRegisterController::class,'paymentreport']);
+
+
+
+    Route::resource('mobile-tables', TableMobileController::class);
+
+    Route::post('createorder',[TableMobileController::class,'createorder']);
+
+    Route::get('consumption/{id}',[TableMobileController::class,'consumption']);
+
     Route::get('closeaccount/{id}',[TableMobileController::class,'closeaccount']);
+
+    Route::post('mobile-savequicksell',[TableMobileController::class,'savequicksell']);
+
+
+
+
+    Route::get('mobile-cashregister/open',[TableMobileController::class,'openCashRegister']);
+
+    Route::post('mobile-cashregister/close',[TableMobileController::class,'closeCashRegister']);
+
+    Route::get('mobile-home',[TableMobileController::class,'home']);
+
+
+    Route::get('quicksellpdv',[TableMobileController::class,'quicksell']);
+
 
 
 

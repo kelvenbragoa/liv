@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\StockCenter;
 use App\Models\Table;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -50,6 +52,7 @@ class OrderController extends Controller
             ->with('table')
             ->with('itens')
             ->with('status')
+            ->with('user')
             ->orderBy('created_at','desc')
             ->paginate();
 
@@ -113,9 +116,27 @@ class OrderController extends Controller
 
         $table_id = $orderitem->order->table_id;
         $total = $orderitem->total;
+        $quantity = $orderitem->quantity;
+        $product = Product::find($orderitem->product_id);
+
+
+        $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
+                if ($principalStockCenter) {
+                    $stockCenterProduct = $product->stockCenterProducts()
+                        ->where('stock_center_id', $principalStockCenter->id)
+                        ->first();
+
+                    if ($stockCenterProduct) {
+                        $stockCenterProduct->quantity += $quantity;
+                        $stockCenterProduct->save();
+                    }
+                }
+
         $orderitem->delete();
 
-        $categories = Category::with('sub_categories.products')->get();
+        $categories = Category::with(['sub_categories.products' => function($query) {
+            $query->withQuantityInPrincipalStock();
+        }])->get();
         $order = Order::where('table_id', $table_id)
         ->where(function($query) {
             $query->where('order_status_id', 1)
@@ -149,5 +170,31 @@ class OrderController extends Controller
         ]);
 
        
+    }
+
+
+    public function deleteorder($id){
+        $order = Order::find($id);
+        foreach($order->itens as $item){
+            $product = Product::find($item->product_id);
+            $quantity = $item->quantity;
+
+
+            $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
+                if ($principalStockCenter) {
+                    $stockCenterProduct = $product->stockCenterProducts()
+                        ->where('stock_center_id', $principalStockCenter->id)
+                        ->first();
+
+                    if ($stockCenterProduct) {
+                        $stockCenterProduct->quantity += $quantity;
+                        $stockCenterProduct->save();
+                    }
+                }
+            $item->delete();
+        }
+        Payment::where('order_id', $order->id)->delete();
+        $order->delete();
+        return response()->noContent();
     }
 }

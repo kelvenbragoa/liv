@@ -20,5 +20,13 @@ class OrderItem extends Model
         return $this->hasOne('App\Models\Order', 'id', 'order_id');
     }
 
+    public function status(){
+        return $this->hasOne('App\Models\OrderItemStatus', 'id', 'order_item_status_id	');
+    }
+
+    public function user(){
+        return $this->hasOne('App\Models\User', 'id', 'user_id');
+    }
+
     
 }
