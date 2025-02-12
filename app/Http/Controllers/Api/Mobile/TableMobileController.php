@@ -29,6 +29,7 @@ class TableMobileController extends Controller
                 $query->where('name','like',"%{$searchQuery}%");
             })
             ->with('status')
+            ->with('last_order.user')
             ->orderBy('name','asc')
             ->get();
 
@@ -109,6 +110,12 @@ class TableMobileController extends Controller
         if($table->table_status_id == 2){
 
             $last_order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
+
+            if($last_order->user_id != Auth::user()->id){
+                return response()->json([
+                    'message' => "Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por".$last_order->user->name
+                ], 400); // Código HTTP 403 - Proibido
+            }
             
                 
                 // $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $data['product_id'])->first();
@@ -215,6 +222,14 @@ class TableMobileController extends Controller
     public function closeaccount(string $id){
         $table = Table::find($id);
         $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
+
+        if($order->user_id != Auth::user()->id){
+            return response()->json([
+                'message' => "Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por".$order->user->name
+            ], 400); // Código HTTP 403 - Proibido
+        }
+
+        
 
         $order->update([
             "order_status_id"=>2,
@@ -357,6 +372,8 @@ class TableMobileController extends Controller
 
     public function savequicksell(Request $request){
         $data = $request->all();
+
+        return $data;
 
 
 

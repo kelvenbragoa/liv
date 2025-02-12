@@ -32,7 +32,7 @@ class PdvController extends Controller
                 $query->where('name','like',"%{$searchQuery}%");
             })
             ->with('status')
-            ->with('last_order')
+            ->with('last_order.user')
             ->orderBy('id','asc')
             ->paginate(50);
 
@@ -169,7 +169,17 @@ class PdvController extends Controller
         }
         if($table->table_status_id == 2){
 
+
+
             $last_order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
+
+            if($last_order->user_id != Auth::user()->id){
+                return response()->json([
+                    'message' => "Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por".$last_order->user->name
+                ], 403); // Código HTTP 403 - Proibido
+            }
+
+
             
             foreach($data['products'] as $item){
                 
@@ -270,11 +280,14 @@ class PdvController extends Controller
         $payment_methods = PaymentMethod::all();
         $orderItems = OrderItem::where('order_id',$order_id)->with('product')->get();
 
+        $table = Table::find($id);
+
         return response()->json([
             "categories"=>$categories,
             "total_consumed"=>$total_consumed,
             "payment_methods"=>$payment_methods,
-            "order_items"=>$orderItems
+            "order_items"=>$orderItems,
+            "table"=>$table
         ]);
     }
 

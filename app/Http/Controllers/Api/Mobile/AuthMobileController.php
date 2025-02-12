@@ -46,4 +46,20 @@ class AuthMobileController extends Controller
         }
    
     }
+
+    public function getuserdetails($token){
+        
+        $user = Auth::user();
+        $array = array(
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'token' => $token,
+        );
+
+        return response()->json([
+            'user'=>$array,
+            'access_token' => $token,
+        ]);
+    }
 }

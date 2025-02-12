@@ -150,6 +150,8 @@ Route::middleware([Sanctum::class])->group(function () {
 
     Route::get('quicksellpdv',[TableMobileController::class,'quicksell']);
 
+    Route::get('getuserdetails/{token}',[AuthMobileController::class,'getuserdetails']);
+
 
 
 

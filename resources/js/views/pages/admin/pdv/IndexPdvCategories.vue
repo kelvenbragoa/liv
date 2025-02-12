@@ -37,6 +37,7 @@ const confirmationCode = ref(null);
 const correct_code = '13579';
 const showDialog = ref(false);
 const pdfUrl = ref(null);
+const table = ref(null);
 
 
 const openFileDialog = ref(false); // Controla a visibilidade do dialog
@@ -485,6 +486,7 @@ const getData = async (page = 1) => {
             order_items.value = response.data.order_items;
             payment_methods.value = response.data.payment_methods;
             payment_method_id.value = 1;
+            table.value = response.data.table;
             isLoadingDiv.value = false;
 
         })
@@ -587,7 +589,8 @@ onMounted(() => {
                     <div class="mb-2">
                         <Menubar :model="nestedMenuitems">
                             <template #end>
-                                <p>Total Consumo: {{ total_consumed }} MT</p>
+                                
+                                <p><strong>Mesa:</strong> {{table.name}} | <strong>Total Consumo:</strong> {{ total_consumed }} MT</p>
                             </template>
                         </Menubar>
                     </div>
