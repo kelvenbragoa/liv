@@ -164,7 +164,7 @@ const getProducts = (stockcenter) => {
 
     stockcenterproducts.value = response.data.stockcenterproducts;
 
-    stockcenterproducts.forEach(product => {
+    stockcenterproducts.value.forEach(product => {
         product.transferQuantity = product.quantity;
     });
     loadingproduct.value=false;

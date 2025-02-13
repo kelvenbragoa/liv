@@ -137,6 +137,7 @@ const getData = async (page = 1) => {
         })
         .then((response) => {
             stockcenters.value = response.data.stockcenters;
+            
             suppliers.value = response.data.suppliers
 
 
@@ -174,6 +175,9 @@ const getProducts = (stockcenter) => {
    .then((response)=>{
 
     stockcenterproducts.value = response.data.stockcenterproducts;
+    stockcenterproducts.value.forEach(product => {
+        product.transferQuantity = 0;
+    });
     loadingproduct.value=false;
    })
    .catch((error)=>{

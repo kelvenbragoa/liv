@@ -237,14 +237,6 @@ function saveCart() {
           responseType:'blob'
         })
         .then((response) => {
-            // router.back();
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-            // const link = document.createElement('a');
-            // link.href = url;
-            // link.setAttribute('download', 'recibo.pdf');
-            // document.body.appendChild(link);
-            // link.click();
-            // closeAccountDialog.value = false;
             const blob = new Blob([response.data], { type: 'application/pdf' });
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialog.value = true;  // Abre o diálogo modal
@@ -278,7 +270,6 @@ function saveCart() {
   }
 
 function payAccount() {
-    // Exemplo de dados para salvar
     const payData = {
       payment_method_id: payment_method_id.value,
       table_id: router.currentRoute.value.params.id
@@ -296,17 +287,9 @@ function payAccount() {
             if (pdfUrl.value) {
                 URL.revokeObjectURL(pdfUrl.value);
             }
-            // router.back();
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-            // const link = document.createElement('a');
-            // link.href = url;
-            // link.setAttribute('download', 'recibo.pdf');
-            // document.body.appendChild(link);
-            // link.click();
-            // payAccountDialog.value = false;
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialog.value = true;  // Abre o diálogo modal
+            pdfUrl.value = URL.createObjectURL(blob); 
+            showDialog.value = true; 
             openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
         })
@@ -421,25 +404,6 @@ function printReceipt () {
     axios
     .post(`/api/getreceipt/${router.currentRoute.value.params.id}`, {}, { responseType: 'blob' })
         .then((response) => {
-            // router.back();
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-            // const link = document.createElement('a');
-            // link.href = url;
-            // link.setAttribute('download', 'consumo.pdf');
-            // document.body.appendChild(link);
-            // link.click();
-            // ✅ Garantir o tipo correto do Blob como PDF
-            // const blob = new Blob([response.data], { type: 'application/pdf' });
-            // const url = window.URL.createObjectURL(blob);
-
-            // // 🖨️ Abre o PDF em uma nova aba
-            // const printWindow = window.open(url, '_blank');
-            // if (printWindow) {
-            //     printWindow.onload = () => {
-            //         printWindow.focus();
-            //         printWindow.print();
-            //     };
-            // }
             const blob = new Blob([response.data], { type: 'application/pdf' });
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialog.value = true;  // Abre o diálogo modal
@@ -481,19 +445,19 @@ const getData = async (page = 1) => {
         })
         .then((response) => {
             retriviedData.value = response.data;
+            table.value = response.data.table;
             total_consumed.value = response.data.total_consumed;
             categories.value = response.data.categories;
             order_items.value = response.data.order_items;
             payment_methods.value = response.data.payment_methods;
             payment_method_id.value = 1;
-            table.value = response.data.table;
             isLoadingDiv.value = false;
-
         })
         .catch((error) => {
+            goBackUsingBack();
             isLoadingDiv.value = false;
             toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-            goBackUsingBack();
+            
         });
 };
 
@@ -590,7 +554,7 @@ onMounted(() => {
                         <Menubar :model="nestedMenuitems">
                             <template #end>
                                 
-                                <p><strong>Mesa:</strong> {{table.name}} | <strong>Total Consumo:</strong> {{ total_consumed }} MT</p>
+                                <p><strong>Mesa:</strong> {{table == null ? '' : table.name}} | <strong>Total Consumo:</strong> {{ total_consumed }} MT</p>
                             </template>
                         </Menubar>
                     </div>
