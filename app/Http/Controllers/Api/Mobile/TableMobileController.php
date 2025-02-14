@@ -373,7 +373,7 @@ class TableMobileController extends Controller
     public function savequicksell(Request $request){
         $data = $request->all();
 
-        return $data;
+        // return $data;
 
 
 
