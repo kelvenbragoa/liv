@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Department;
+use App\Models\SubCategory;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
@@ -104,6 +105,10 @@ class CategoryController extends Controller
         //
 
         $category = Category::find($id);
+        $existCategory = SubCategory::where('category_id', $category->id)->first();
+        if ($existCategory) {
+            return response()->json(['message' => 'Não é possível a categoria, existe sub categorias associadas'], 404);
+        }
         $category->delete();
         return true;
     }

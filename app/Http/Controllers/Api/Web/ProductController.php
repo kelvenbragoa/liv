@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\ExitNoteItem;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
+use App\Models\StockCenterTransferItem;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -211,6 +214,34 @@ class ProductController extends Controller
     {
         //
         $product = Product::find($id);
+        $existOrderForProduct = OrderItem::where('product_id', $product->id)->first();
+        $existExitNotesForProduct = ExitNoteItem::where('product_id', $product->id)->first();
+        $existEntryNotesProduct = OrderItem::where('product_id', $product->id)->first();
+        $existInventoriesProduct = OrderItem::where('product_id', $product->id)->first();
+        $existStockTransferProduct = StockCenterTransferItem::where('product_id', $product->id)->first();
+
+        if (!$product) {
+            return response()->json(['message' => 'Produto não encontrado'], 404);
+        }
+        if ($existOrderForProduct) {
+            return response()->json(['message' => 'Não é possível excluir um produto que possui pedidos associados'], 404);
+        }
+        if ($existExitNotesForProduct) {
+            return response()->json(['message' => 'Não é possível excluir um produto que possui notas de saída associadas'], 404);
+        }
+        if ($existEntryNotesProduct) {
+            return response()->json(['message' => 'Não é possível excluir um produto que possui notas de entrada associadas'], 404);
+        }
+        if ($existInventoriesProduct) {
+            return response()->json(['message' => 'Não é possível excluir um produto que possui inventários associados'], 404);
+        }
+        if ($existStockTransferProduct) {
+            return response()->json(['message' => 'Não é possível excluir um produto que possui transferências associadas'], 404);
+        }
+
+        StockCenterProduct::where('product_id', $product->id)->delete();
+
+
         $product->delete();
         return true;
     }

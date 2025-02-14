@@ -111,8 +111,8 @@ class UserController extends Controller
     public function destroy(string $id)
     {
         //
-        $product = User::find($id);
-        $product->delete();
-        return true;
+        // $product = User::find($id);
+        // $product->delete();
+        // return true;
     }
 }

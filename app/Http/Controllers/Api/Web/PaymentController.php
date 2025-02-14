@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -76,5 +77,12 @@ class PaymentController extends Controller
     public function destroy(string $id)
     {
         //
+        $table = PaymentMethod::find($id);
+        $existOrder = Payment::where('payment_method_id', $table->id)->first();
+        if ($existOrder) {
+            return response()->json(['message' => 'Não é possível o metodo, existe pedidos associadas'], 404);
+        }
+        $table->delete();
+        return true;
     }
 }

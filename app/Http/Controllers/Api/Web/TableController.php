@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Table;
 use Illuminate\Http\Request;
 
@@ -95,6 +96,10 @@ class TableController extends Controller
         //
 
         $table = Table::find($id);
+        $existOrder = Order::where('table_id', $table->id)->first();
+        if ($existOrder) {
+            return response()->json(['message' => 'Não é possível a mesa, existe pedidos associadas'], 404);
+        }
         $table->delete();
         return true;
     }

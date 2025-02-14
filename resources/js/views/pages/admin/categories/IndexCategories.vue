@@ -87,7 +87,7 @@ const deleteData = () => {
             toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
         })
         .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
+            toast.add({ severity: 'error', summary: `Erro`, detail: `${error.data.messae}`, life: 3000 });
             loadingButtonDelete.value = false;
         })
         .finally(() => {

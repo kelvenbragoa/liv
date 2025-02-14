@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
 
@@ -104,6 +105,10 @@ class SubCategoryController extends Controller
         //
 
         $subcategory = SubCategory::find($id);
+        $existProduct = Product::where('sub_category_id', $subcategory->id)->first();
+        if ($existProduct) {
+            return response()->json(['message' => 'Não é possível a categoria, existe produtos associadas'], 404);
+        }
         $subcategory->delete();
         return true;
     }
