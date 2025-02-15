@@ -294,9 +294,9 @@ const getData = async (page = 1) => {
 };
 
 const getPaymentsData = async (page = 1) => {
-    if (date.value) {
-      date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-    }
+    // if (date.value) {
+    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    // }
     axios
         .get(`/api/daily/paymentreport?page=${page}`, {
             params: {
@@ -315,9 +315,9 @@ const getPaymentsData = async (page = 1) => {
 };
 
 const getTableData = async (page = 1) => {
-    if (date.value) {
-      date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-    }
+    // if (date.value) {
+    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    // }
     axios
         .get(`/api/daily/tablesellreport?page=${page}`, {
             params: {
@@ -336,9 +336,9 @@ const getTableData = async (page = 1) => {
 };
 
 const getQuickSellData = async (page = 1) => {
-    if (date.value) {
-      date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-    }
+    // if (date.value) {
+    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    // }
     axios
         .get(`/api/daily/quicksellreport?page=${page}`, {
             params: {
