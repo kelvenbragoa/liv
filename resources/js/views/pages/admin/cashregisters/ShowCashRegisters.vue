@@ -405,10 +405,11 @@ onMounted(() => {
                         <div class="flex justify-between mb-4">
                             <div>
                                 <span class="block text-muted-color font-medium mb-4">Caixa</span>
-                                <small>Aberto ás: {{ moment(cash_register.created_at).format('DD-MM-YYYY H:mm') }}</small>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                                <small>Aberto ás: {{ moment(cash_register.created_at).format('DD-MM-YYYY H:mm') }}</small> <br>
+                                <small>Fechado ás: {{cash_register.closed_at ?  moment(cash_register.closed_at).format('DD-MM-YYYY H:mm') : '-' }}</small> <br>
+                                <small>Valor Declarado: {{cash_register.closing_balance }} MT</small> <br>
+                                <small>Valor Sistema: {{cash_register.automatic_closing_balance }} MT</small> <br>
+                                <small>Diferenca: {{cash_register.difference }} MT</small>
                             </div>
                         </div>
                     </div>
@@ -491,7 +492,7 @@ onMounted(() => {
                             <div>
                                 <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
                                 <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>- -
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
                                 </div>
 
