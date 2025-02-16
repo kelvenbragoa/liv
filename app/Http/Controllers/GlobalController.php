@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashRegister;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -11,17 +13,68 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class GlobalController extends Controller
 {
     //
-    public function receipt(){
+    public function relatorio(){
 
-        $order = Order::where('table_id',1)->where('order_status_id',1)->first();
-        $orderitens = OrderItem::where('order_id',$order->id)->get();
+        $dateURL = request('date');
 
-        $pdf = Pdf::loadView('pdf.receipt', compact('order','orderitens'))->setOptions([
+        $date = $dateURL ? date('Y-m-d', strtotime($dateURL)) : date('Y-m-d');
+    
+        $cashRegister = CashRegister::with('orderitens')
+        ->with('user')
+        ->with('status')->whereDate('created_at', $date)->get();
+    
+        $cashRegister->transform(function ($cash) {
+            $cash->order_itens_total = $cash->orderitens->sum('total');
+            return $cash;
+        });
+    
+        $cashRegisterId = $cashRegister->pluck('id');
+    
+        $orders = Order::with('itens')
+            ->whereIn('cash_register_id', $cashRegisterId)
+            ->get();
+    
+        $orderItems = $orders->flatMap->itens;
+    
+        $orderItemsTable = $orderItems->filter(function ($item) {
+            return $item->order->table_id !== null;
+        });
+    
+        $totalSales = $orderItems->sum('total');
+        $totalOrders = $orderItems->count();
+        $averageTicket = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
+    
+        $tableOrders = $orders->whereNotNull('table_id');
+        $quickSellOrders = $orders->whereNull('table_id');
+    
+        $totalOrderTables = $tableOrders->count();
+        $totalOrderQuickSell = $quickSellOrders->count();
+    
+        $totalOrderTablesAmount = $orderItemsTable->sum('total');
+        $totalOrderQuickSellAmount = $quickSellOrders->flatMap->itens->sum('total');
+    
+        $totalPayments = Payment::whereIn('cash_register_id', $cashRegisterId)->count();
+        $totalPaymentsAmount = Payment::whereIn('cash_register_id', $cashRegisterId)->sum('amount');
+    
+        return response()->json([
+            'cash_register' => $cashRegister,
+            'total_sales' => $totalSales,
+            'total_orders' => $totalOrders,
+            'total_tables' => $totalOrderTables,
+            'total_quick_sell' => $totalOrderQuickSell,
+            'average_ticket' => round($averageTicket, 2),
+            'total_tables_amount' => $totalOrderTablesAmount,
+            'total_quick_sell_amount' => $totalOrderQuickSellAmount,
+            'total_payments' => $totalPayments,
+            'total_payments_amount' => $totalPaymentsAmount,
+        ]);
+
+        $pdf = Pdf::loadView('pdf.report', compact('cash_register','total_sales','total_orders','total_tables','total_quick_sell','average_ticket','total_tables_amount','total_quick_sell_amount','total_payments','total_payments_amount'))->setOptions([
             'setPaper'=>'a8',
             // 'setPaper' => [0, 0, 640, 2376],
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper('a4')->stream('receipt.pdf');
+        return $pdf->setPaper('a4')->stream('report.pdf');
     }
 }

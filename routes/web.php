@@ -12,7 +12,7 @@ Route::get('/homepage', function () {
 });
 
 
-Route::get('/receipt',[GlobalController::class,'receipt']);
+Route::get('/relatorio',[GlobalController::class,'relatorio']);
 
 
 //Last route to overlap every route hitting laravel route

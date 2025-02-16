@@ -38,7 +38,7 @@ const showDialog = ref(false);
 
 const selectedItemToDelete = ref(null);
 const confirmationCode = ref(null);
-const correct_code = '13579';
+const correct_code = '142502';
 
 const expandedRows = ref([]);
 const deleteDialog = ref(false); // Controla a visibilidade do dialog

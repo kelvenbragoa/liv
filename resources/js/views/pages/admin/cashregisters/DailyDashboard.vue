@@ -533,7 +533,7 @@ onMounted(() => {
                             <div>
                                 <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
                                 <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span> - -
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
                                 </div>
 

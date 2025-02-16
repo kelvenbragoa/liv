@@ -89,7 +89,8 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('orderitem/{id}',[OrderController::class,'deleteorderitem']);
     Route::post('quickorderdelete/{id}',[OrderController::class,'deleteorder']);
 
-    
+    Route::get('cashregisters/report',[CashRegisterController::class,'report']);
+
 
 
 

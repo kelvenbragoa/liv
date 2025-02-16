@@ -72,6 +72,9 @@ const historicoVendas = ref([])
 const showDialogOrder = ref(false);
 const selectedOrder = ref(null);
 
+const openPrintReport = ref(false); // Controla a visibilidade do dialog
+const showDialogReport = ref(false);
+
 // Função para abrir o dialog com os itens do pedido
 const seeOrderItens = (order) => {
   selectedOrder.value = order;
@@ -145,13 +148,7 @@ function getSeverity2(status) {
     }
 }
 
-function printPDF() {
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
-    }
-}
+
 function closeDialog() {
     showDialog.value = true;
     router.back();
@@ -183,15 +180,6 @@ function saveCart() {
         const blob = new Blob([response.data], { type: 'application/pdf' });
         pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
         showDialog.value = true;  // Abre o diálogo modal
-        // const url = window.URL.createObjectURL(new Blob([response.data]));
-        // const link = document.createElement('a');
-        // link.href = url;
-        // link.setAttribute('download', 'recibo.pdf');
-        // document.body.appendChild(link);
-        // link.click();
-        // document.body.removeChild(link);
-        // URL.revokeObjectURL(url); // Libera a URL criada
-        // loadingprint.value = false;
         toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
         // router.back();
         // 
@@ -395,6 +383,40 @@ const debouncedSearch = debounce(() => {
     getData(currentPage.value);
 }, 300);
 
+function printPDF() {
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+    }
+}
+
+function downloadReport () {
+    if (date.value) {
+      date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    }
+    axios
+        .get(`/api/cashregisters/report`, {
+            params: {
+                date: date.value
+            },
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialogReport.value = true;  // Abre o diálogo modal
+            openPrintReport.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            // goBackUsingBack();
+        });
+};
+
 watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
@@ -438,13 +460,13 @@ onMounted(() => {
                 @click="refreshData" 
                 :disabled="isLoadingData"
                 />
-                <!-- <Button 
+                <Button 
                 label="Baixar" 
                 icon="pi pi-download" 
                 class="p-button-primary ml-2 mb-2"
-                @click="refreshData" 
+                @click="downloadReport" 
                 :disabled="isLoadingData"
-                /> -->
+                />
             </div>
             
             <div class="grid grid-cols-12 gap-8 mb-3">
@@ -539,7 +561,7 @@ onMounted(() => {
                             <div>
                                 <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
                                 <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>- -
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
                                 </div>
 
@@ -845,7 +867,16 @@ onMounted(() => {
       </template>
 
       <template v-else>
+
         <p>Nenhum item encontrado para este pedido.</p>
+      </template>
+    </Dialog>
+    <Dialog v-model:visible="showDialogReport" header="Relatório" :modal="true" :style="{ width: '600px' }" :closable="false">
+      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+      
+      <template #footer>
+        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
       </template>
     </Dialog>
 </template>

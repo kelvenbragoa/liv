@@ -2,214 +2,215 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório</title>
-
+    <title>Relatório de Vendas</title>
     <style type="text/css">
         @page {
-            margin: 0px;
-        }
-        html {
-            margin-top: 30px ;
-            
-        
+            margin: 20px;
         }
         body {
-            margin-top: 50px;
-        }
-        * {
             font-family: Verdana, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
         }
-        a {
-            color: #fff;
-            text-decoration: none;
+        .container {
+            width: 90%;
+            margin: auto;
         }
-        table {
-            font-size: x-small;
-        }
-        tfoot tr td {
-            font-weight: bold;
-            font-size: x-small;
-        }
-        .invoice table {
-            margin: 15px;
-        }
-        .invoice h3 {
-            margin-left: 15px;
-        }
-
-        .invoice h2 {
-            
-            margin-left: 15px;
-        }
-        .invoice h5 {
-            
-            margin-left: 15px;
-        }
-
-        .information p {
-            color: rgb(255, 255, 255);
-        }
-        .information {
+        .header, .footer {
             background-color: #01090e;
-            color: #FFF;
-            position:relative;
- 
+            color: white;
+            padding: 10px;
+            text-align: center;
         }
-
-        .informationbar {
+        .header img {
+            max-width: 150px;
+        }
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .info-table td {
+            padding: 5px;
+        }
+        .content {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .content h3 {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .details, .cards {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .details th, .details td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .details th {
             background-color: #1795ee;
-            color: #FFF;
-            position:relative;
- 
+            color: white;
         }
-        .information .logo {
-           
-        }
-        .information table {
-            padding: 15px;
+        
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
         }
     </style>
-
 </head>
 <body>
-
-<div class="information" style="width:100%; position: absolute; top: -50;">
-    <table width="100%">
-        <tr>
-            <td align="left" style="width: 40%;">
-                <p><strong> Liv Beira</strong></p>
-
-
-            </td>
-            <td align="center">
-                <img src="https://liv.mtaxas.co.mz/image/liv.png" alt="Logo" width="256" class="logo"/>
-            </td> 
-            <td align="right" style="width: 40%;">
-                
-                <h3>Liv Beira</h3>
-                
-                   <p> https://liv.mtaxas.co.mz</p>
-                   <p> +258 84 000 0000</p>
-                    <p> Beira, Mozambique</p>
-               
-            </td>
-        </tr>
-
-    </table>
-</div>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-
-<br/>
-
-<div class="invoice">
-
-    <h3 style="text-align:center" >Relatório do venda dos produtos do bar</h3>
-    <h5><strong>Número de Mesas</strong>: {{$tables->count()}}</h5>
-    <h5><strong>Número de Produtos</strong>: {{$products->count()}}</h5>
-    <h5><strong>Valor de Venda</strong>: {{$orders->sum('total')}} MT</h5>
-
-    <h2>Produtos Registrados</h2>
-    <div>
-        <table style="table-layout: fixed; width: 95%;">
-            <thead>
-                <tr>
-                    <th  width="20%" align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        Nome
-                    </th>
-                    <th align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        Quantidade Vendida
-                    </th>
-                    <th align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                       Preço de Venda
-                    </th>
-                    <th align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        Valor Venda
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($products as $item)
-                <tr>
-                    <td style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->name}}
-                    </td>
-                    <td align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->orderitens->sum('quantity')}}
-                    </td>
-                    <td align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->price}} MT
-                    </td>
-                    <td align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->orderitens->sum('total')}} MT
-                    </td>
-                    
-                </tr>
-                @endforeach
-                
-            </tbody>
+    <div class="header">
+        <table class="info-table">
+            <tr>
+                <td align="left" style="width: 40%; font-weight: bold;">Liv Beira</td>
+                <td align="center">
+                    <img src="https://liv.mtaxas.co.mz/image/liv.png" alt="Logo" class="logo"/>
+                </td>
+                <td align="right" style="width: 40%;">
+                    <strong>Liv Beira</strong><br>
+                    <a href="https://liv.mtaxas.co.mz" style="color:white;">liv.mtaxas.co.mz</a><br>
+                    +258 84 000 0000<br>
+                    Beira, Mozambique
+                </td>
+            </tr>
         </table>
     </div>
 
-    <h2>Garçom</h2>
-    <div>
-        <table style="table-layout: fixed; width: 95%;">
-            <thead>
+    <div class="container">
+        <div class="content">
+            <h3>Relatório de Vendas - Bar</h3>
+            <table class="details">
                 <tr>
-                    <th  width="20%" align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        Nome
-                    </th>
-                    <th align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        Numero de Vendas
-                    </th>
-                    <th align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                       Valor de Venda
-                    </th>
+                    <th>Descrição</th>
+                    <th>Valor</th>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach ($users as $item)
                 <tr>
-                    <td style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->name}}
-                    </td>
-                    <td align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->orderitens->sum('quantity')}}
-                    </td>
-                    <td align="left" style="border-top: 1px solid #eee; padding: 5px;">
-                        {{$item->orderitens->sum('total')}} MT
-                    </td>
-                    
+                    <td>Número de Mesas</td>
+                    <td>{{$totalOrderTables}}</td>
                 </tr>
-                @endforeach
-                
-            </tbody>
-        </table>
+                <tr>
+                    <td>Número de Produtos</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Valor de Venda</td>
+                    <td>0 MT</td>
+                </tr>
+                <tr>
+                    <td>Total de Pedidos Em Mesa</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Total de Pedidos Venda Rápida</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Média de Venda por Mesa</td>
+                    <td>0 MT</td>
+                </tr>
+                <tr>
+                    <td>Total Pagamentos</td>
+                    <td>-</td>
+                </tr>
+            </table>
+
+            <h3>Caixa</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Valor</th>
+                    <th>Valor Final</th>
+                    <th>Estado</th>
+                    <th>Abertura</th>
+                    <th>Fechamento</th>
+                </tr>
+                <tr>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+            </table>
+
+            <h3>Pagamentos Efetuados</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Valor</th>
+                    <th>Valor Final</th>
+                    <th>Estado</th>
+                    <th>Abertura</th>
+                    <th>Fechamento</th>
+                </tr>
+                <tr>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+            </table>
+
+            <h3>Vendas Em Mesa</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Valor</th>
+                    <th>Valor Final</th>
+                    <th>Estado</th>
+                    <th>Abertura</th>
+                    <th>Fechamento</th>
+                </tr>
+                <tr>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+            </table>
+
+            <h3>Vendas Rápidas</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Valor</th>
+                    <th>Valor Final</th>
+                    <th>Estado</th>
+                    <th>Abertura</th>
+                    <th>Fechamento</th>
+                </tr>
+                <tr>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+            </table>
+        </div>
     </div>
-
-   
- 
-</div>
-
-<div class="informationbar" style="width:100%; position: absolute; bottom: 0;">
-    <table width="100%">
-        <tr>
-            <td align="left" style="width: 50%;">
-                &copy; {{ date('Y') }} LIV Beira. Todos direitos reservado. 
-            </td>
-            <td align="right" style="width: 60%;">
-                        Beira, Mozambique 
-            </td>
-        </tr>
-
-    </table>
-</div>
+    
+    <div class="footer">
+        &copy; {{ date('Y') }} LIV Beira. Todos os direitos reservados. | Beira, Mozambique
+    </div>
 </body>
 </html>
