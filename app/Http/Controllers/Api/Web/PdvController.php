@@ -34,7 +34,7 @@ class PdvController extends Controller
             ->with('status')
             ->with('last_order.user')
             ->orderBy('id','asc')
-            ->paginate(50);
+            ->paginate(100);
 
             $openCashRegister = CashRegister::where('user_id', Auth::id())
             ->where('cash_register_status_id', 1) // 1 = Aberto

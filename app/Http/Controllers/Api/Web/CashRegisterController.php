@@ -562,7 +562,18 @@ public function report(){
 
     $ticket = round($averageTicket, 2);
 
-
+// return response()->json([
+        //     'cash_register' => $cashRegister,
+        //     'total_sales' => $totalSales,
+        //     'total_orders' => $totalOrders,
+        //     'total_tables' => $totalOrderTables,
+        //     'total_quick_sell' => $totalOrderQuickSell,
+        //     'average_ticket' => round($averageTicket, 2),
+        //     'total_tables_amount' => $totalOrderTablesAmount,
+        //     'total_quick_sell_amount' => $totalOrderQuickSellAmount,
+        //     'total_payments' => $totalPayments,
+        //     'total_payments_amount' => $totalPaymentsAmount,
+        // ]);
 
     $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount'))->setOptions([
         'setPaper'=>'a8',

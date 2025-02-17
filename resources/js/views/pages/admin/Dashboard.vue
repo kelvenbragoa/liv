@@ -392,9 +392,9 @@ function printPDF() {
 }
 
 function downloadReport () {
-    if (date.value) {
-      date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-    }
+    // if (date.value) {
+    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    // }
     axios
         .get(`/api/cashregisters/report`, {
             params: {
@@ -460,13 +460,13 @@ onMounted(() => {
                 @click="refreshData" 
                 :disabled="isLoadingData"
                 />
-                <!-- <Button 
+                <Button 
                 label="Baixar" 
                 icon="pi pi-download" 
                 class="p-button-primary ml-2 mb-2"
                 @click="downloadReport" 
                 :disabled="isLoadingData"
-                /> -->
+                />
             </div>
             
             <div class="grid grid-cols-12 gap-8 mb-3">

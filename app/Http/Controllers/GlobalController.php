@@ -55,21 +55,21 @@ class GlobalController extends Controller
     
         $totalPayments = Payment::whereIn('cash_register_id', $cashRegisterId)->count();
         $totalPaymentsAmount = Payment::whereIn('cash_register_id', $cashRegisterId)->sum('amount');
-    
-        return response()->json([
-            'cash_register' => $cashRegister,
-            'total_sales' => $totalSales,
-            'total_orders' => $totalOrders,
-            'total_tables' => $totalOrderTables,
-            'total_quick_sell' => $totalOrderQuickSell,
-            'average_ticket' => round($averageTicket, 2),
-            'total_tables_amount' => $totalOrderTablesAmount,
-            'total_quick_sell_amount' => $totalOrderQuickSellAmount,
-            'total_payments' => $totalPayments,
-            'total_payments_amount' => $totalPaymentsAmount,
-        ]);
+        $ticket = round($averageTicket, 2);
+        // return response()->json([
+        //     'cash_register' => $cashRegister,
+        //     'total_sales' => $totalSales,
+        //     'total_orders' => $totalOrders,
+        //     'total_tables' => $totalOrderTables,
+        //     'total_quick_sell' => $totalOrderQuickSell,
+        //     'average_ticket' => round($averageTicket, 2),
+        //     'total_tables_amount' => $totalOrderTablesAmount,
+        //     'total_quick_sell_amount' => $totalOrderQuickSellAmount,
+        //     'total_payments' => $totalPayments,
+        //     'total_payments_amount' => $totalPaymentsAmount,
+        // ]);
 
-        $pdf = Pdf::loadView('pdf.report', compact('cash_register','total_sales','total_orders','total_tables','total_quick_sell','average_ticket','total_tables_amount','total_quick_sell_amount','total_payments','total_payments_amount'))->setOptions([
+        $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount'))->setOptions([
             'setPaper'=>'a8',
             // 'setPaper' => [0, 0, 640, 2376],
             'defaultFont' => 'sans-serif',
