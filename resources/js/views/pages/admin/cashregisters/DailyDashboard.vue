@@ -432,13 +432,13 @@ onMounted(() => {
                 />
                 </div>
 
-                <Button 
+                <!-- <Button 
                 label="Gerar Relatório" 
                 icon="pi pi-chart-line" 
                 class="p-button-primary mb-2"
                 @click="refreshData" 
                 :disabled="isLoadingData"
-                />
+                /> -->
             </div>
             
             <div class="grid grid-cols-12 gap-8 mb-3">
