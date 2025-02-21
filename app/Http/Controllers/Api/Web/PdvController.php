@@ -564,10 +564,10 @@ class PdvController extends Controller
 
 
     public function indexKitchen(){
-        $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
-        $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
-        $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
-        $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+        $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->with('user')->orderBy('created_at','asc')->get();
+        $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('preparedby')->orderBy('updated_at','desc')->get();
+        $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('readyby')->orderBy('updated_at','desc')->get();
+        $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('deliveredby')->orderBy('updated_at','desc')->limit(50)->get();
 
         return response()->json([
             "order_itens_pending"=>$order_itens_pending,
@@ -590,15 +590,19 @@ class PdvController extends Controller
     switch ($currentStatus) {
         case 1:
             $nextStatus = 2;
+            $order_item->update(['prepared_by_user_id' => Auth::user()->id]);
             break;
         case 2:
             $nextStatus = 3;
+            $order_item->update(['ready_by_user_id' => Auth::user()->id]);
             break;
         case 3:
             $nextStatus = 4;
+            $order_item->update(['delivered_by_user_id' => Auth::user()->id]);
             break;
         case 4:
             $nextStatus = 4;
+            $order_item->update(['delivered_by_user_id' => Auth::user()->id]);
             break;
         default:
             return response()->json(['message' => 'Invalid status'], 400);
@@ -607,10 +611,10 @@ class PdvController extends Controller
     $order_item->update(['order_item_status_id' => $nextStatus]);
 
 
-    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
-    $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
-    $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
-    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',1)->with('product')->with('order.table')->with('user')->orderBy('created_at','asc')->get();
+    $order_itens_getting_ready = OrderItem::where('order_item_status_id', 2)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('preparedby')->orderBy('updated_at','desc')->get();
+    $order_itens_ready = OrderItem::where('order_item_status_id', 3)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('readyby')->orderBy('updated_at','desc')->get();
+    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',1)->with('product')->with('order.table')->with('user')->with('deliveredby')->orderBy('updated_at','desc')->limit(50)->get();
 
     return response()->json([
         "order_itens_pending"=>$order_itens_pending,
@@ -622,9 +626,9 @@ class PdvController extends Controller
 
 
 public function indexBar(){
-    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
+    $order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->with('user')->orderBy('created_at','asc')->get();
     
-    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+    $order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->with('user')->with('deliveredby')->orderBy('updated_at','desc')->limit(50)->get();
 
     return response()->json([
         "order_itens_pending"=>$order_itens_pending,
@@ -646,9 +650,11 @@ $currentStatus = $order_item->order_item_status_id;
 switch ($currentStatus) {
     case 1:
         $nextStatus = 4;
+        $order_item->update(['delivered_by_user_id' => Auth::user()->id]);
         break;
     case 4:
         $nextStatus = 4;
+        $order_item->update(['delivered_by_user_id' => Auth::user()->id]);
         break;
     default:
         return response()->json(['message' => 'Invalid status'], 400);
@@ -657,8 +663,8 @@ switch ($currentStatus) {
 $order_item->update(['order_item_status_id' => $nextStatus]);
 
 
-$order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->orderBy('created_at','asc')->get();
-$order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->orderBy('updated_at','desc')->get();
+$order_itens_pending = OrderItem::where('order_item_status_id', 1)->where('department_id',2)->with('product')->with('order.table')->with('user')->orderBy('created_at','asc')->get();
+$order_itens_delivered = OrderItem::where('order_item_status_id', 4)->where('department_id',2)->with('product')->with('order.table')->with('user')->with('deliveredby')->orderBy('updated_at','desc')->limit(50)->get();
 
 return response()->json([
     "order_itens_pending"=>$order_itens_pending,

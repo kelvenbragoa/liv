@@ -28,5 +28,17 @@ class OrderItem extends Model
         return $this->hasOne('App\Models\User', 'id', 'user_id');
     }
 
+    public function preparedby(){
+        return $this->hasOne('App\Models\User', 'id', 'prepared_by_user_id');
+    }
+
+    public function readyby(){
+        return $this->hasOne('App\Models\User', 'id', 'ready_by_user_id');
+    }
+
+    public function deliveredby(){
+        return $this->hasOne('App\Models\User', 'id', 'delivered_by_user_id');
+    }
+
     
 }
