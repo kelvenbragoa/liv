@@ -254,8 +254,11 @@ onUnmounted(() => {
                                                 <!-- <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ item.order.table ? tem.order.table.name : ''  }}</span> -->
 
                                                 <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ item.order.table ? item.order.table.name : "Pedido Rápido" }} | #{{ item.order.id }}</span>
+                                                <p>
+                                                    <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">Garçom:{{ item.user ? item.user.name : "N/A" }}</span>
+                                                </p>
                                                 <div class="text-lg font-medium mt-2">{{ item.quantity }} * {{ item.product.name }}</div>
-                                                <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }}</span>
+                                                <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">DC:{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }} | DA:{{ moment(item.updated_at).format('DD-MM-YYYY H:mm') }}</span>
                                             </div>
                                         </div>
                                         <div class="flex flex-col md:items-end gap-8">
@@ -357,8 +360,14 @@ onUnmounted(() => {
                                         <div class="flex flex-row md:flex-col justify-between items-start gap-2">
                                             <div>
                                                 <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ item.order.table ? item.order.table.name : "Pedido Rápido" }} | #{{ item.order.id }}</span>
+                                                <p>
+                                                    <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">Garçom:{{ item.user ? item.user.name : "N/A" }}</span>
+                                                </p>
+                                                <p>
+                                                    <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">Atualizado por:{{ item.deliveredby ? item.deliveredby.name : "N/A" }}</span>
+                                                </p>
                                                 <div class="text-lg font-medium mt-2">{{ item.product.name }}</div>
-                                                <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }}</span>
+                                                <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">DC:{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }} | DA:{{ moment(item.updated_at).format('DD-MM-YYYY H:mm') }}</span>
                                             </div>
                                         </div>
                                         <div class="flex flex-col md:items-end gap-8">
