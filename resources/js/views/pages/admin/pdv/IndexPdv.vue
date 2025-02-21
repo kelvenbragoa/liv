@@ -115,6 +115,7 @@ function goBackUsingBack() {
 }
 
 function printReceipt (id) {
+    console.log('hello')
     axios
     .post(`/api/getquickreceipt/${id}`, {}, { responseType: 'blob' })
         .then((response) => {
@@ -122,7 +123,7 @@ function printReceipt (id) {
             const blob = new Blob([response.data], { type: 'application/pdf' });
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialog.value = true;  // Abre o diálogo modal
-            openPrintReceipt.value = false;
+            // openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
 
         })
@@ -177,6 +178,7 @@ const closeListQuickSellDialog = () =>{
 const closeCloseConfirmation = () => {
     displayConfirmation.value = false;
 };
+
 const confirmDelete = (id) => {
     selectedItemToDelete.value = id;
     deleteDialog.value = true;
@@ -467,87 +469,7 @@ onUnmounted(() => {
 
         <Dialog header="Lista de Vendas Rápidas" v-model:visible="openListQuickSellDialog" :style="{ width: '90vw', maxWidth: '940px' }"  :modal="true">
             <div class="p-fluid">
-                <!-- <DataTable
-                        :value="quicksells.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsQuickSell"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingQuickSell"
-                        :first="(currentPage - 1) * rowsPerPage"
-                        :onPage="onPageChange"
-                        showGridlines
-                        @rowExpand="onRowExpand" @rowCollapse="onRowCollapse" tableStyle="min-width: 60rem"
-                        >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="Ações" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <a class="m-3" href="#" @click.prevent="seeOrderItens(data)"><i class="pi pi-eye"></i></a>
-                        </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.total }} MT
-                            </template>
-                        </Column>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                Pedido Rápido
-                            </template>
-                        </Column>
-                        <Column header="Garçom" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.user.name }}
-                            </template>
-                        </Column>
-                        <Column header="Estado" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.status.name }}
-                            </template>
-                        </Column>
-                        <Column header="Itens" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.itens.length }}
-                            </template>
-                        </Column>
-                        
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <template #expansion="slotProps">
-        <div class="p-3">
-            <h5>Itens da Venda #{{ slotProps.data.id }}</h5>
-            <DataTable :value="slotProps.data.itens" responsiveLayout="scroll">
-                <Column field="id" header="ID" style="min-width: 4rem" />
-                <Column field="name" header="Produto" style="min-width: 10rem" />
-                <Column field="quantity" header="Quantidade" style="min-width: 6rem" />
-                <Column field="price" header="Preço Unitário" style="min-width: 8rem">
-                    <template #body="{ data }">
-                        {{ data.price.toFixed(2) }} MT
-                    </template>
-                </Column>
-                <Column header="Subtotal" style="min-width: 8rem">
-                    <template #body="{ data }">
-                        {{ (data.price * data.quantity).toFixed(2) }} MT
-                    </template>
-                </Column>
-            </DataTable>
-        </div>
-    </template>
-                        
-                    </DataTable> -->
+               
                     <DataTable 
                     v-model:expandedRows="expandedRows" 
                     :paginator="true"

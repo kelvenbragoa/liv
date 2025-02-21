@@ -36,6 +36,11 @@ const totalRecordsQuickSell = ref(0);
 const expandedRows = ref([]);
 const showDialog = ref(false);
 const pdfUrl = ref(null);
+const selectedItemToDelete = ref(null);
+const deleteDialog = ref(false); // Controla a visibilidade do dialog
+const confirmationCode = ref(null);
+const correct_code = '142502'
+
 
 
 function printPDF() {
@@ -128,9 +133,10 @@ const closeConfirmation = () => {
 const closeCloseConfirmation = () => {
     displayConfirmation.value = false;
 };
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
+
+const confirmDelete = (id) => {
+    selectedItemToDelete.value = id;
+    deleteDialog.value = true;
 };
 
 const closeListQuickSellDialog = () =>{
@@ -639,5 +645,16 @@ onUnmounted(() => {
         <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
       </template>
     </Dialog>
+
+    <Dialog header="Confirmar Exclusão" v-model:visible="deleteDialog" style="width: 20vw">
+            <div class="p-4">
+            <p class="mb-4">Insira o código para confirmar a exclusão do item <strong></strong>.</p>
+            <input v-model="confirmationCode" type="password" placeholder="Código de confirmação" class="w-full p-2 border rounded" />
+            <div class="mt-4 flex justify-end space-x-2">
+                <Button label="Cancelar" @click="deleteDialog = false" class="bg-gray-300 hover:bg-gray-400 text-black font-semibold px-4 py-2 rounded" />
+                <Button label="Confirmar" @click="deleteItem" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded" />
+            </div>
+            </div>
+        </Dialog>
 
 </template>
