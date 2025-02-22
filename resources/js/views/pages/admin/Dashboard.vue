@@ -150,8 +150,8 @@ function getSeverity2(status) {
 
 
 function closeDialog() {
-    showDialog.value = true;
-    router.back();
+    showDialogReport.value = false;
+    // router.back();
 
 }
 
@@ -460,13 +460,13 @@ onMounted(() => {
                 @click="refreshData" 
                 :disabled="isLoadingData"
                 />
-                <!-- <Button 
+                <Button 
                 label="Baixar" 
                 icon="pi pi-download" 
                 class="p-button-primary ml-2 mb-2"
                 @click="downloadReport" 
                 :disabled="isLoadingData"
-                /> -->
+                />
             </div>
             
             <div class="grid grid-cols-12 gap-8 mb-3">

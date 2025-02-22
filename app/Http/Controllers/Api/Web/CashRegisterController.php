@@ -574,8 +574,16 @@ public function report(){
         //     'total_payments' => $totalPayments,
         //     'total_payments_amount' => $totalPaymentsAmount,
         // ]);
+    
+    
+    $paymentsReport = Payment::with('method')->with('order.table')->whereIn('cash_register_id',$cashRegisterId)->get();
+    $orderItemsTableReport = OrderItem::whereIn('cash_register_id', $cashRegisterId)->get();
+    $groupedOrderItems = $orderItemsTableReport->groupBy('order_id');
+    $orderIds = $groupedOrderItems->keys();
+    $ordersReport = Order::whereIn('id', $orderIds)->whereNotNull('table_id')->with(['itens.product','itens.status','itens.user','table','status','user'])->get();
+    $quickOrderReport = Order::with(['itens.product','itens.status','itens.user','table','status','user'])->whereIn('cash_register_id', $cashRegisterId)->whereNull('table_id')->get();
 
-    $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount'))->setOptions([
+    $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount','paymentsReport','ordersReport','quickOrderReport'))->setOptions([
         'setPaper'=>'a8',
         // 'setPaper' => [0, 0, 640, 2376],
         'defaultFont' => 'sans-serif',

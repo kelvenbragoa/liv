@@ -53,6 +53,8 @@ const showDialog = ref(false);
 const pdfUrl = ref(null);
 const activeIndex = ref(0);
 
+const openPrintReport = ref(false); // Controla a visibilidade do dialog
+const showDialogReport = ref(false);
 
 const cash_register = ref(0)
 const total_sales = ref(0)
@@ -395,6 +397,32 @@ const debouncedSearch = debounce(() => {
     getData(currentPage.value);
 }, 300);
 
+function downloadReport () {
+    // if (date.value) {
+    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    // }
+    axios
+        .get(`/api/cashregisters/report`, {
+            params: {
+                date: date.value
+            },
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialogReport.value = true;  // Abre o diálogo modal
+            openPrintReport.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            // goBackUsingBack();
+        });
+};
+
 watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
@@ -432,13 +460,20 @@ onMounted(() => {
                 />
                 </div>
 
-                <!-- <Button 
+                <Button 
                 label="Gerar Relatório" 
                 icon="pi pi-chart-line" 
                 class="p-button-primary mb-2"
                 @click="refreshData" 
                 :disabled="isLoadingData"
-                /> -->
+                />
+                <Button 
+                label="Baixar" 
+                icon="pi pi-download" 
+                class="p-button-primary ml-2 mb-2"
+                @click="downloadReport" 
+                :disabled="isLoadingData"
+                />
             </div>
             
             <div class="grid grid-cols-12 gap-8 mb-3">
@@ -838,6 +873,15 @@ onMounted(() => {
 
       <template v-else>
         <p>Nenhum item encontrado para este pedido.</p>
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="showDialogReport" header="Relatório" :modal="true" :style="{ width: '600px' }" :closable="false">
+      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+      
+      <template #footer>
+        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
       </template>
     </Dialog>
 </template>

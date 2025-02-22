@@ -93,29 +93,29 @@
                     <td>Número de Mesas</td>
                     <td>{{$totalOrderTables}}</td>
                 </tr>
-                <tr>
+                {{-- <tr>
                     <td>Número de Produtos</td>
                     <td>0</td>
-                </tr>
+                </tr> --}}
                 <tr>
                     <td>Valor de Venda</td>
-                    <td>0 MT</td>
+                    <td>{{$totalSales}} MT</td>
                 </tr>
                 <tr>
                     <td>Total de Pedidos Em Mesa</td>
-                    <td>0</td>
+                    <td>{{$totalOrderTables}} | {{$totalOrderTablesAmount}} MT</td>
                 </tr>
                 <tr>
                     <td>Total de Pedidos Venda Rápida</td>
-                    <td>0</td>
+                    <td>{{$totalOrderQuickSell}} | {{$totalOrderQuickSellAmount}} MT</td>
                 </tr>
                 <tr>
-                    <td>Média de Venda por Mesa</td>
-                    <td>0 MT</td>
+                    <td>Média de Venda</td>
+                    <td>{{$ticket}} MT</td>
                 </tr>
                 <tr>
                     <td>Total Pagamentos</td>
-                    <td>-</td>
+                    <td>{{$totalPayments}} | {{$totalPaymentsAmount}} MT</td>
                 </tr>
             </table>
 
@@ -130,81 +130,89 @@
                     <th>Abertura</th>
                     <th>Fechamento</th>
                 </tr>
-                <tr>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                </tr>
+                @foreach ($cashRegister as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>{{$item->user->name}}</td>
+                        <td>{{$item->order_itens_total}} MT</td>
+                        <td>{{$item->closing_balance}} MT</td>
+                        <td>{{$item->status->name}}</td>
+                        <td>{{$item->opened_at}}</td>
+                        <td>{{$item->closed_at ?? '-'}}</td>
+                    </tr>
+                @endforeach
+                
             </table>
 
             <h3>Pagamentos Efetuados</h3>
             <table class="details">
                 <tr>
                     <th>ID</th>
-                    <th>Usuário</th>
+                    <th>Venda</th>
+                    <th>Pedido</th>
+                    <th>Metodo de Pagamento</th>
                     <th>Valor</th>
-                    <th>Valor Final</th>
-                    <th>Estado</th>
-                    <th>Abertura</th>
-                    <th>Fechamento</th>
+                    <th>Data</th>
                 </tr>
-                <tr>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                </tr>
+                @foreach ($paymentsReport as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>{{$item->order_id}}</td>
+                        <td>{{$item->order->table ? $item->order->table->name : 'Pedido Rápido'}}</td>
+                        <td>{{$item->method->name}}</td>
+                        <td>{{$item->amount}} MT</td>
+                        <td>{{$item->created_at}}</td>
+                    </tr>
+                @endforeach
+
             </table>
 
             <h3>Vendas Em Mesa</h3>
             <table class="details">
                 <tr>
                     <th>ID</th>
-                    <th>Usuário</th>
-                    <th>Valor</th>
-                    <th>Valor Final</th>
+                    <th>Pedido</th>
+                    <th>Garçom</th>
                     <th>Estado</th>
-                    <th>Abertura</th>
-                    <th>Fechamento</th>
+                    <th>Itens</th>
+                    <th>Valor</th>
+                    <th>Data</th>
                 </tr>
-                <tr>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                </tr>
+                @foreach ($ordersReport as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>{{$item->table->name}}</td>
+                        <td>{{$item->user->name}}</td>
+                        <td>{{$item->status->name}}</td>
+                        <td>{{count($item->itens)}}</td>
+                        <td>{{$item->total}}</td>
+                        <td>{{$item->created_at}}</td>
+                    </tr>
+                @endforeach
             </table>
 
             <h3>Vendas Rápidas</h3>
             <table class="details">
                 <tr>
                     <th>ID</th>
-                    <th>Usuário</th>
-                    <th>Valor</th>
-                    <th>Valor Final</th>
+                    <th>Pedido</th>
+                    <th>Garçom</th>
                     <th>Estado</th>
-                    <th>Abertura</th>
-                    <th>Fechamento</th>
+                    <th>Itens</th>
+                    <th>Valor</th>
+                    <th>Data</th>
                 </tr>
-                <tr>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                </tr>
+                @foreach ($quickOrderReport as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>Pedido Rápido</td>
+                        <td>{{$item->user->name}}</td>
+                        <td>{{$item->status->name}}</td>
+                        <td>{{count($item->itens)}}</td>
+                        <td>{{$item->total}}</td>
+                        <td>{{$item->created_at}}</td>
+                    </tr>
+                @endforeach
             </table>
         </div>
     </div>
