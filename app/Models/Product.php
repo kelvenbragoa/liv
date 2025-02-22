@@ -59,17 +59,6 @@ class Product extends Model
 
     return 0;
 }
-
-    // public function scopeWithQuantityInPrincipalStock($query)
-    // {
-    //     return $query->addSelect([
-    //         'quantity_in_principal_stock' => StockCenterProduct::select('quantity')
-    //             ->join('stock_centers', 'stock_centers.id', '=', 'stock_center_products.stock_center_id')
-    //             ->whereColumn('stock_center_products.product_id', 'products.id')
-    //             ->where('stock_centers.is_principal_stock', 1)
-    //             ->limit(1)
-    //     ]);
-    // }
     public function scopeWithQuantityInPrincipalStock($query)
 {
     return $query->addSelect([

@@ -132,6 +132,14 @@ onMounted(() => {
             <div class="card flex flex-col gap-4">
                 <div class="w-full">
                     <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
+                    <Button 
+                        label="Baixar Relatório Stock" 
+                        icon="pi pi-download" 
+                        class="p-button-primary ml-2 mb-2"
+                        @click="downloadReportStock" 
+                        :disabled="isLoadingData"
+                        />
+
                 </div>
                 <div class="font-semibold text-xl">Centro de Stock</div>
                    <p><strong>Centro de Stock:</strong> {{ retriviedData.name }}</p>

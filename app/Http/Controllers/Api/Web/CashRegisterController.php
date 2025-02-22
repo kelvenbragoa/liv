@@ -615,7 +615,9 @@ public function reportstock(){
     $orderItemsTableReport = OrderItem::whereIn('cash_register_id', $cashRegisterId)
     ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_value'))
     ->groupBy('product_id')
-    ->with('product') // Para carregar os detalhes do produto
+    ->with(['product' => function ($query) {
+        $query->withQuantityInPrincipalStock(); // Adiciona a quantidade do estoque principal
+    }])
     ->get();
 
     $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReport'))->setOptions([
