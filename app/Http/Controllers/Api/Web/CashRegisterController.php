@@ -13,7 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
-
+use Illuminate\Support\Facades\DB;
 
 class CashRegisterController extends Controller
 {
@@ -584,6 +584,41 @@ public function report(){
     $quickOrderReport = Order::with(['itens.product','itens.status','itens.user','table','status','user'])->whereIn('cash_register_id', $cashRegisterId)->whereNull('table_id')->get();
 
     $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount','paymentsReport','ordersReport','quickOrderReport'))->setOptions([
+        'setPaper'=>'a8',
+        // 'setPaper' => [0, 0, 640, 2376],
+        'defaultFont' => 'sans-serif',
+        'isRemoteEnabled' => 'true'
+    ]);
+    return $pdf->setPaper('a4')->stream('report.pdf');
+}
+
+
+public function reportstock(){
+
+    $dateURL = request('date');
+
+    $date = $dateURL ? date('Y-m-d', strtotime($dateURL)) : date('Y-m-d');
+
+    $cashRegister = CashRegister::with('orderitens')
+    ->with('user')
+    ->with('status')->whereDate('created_at', $date)->get();
+
+    $cashRegister->transform(function ($cash) {
+        $cash->order_itens_total = $cash->orderitens->sum('total');
+        return $cash;
+    });
+
+    $cashRegisterId = $cashRegister->pluck('id');
+
+
+    
+    $orderItemsTableReport = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+    ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_value'))
+    ->groupBy('product_id')
+    ->with('product') // Para carregar os detalhes do produto
+    ->get();
+
+    $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReport'))->setOptions([
         'setPaper'=>'a8',
         // 'setPaper' => [0, 0, 640, 2376],
         'defaultFont' => 'sans-serif',

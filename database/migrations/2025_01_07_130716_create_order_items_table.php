@@ -21,6 +21,11 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->double('price',15,2);
             $table->double('total',15,2);
+            $table->unsignedBigInteger('cash_register_id')->default(0);
+            $table->unsignedBigInteger('prepared_by_user_id')->nullable();
+            $table->unsignedBigInteger('ready_by_user_id')->nullable();
+            $table->unsignedBigInteger('delivered_by_user_id')->nullable();
+
             $table->timestamps();
         });
     }

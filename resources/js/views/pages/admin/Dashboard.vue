@@ -392,11 +392,31 @@ function printPDF() {
 }
 
 function downloadReport () {
-    // if (date.value) {
-    //   date.value = date.value.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-    // }
     axios
         .get(`/api/cashregisters/report`, {
+            params: {
+                date: date.value
+            },
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialogReport.value = true;  // Abre o diálogo modal
+            openPrintReport.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            // goBackUsingBack();
+        });
+};
+
+function downloadReportStock () {
+    axios
+        .get(`/api/cashregisters/reportstock`, {
             params: {
                 date: date.value
             },
@@ -461,10 +481,18 @@ onMounted(() => {
                 :disabled="isLoadingData"
                 />
                 <Button 
-                label="Baixar" 
+                label="Baixar Relatório Geral" 
                 icon="pi pi-download" 
                 class="p-button-primary ml-2 mb-2"
                 @click="downloadReport" 
+                :disabled="isLoadingData"
+                />
+
+                <Button 
+                label="Baixar Relatório Stock" 
+                icon="pi pi-download" 
+                class="p-button-primary ml-2 mb-2"
+                @click="downloadReportStock" 
                 :disabled="isLoadingData"
                 />
             </div>

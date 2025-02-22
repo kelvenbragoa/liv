@@ -90,6 +90,7 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('quickorderdelete/{id}',[OrderController::class,'deleteorder']);
 
     Route::get('cashregisters/report',[CashRegisterController::class,'report']);
+    Route::get('cashregisters/reportstock',[CashRegisterController::class,'reportstock']);
 
 
 
