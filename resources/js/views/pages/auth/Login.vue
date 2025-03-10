@@ -34,26 +34,11 @@ const loginUser = () => {
             } else if (response.data.user.role_id == 4) {
                 window.location.href = '/kitchen/pdv';
             } else if (response.data.user.role_id == 5) {
-                window.location.href = '/bar/pdv'};
-            // if (response.data.user.role_id == 1 || response.data.user.role_id == 2) {
-            //     router.replace('/admin/dashboard');
-            // }
-            // if (response.data.user.role_id == 3) {
-            //     router.replace('/waiter/dashboard');
-            // }
-            // if (response.data.user.role_id == 4) {
-            //     router.replace('/kitchen/dashboard');
-            // }
-            // if (response.data.user.role_id == 5) {
-            //     router.replace('/bar/dashboard');
-            // }
-            // if (response.data.user.role_id == 2) {
-            //     if (response.data.user.is_promotor == 1) {
-            //         router.replace('/promotor/dashboard');
-            //     } else {
-            //         router.replace('/');
-            //     }
-            // }
+                window.location.href = '/bar/pdv'
+            } else if (response.data.user.role_id == 6) {
+                window.location.href = '/stock/dashboard'
+            };
+           
         })
         .catch((error) => {
             errorMessage.value = error.response.data.message;

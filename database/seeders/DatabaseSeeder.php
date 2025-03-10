@@ -27,12 +27,12 @@ class DatabaseSeeder extends Seeder
         // $this->call(OrderStatusTableSeeder::class);
         // $this->call(PaymentMethodTableSeeder::class);
         // $this->call(ReservationStatusTableSeeder::class);
-        // $this->call(RoleTableSeeder::class);
+        $this->call(RoleTableSeeder::class);
         // $this->call(TablesTableSeeder::class);
         // $this->call(TableStatusTableSeeder::class);
         // $this->call(OrderItemStatusTableSeeder::class);
         // $this->call(StatusTableSeeder::class);
-        $this->call(CashRegisterTableSeeder::class);
+        // $this->call(CashRegisterTableSeeder::class);
 
 
     }

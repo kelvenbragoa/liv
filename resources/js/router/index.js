@@ -4,6 +4,7 @@ import AppAdminLayout from '@/layout_admin/AppAdminLayout.vue';
 import AppWaiterLayout from '@/layout_waiter/AppWaiterLayout.vue';
 import AppKitchenLayout from '@/layout_kitchen/AppKitchenLayout.vue';
 import AppBarLayout from '@/layout_bar/AppBarLayout.vue';
+import AppStockLayout from '@/layout_stock/AppStockLayout.vue';
 
 
 import { createRouter, createWebHistory } from 'vue-router';
@@ -611,6 +612,325 @@ const router = createRouter({
 
 
                 
+            ]
+        },
+        {
+            path: '/stock/dashboard',
+            component: AppStockLayout,
+            children: [
+                {
+                    path: '/stock/dashboard',
+                    name: 'stock.dashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/Dashboard.vue')
+                },
+                {
+                    path: '/stock/categories',
+                    name: 'stock.categories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/categories/IndexCategories.vue')
+                },
+                {
+                    path: '/stock/categories/create',
+                    name: 'stock.categories.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/categories/CreateCategories.vue')
+                },
+                {
+                    path: '/stock/categories/:id',
+                    name: 'stock.categories.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/categories/ShowCategories.vue')
+                },
+                {
+                    path: '/stock/categories/:id/edit',
+                    name: 'stock.categories.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/categories/EditCategories.vue')
+                },
+
+                {
+                    path: '/stock/subcategories',
+                    name: 'stock.subcategories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/subcategories/IndexSubCategories.vue')
+                },
+                {
+                    path: '/stock/subcategories/create',
+                    name: 'stock.subcategories.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/subcategories/CreateSubCategories.vue')
+                },
+                {
+                    path: '/stock/subcategories/:id',
+                    name: 'stock.subcategories.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/subcategories/ShowSubCategories.vue')
+                },
+                {
+                    path: '/stock/subcategories/:id/edit',
+                    name: 'stock.subcategories.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/subcategories/EditSubCategories.vue')
+                },
+
+
+                {
+                    path: '/stock/products',
+                    name: 'stock.products',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/products/IndexProducts.vue')
+                },
+                {
+                    path: '/stock/products/create',
+                    name: 'stock.products.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/products/CreateProducts.vue')
+                },
+                {
+                    path: '/stock/products/:id',
+                    name: 'stock.products.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/products/ShowProducts.vue')
+                },
+                {
+                    path: '/stock/products/:id/edit',
+                    name: 'stock.products.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/products/EditProducts.vue')
+                },
+
+                {
+                    path: '/stock/centerstocks',
+                    name: 'stock.centerstocks',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/centerstocks/IndexCenterStocks.vue')
+                },
+                {
+                    path: '/stock/centerstocks/create',
+                    name: 'stock.centerstocks.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/centerstocks/CreateCenterStocks.vue')
+                },
+                {
+                    path: '/stock/centerstocks/:id',
+                    name: 'stock.centerstocks.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/centerstocks/ShowCenterStocks.vue')
+                },
+                {
+                    path: '/stock/centerstocks/:id/edit',
+                    name: 'stock.centerstocks.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/centerstocks/EditCenterStocks.vue')
+                },
+
+
+                {
+                    path: '/stock/suppliers',
+                    name: 'stock.suppliers',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/suppliers/IndexSuppliers.vue')
+                },
+                {
+                    path: '/stock/suppliers/create',
+                    name: 'stock.suppliers.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/suppliers/CreateSuppliers.vue')
+                },
+                {
+                    path: '/stock/suppliers/:id',
+                    name: 'stock.suppliers.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/suppliers/ShowSuppliers.vue')
+                },
+                {
+                    path: '/stock/suppliers/:id/edit',
+                    name: 'stock.suppliers.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/suppliers/EditSuppliers.vue')
+                },
+
+
+                {
+                    path: '/stock/stocktransfers',
+                    name: 'stock.stocktransfers',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/stocktransfers/IndexStockTransfers.vue')
+                },
+                {
+                    path: '/stock/stocktransfers/create',
+                    name: 'stock.stocktransfers.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/stocktransfers/CreateStockTransfers.vue')
+                },
+                {
+                    path: '/stock/stocktransfers/:id',
+                    name: 'stock.stocktransfers.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/stocktransfers/ShowStockTransfers.vue')
+                },
+                {
+                    path: '/stock/stocktransfers/:id/edit',
+                    name: 'stock.stocktransfers.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/stocktransfers/EditStockTransfers.vue')
+                },
+
+
+
+
+                {
+                    path: '/stock/inventories',
+                    name: 'stock.inventories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/inventories/IndexInventories.vue')
+                },
+                {
+                    path: '/stock/inventories/create',
+                    name: 'stock.inventories.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/inventories/CreateInventories.vue')
+                },
+                {
+                    path: '/stock/inventories/:id',
+                    name: 'stock.inventories.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/inventories/ShowInventories.vue')
+                },
+                {
+                    path: '/stock/inventories/:id/edit',
+                    name: 'stock.inventories.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/inventories/EditInventories.vue')
+                },
+
+
+                {
+                    path: '/stock/entrynotes',
+                    name: 'stock.entrynotes',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/entrynotes/IndexEntryNotes.vue')
+                },
+                {
+                    path: '/stock/entrynotes/create',
+                    name: 'stock.entrynotes.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/entrynotes/CreateEntryNotes.vue')
+                },
+                {
+                    path: '/stock/entrynotes/:id',
+                    name: 'stock.entrynotes.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/entrynotes/ShowEntryNotes.vue')
+                },
+                {
+                    path: '/stock/entrynotes/:id/edit',
+                    name: 'stock.entrynotes.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/entrynotes/EditEntryNotes.vue')
+                },
+
+
+                {
+                    path: '/stock/exitnotes',
+                    name: 'stock.exitnotes',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/exitnotes/IndexExitNotes.vue')
+                },
+                {
+                    path: '/stock/exitnotes/create',
+                    name: 'stock.exitnotes.create',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/exitnotes/CreateExitNotes.vue')
+                },
+                {
+                    path: '/stock/exitnotes/:id',
+                    name: 'stock.exitnotes.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/exitnotes/ShowExitNotes.vue')
+                },
+                {
+                    path: '/stock/exitnotes/:id/edit',
+                    name: 'stock.exitnotes.edit',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/stock/exitnotes/EditExitNotes.vue')
+                },
+
             ]
         },
         {
