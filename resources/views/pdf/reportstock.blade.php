@@ -85,7 +85,7 @@
         <div class="content">
             <h3>Relatório de Stock</h3>
 
-            <h3>Produtos Stock</h3>
+            <h3>Produtos Stock Bar</h3>
             <table class="details">
                 <tr>
                     <th>Produto</th>
@@ -97,7 +97,7 @@
                     $total_geral_quantidade = 0;
                     $total_geral_valor = 0;
                 @endphp
-                @foreach ($orderItemsTableReport as $item)
+                @foreach ($orderItemsTableReportBar as $item)
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
                         <td>{{ $item->total_quantity }}</td>
@@ -113,6 +113,38 @@
                     <th>Total</th>
                     <td>{{ $total_geral_quantidade }}</td>
                     <td>{{ number_format($total_geral_valor, 2, ',', '.') }} MT</td>
+                </tr>
+                
+            </table>
+
+            <h3>Produtos Stock Cozinha</h3>
+            <table class="details">
+                <tr>
+                    <th>Produto</th>
+                    <th>Quantidade Vendida</th>
+                    <th>Valor Total</th>
+                    <th>Stock Atual</th>
+                </tr>
+                @php
+                    $total_geral_quantidade_kitchen = 0;
+                    $total_geral_valor_kitchen = 0;
+                @endphp
+                @foreach ($orderItemsTableReportKitchen as $item)
+                    <tr>
+                        <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
+                        <td>{{ $item->total_quantity }}</td>
+                        <td>{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
+                        <td>{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
+                    </tr>
+                    @php
+                        $total_geral_quantidade_kitchen += $item->total_quantity;
+                        $total_geral_valor_kitchen += $item->total_value;
+                    @endphp
+                @endforeach
+                <tr>
+                    <th>Total</th>
+                    <td>{{ $total_geral_quantidade_kitchen }}</td>
+                    <td>{{ number_format($total_geral_valor_kitchen, 2, ',', '.') }} MT</td>
                 </tr>
                 
             </table>

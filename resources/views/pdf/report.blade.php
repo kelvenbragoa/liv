@@ -126,6 +126,7 @@
                     <th>Usuário</th>
                     <th>Valor</th>
                     <th>Valor Final</th>
+                    <th>Diferença</th>
                     <th>Estado</th>
                     <th>Abertura</th>
                     <th>Fechamento</th>
@@ -136,6 +137,7 @@
                         <td>{{$item->user->name}}</td>
                         <td>{{$item->order_itens_total}} MT</td>
                         <td>{{$item->closing_balance}} MT</td>
+                        <td>{{$item->difference ?? 0}} MT</td>
                         <td>{{$item->status->name}}</td>
                         <td>{{$item->opened_at}}</td>
                         <td>{{$item->closed_at ?? '-'}}</td>
@@ -143,6 +145,23 @@
                 @endforeach
                 
             </table>
+
+            {{-- <h3>Produtos</h3>
+            <table class="details">
+                <tr>
+                    <th>Nome do Produto</th>
+                    <th>Quantidade vendida</th>
+                    <th>Valor</th>
+                </tr>
+                @foreach ($orderItemsTableReportGrouped as $item)
+                    <tr>
+                        <td>{{$item['product_name']}}</td>
+                        <td>{{$item['total_quantity']}}</td>
+                        <td>{{$item['total_amount']}} MT</td>
+                    </tr>
+                @endforeach
+                
+            </table> --}}
 
             <h3>Pagamentos Efetuados</h3>
             <table class="details">

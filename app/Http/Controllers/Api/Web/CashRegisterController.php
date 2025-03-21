@@ -561,19 +561,6 @@ public function report(){
     $totalPaymentsAmount = Payment::whereIn('cash_register_id', $cashRegisterId)->sum('amount');
 
     $ticket = round($averageTicket, 2);
-
-// return response()->json([
-        //     'cash_register' => $cashRegister,
-        //     'total_sales' => $totalSales,
-        //     'total_orders' => $totalOrders,
-        //     'total_tables' => $totalOrderTables,
-        //     'total_quick_sell' => $totalOrderQuickSell,
-        //     'average_ticket' => round($averageTicket, 2),
-        //     'total_tables_amount' => $totalOrderTablesAmount,
-        //     'total_quick_sell_amount' => $totalOrderQuickSellAmount,
-        //     'total_payments' => $totalPayments,
-        //     'total_payments_amount' => $totalPaymentsAmount,
-        // ]);
     
     
     $paymentsReport = Payment::with('method')->with('order.table')->whereIn('cash_register_id',$cashRegisterId)->get();
@@ -582,6 +569,12 @@ public function report(){
     $orderIds = $groupedOrderItems->keys();
     $ordersReport = Order::whereIn('id', $orderIds)->whereNotNull('table_id')->with(['itens.product','itens.status','itens.user','table','status','user'])->get();
     $quickOrderReport = Order::with(['itens.product','itens.status','itens.user','table','status','user'])->whereIn('cash_register_id', $cashRegisterId)->whereNull('table_id')->get();
+
+    // $orderItemsTableReportGrouped = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+    // ->join('products', 'order_items.product_id', '=', 'products.id')
+    // ->select('products.name as product_name', DB::raw('SUM(order_items.price * order_items.quantity) as total_amount'), DB::raw('SUM(order_items.quantity) as total_quantity'))
+    // ->groupBy('products.name')
+    // ->get();
 
     $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount','paymentsReport','ordersReport','quickOrderReport'))->setOptions([
         'setPaper'=>'a8',
@@ -612,7 +605,10 @@ public function reportstock(){
 
 
     
-    $orderItemsTableReport = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+    $orderItemsTableReportKitchen = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+    ->whereHas('product', function ($query) {
+        $query->where('department_id', 1);
+    })
     ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_value'))
     ->groupBy('product_id')
     ->with(['product' => function ($query) {
@@ -620,7 +616,18 @@ public function reportstock(){
     }])
     ->get();
 
-    $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReport'))->setOptions([
+    $orderItemsTableReportBar = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+    ->whereHas('product', function ($query) {
+        $query->where('department_id', 2);
+    })
+    ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_value'))
+    ->groupBy('product_id')
+    ->with(['product' => function ($query) {
+        $query->withQuantityInPrincipalStock(); // Adiciona a quantidade do estoque principal
+    }])
+    ->get();
+
+    $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReportKitchen','orderItemsTableReportBar'))->setOptions([
         'setPaper'=>'a8',
         // 'setPaper' => [0, 0, 640, 2376],
         'defaultFont' => 'sans-serif',
