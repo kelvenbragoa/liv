@@ -16,6 +16,7 @@ const toast = useToast();
 const loading1 = ref(null);
 const isLoadingDiv = ref(true);
 const loadingButtonDelete = ref(false);
+const isLoadingData = ref(false);
 let dataIdBeingDeleted = ref(null);
 const searchQuery = ref('');
 const retriviedData = ref(null);
@@ -24,6 +25,22 @@ const rowsPerPage = ref(15);
 const totalRecords = ref(0);
 const displayConfirmation = ref(false);
 const stockcenterproducts = ref([]);
+const showDialogReport = ref(false);
+const pdfUrl = ref(null);
+const openPrintReport = ref(false); // Controla a visibilidade do dialog
+const isLoadingReport = ref(false);
+
+
+
+
+function printPDF() {
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+    }
+}
+
 
 function goBackUsingBack() {
     if (router) {
@@ -58,6 +75,12 @@ function getSeverity(status) {
     }
 }
 
+function closeDialog() {
+    showDialogReport.value = false;
+    // router.back();
+
+}
+
 const getData = async (page = 1) => {
     axios
         .get(`/api/centerstocks/${router.currentRoute.value.params.id}?page=${page}`, {
@@ -76,6 +99,32 @@ const getData = async (page = 1) => {
             isLoadingDiv.value = false;
             toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
             goBackUsingBack();
+        });
+};
+
+function downloadReportStock () {
+    isLoadingReport.value = true;
+
+    axios
+        .get(`/api/centerstock/report/${router.currentRoute.value.params.id}`, {
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialogReport.value = true;  // Abre o diálogo modal
+            openPrintReport.value = false;
+            isLoadingReport.value = false;
+
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            isLoadingReport.value = false;
+
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            // goBackUsingBack();
         });
 };
 
@@ -137,8 +186,10 @@ onMounted(() => {
                         icon="pi pi-download" 
                         class="p-button-primary ml-2 mb-2"
                         @click="downloadReportStock" 
-                        :disabled="isLoadingData"
+                        :disabled="isLoadingReport"
                         />
+                        <ProgressSpinner style="width: 25px; height: 25px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" v-if="isLoadingReport" />
+
 
                 </div>
                 <div class="font-semibold text-xl">Centro de Stock</div>
@@ -215,5 +266,14 @@ onMounted(() => {
             <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
             <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
         </template>
+    </Dialog>
+
+    <Dialog v-model:visible="showDialogReport" header="Relatório" :modal="true" :style="{ width: '600px' }" :closable="false">
+      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+      
+      <template #footer>
+        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
+      </template>
     </Dialog>
 </template>

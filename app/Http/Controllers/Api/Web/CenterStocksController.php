@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class CenterStocksController extends Controller
 {
@@ -146,5 +148,43 @@ class CenterStocksController extends Controller
         $stockcenter = StockCenter::find($id);
         $stockcenter->delete();
         return true;
+    }
+
+    public function reportstock($id){
+
+
+        $stockcenterProductsBar = StockCenterProduct::where('stock_center_id', $id)
+        ->when(request('query'),function($query,$searchQuery){
+            $query->whereHas('product',function($q) use ($searchQuery){
+                $q->where('name','like',"%{$searchQuery}%");
+            });
+        })
+        ->whereHas('product', function ($query) {
+            $query->where('department_id', 2);
+        })
+        ->with('product.category')
+        ->with('product.subcategory')
+        ->get();
+
+        $stockcenterProductsKitchen = StockCenterProduct::where('stock_center_id', $id)
+        ->when(request('query'),function($query,$searchQuery){
+            $query->whereHas('product',function($q) use ($searchQuery){
+                $q->where('name','like',"%{$searchQuery}%");
+            });
+        })
+        ->whereHas('product', function ($query) {
+            $query->where('department_id', 1);
+        })
+        ->with('product.category')
+        ->with('product.subcategory')
+        ->get();
+    
+        $pdf = Pdf::loadView('pdf.reportstockcenter', compact('stockcenterProductsBar','stockcenterProductsKitchen'))->setOptions([
+            'setPaper'=>'a8',
+            // 'setPaper' => [0, 0, 640, 2376],
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->setPaper('a4')->stream('report_stock_center.pdf');
     }
 }

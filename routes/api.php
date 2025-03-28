@@ -92,6 +92,9 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::get('cashregisters/report',[CashRegisterController::class,'report']);
     Route::get('cashregisters/reportstock',[CashRegisterController::class,'reportstock']);
 
+    Route::get('centerstock/report/{id}',[CenterStocksController::class,'reportstock']);
+
+
 
 
 
