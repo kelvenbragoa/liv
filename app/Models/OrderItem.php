@@ -45,7 +45,7 @@ class OrderItem extends Model
     }
 
     public function updatedby(){
-        return $this->hasOne('App\Models\User', 'id', 'updeted_by');
+        return $this->hasOne('App\Models\User', 'id', 'updated_by');
     }
 
 
