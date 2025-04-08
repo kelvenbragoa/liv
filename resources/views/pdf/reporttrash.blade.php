@@ -111,7 +111,7 @@
                     <th>Pedido</th>
                     <th>Garçom</th>
                     <th>Entregue por</th>
-                    <th>Apagado por</th>
+                    <th>Usuario</th>
                     <th>Data</th>
                 </tr>
                 @foreach ($orderItems as $item)
