@@ -44,5 +44,11 @@ class OrderItem extends Model
         return $this->hasOne('App\Models\User', 'id', 'delivered_by_user_id');
     }
 
+    public function updatedby(){
+        return $this->hasOne('App\Models\User', 'id', 'updeted_by');
+    }
+
+
+
     
 }

@@ -437,6 +437,29 @@ function downloadReportStock () {
         });
 };
 
+function downloadReportTrash () {
+    axios
+        .get(`/api/cashregisters/reporttrash`, {
+            params: {
+                date: date.value
+            },
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
+            showDialogReport.value = true;  // Abre o diálogo modal
+            openPrintReport.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+            // goBackUsingBack();
+        });
+};
+
 watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
@@ -495,7 +518,15 @@ onMounted(() => {
                 @click="downloadReportStock" 
                 :disabled="isLoadingData"
                 />
+                <Button 
+                label="" 
+                icon="pi pi-trash" 
+                class="p-button-primary ml-2 mb-2"
+                @click="downloadReportTrash" 
+                :disabled="isLoadingData"
+                />
             </div>
+            
             
             <div class="grid grid-cols-12 gap-8 mb-3">
                 <!-- <div class="col-span-12 lg:col-span-6 xl:col-span-3">

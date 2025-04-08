@@ -636,4 +636,41 @@ public function reportstock(){
     return $pdf->setPaper('a4')->stream('report.pdf');
 }
 
+
+public function reporttrash(){
+
+    $dateURL = request('date');
+
+    $date = $dateURL ? date('Y-m-d', strtotime($dateURL)) : date('Y-m-d');
+
+    $cashRegister = CashRegister::with('orderitens')
+    ->with('user')
+    ->with('status')->whereDate('created_at', $date)->get();
+
+    $cashRegister->transform(function ($cash) {
+        $cash->order_itens_total = $cash->orderitens->sum('total');
+        return $cash;
+    });
+
+    $cashRegisterId = $cashRegister->pluck('id');
+
+    $orderItems = OrderItem::onlyTrashed()->whereIn('cash_register_id', $cashRegisterId)->get();
+
+    
+    $totalSales = $orderItems->sum('total');
+    
+
+
+    
+
+
+    $pdf = Pdf::loadView('pdf.reporttrash', compact('cashRegister','totalSales','orderItems'))->setOptions([
+        'setPaper'=>'a8',
+        // 'setPaper' => [0, 0, 640, 2376],
+        'defaultFont' => 'sans-serif',
+        'isRemoteEnabled' => 'true'
+    ]);
+    return $pdf->setPaper('a4')->stream('reporttrash.pdf');
+}
+
 }
