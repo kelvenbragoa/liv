@@ -60,7 +60,7 @@ class Product extends Model
     }
 
     if ($principalStockCenterId) {
-        return $this->stockCenterProducts()
+        return (int) $this->stockCenterProducts()
             ->where('stock_center_id', $principalStockCenterId)
             ->value('quantity') ?? 0;
     }
@@ -70,7 +70,7 @@ class Product extends Model
     public function scopeWithQuantityInPrincipalStock($query)
 {
     return $query->addSelect([
-        'quantity_in_principal_stock' => StockCenterProduct::select('quantity')
+        'quantity_in_principal_stock' => StockCenterProduct::selectRaw('CAST(quantity AS SIGNED)')
             ->whereColumn('product_id', 'products.id')
             ->whereHas('stockCenter', function ($q) {
                 $q->where('is_principal_stock', 1);
