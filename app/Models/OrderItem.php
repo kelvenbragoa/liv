@@ -12,6 +12,24 @@ class OrderItem extends Model
     use Blameable;
     use SoftDeletes;
     protected $guarded = [];
+
+    protected $casts = [
+    'order_id' => 'integer',
+    'product_id' => 'integer',
+    'department_id' => 'integer',
+    'quantity' => 'integer',
+    'order_item_status_id' => 'integer',
+    'user_id' => 'integer',
+    'price' => 'float',
+    'total' => 'float',
+    'cash_register_id' => 'integer',
+    'prepared_by_user_id' => 'integer',
+    'ready_by_user_id' => 'integer',
+    'delivered_by_user_id' => 'integer',
+    'created_by'=> 'integer',
+    'updated_by'=> 'integer',
+];
+
     public function product(){
         return $this->hasOne('App\Models\Product', 'id', 'product_id');
     }

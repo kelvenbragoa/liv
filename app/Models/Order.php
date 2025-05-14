@@ -14,6 +14,18 @@ class Order extends Model
     use SoftDeletes;
     protected $guarded = [];
 
+    protected $casts = [
+        'table_id' => 'integer',
+        'user_id' => 'integer',
+        'total' => 'float',
+        'order_status_id' => 'integer',
+        'cash_register_id' => 'integer',
+        'closed_by_user_id' => 'integer',
+        'fineshed_by_user_id' => 'integer',
+        'created_by'=> 'integer',
+        'updated_by'=> 'integer',
+    ];
+
     public function table(){
         return $this->hasOne('App\Models\Table', 'id', 'table_id');
     }

@@ -8,4 +8,9 @@ class SplitPayment extends Model
 {
     //
     protected $guarded = [];
+
+    protected $casts = [
+    'payment_id' => 'integer',
+    'amount' => 'float',
+];
 }

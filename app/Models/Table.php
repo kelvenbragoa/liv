@@ -9,6 +9,11 @@ class Table extends Model
     //
     protected $guarded = [];
 
+    protected $casts = [
+        'capacity' => 'integer',
+        'table_status_id' => 'integer',
+    ];
+
     public function status(){
         return $this->hasOne('App\Models\TableStatus', 'id', 'table_status_id');
     }

@@ -8,6 +8,11 @@ class SubCategory extends Model
 {
     //
     protected $guarded = [];
+
+    protected $casts = [
+    'category_id' => 'integer',
+    ];
+    
     public function category(){
         return $this->hasOne('App\Models\Category', 'id', 'category_id');
     }

@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class Inventory extends Model
     {
      protected $guarded = [];
+
+     protected $casts = [
+    'user_id' => 'integer',
+    'stock_center_id' => 'integer',
+    'products_number' => 'integer',
+];
      public function stockcenter(){
         return $this->hasOne('App\Models\StockCenter', 'id', 'stock_center_id');
     }

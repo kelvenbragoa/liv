@@ -9,6 +9,10 @@ class Category extends Model
     //
     protected $guarded = [];
 
+    protected $casts = [
+    'department_id' => 'integer',
+];
+
     public function department(){
         return $this->hasOne('App\Models\Department', 'id', 'department_id');
     }

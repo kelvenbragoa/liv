@@ -71,14 +71,14 @@ class InventoriesController extends Controller
             // }
 
             $stockcenterproduct->update([
-                'quantity'=>$item['quantity']
+                'quantity'=>$item['quantity'] ?? 0
             ]);
 
             $inventoryItem = InventoryItem::create([
                 'stock_center_id'=>$data['stock_center_id'],
                 'inventory_id'=>$inventory->id,
                 'product_id'=>$item['product_id'],
-                'quantity'=>$item['quantity'],
+                'quantity'=>$item['quantity'] ?? 0,
                 'last_quantity'=>$last_quantity
             ]);
 

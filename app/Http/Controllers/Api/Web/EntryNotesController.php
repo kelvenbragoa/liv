@@ -80,14 +80,14 @@ class EntryNotesController extends Controller
             // }
 
             $stockcenterproduct->update([
-                'quantity'=>$last_quantity + $item['quantity']
+                'quantity'=>$last_quantity + ($item['quantity'] ?? 0)
             ]);
 
             $entryNoteItem = EntryNoteItem::create([
                 'stock_center_id'=>$data['stock_center_id'],
                 'entry_note_id'=>$entrynote->id,
                 'product_id'=>$item['product_id'],
-                'quantity'=>$item['quantity'],
+                'quantity'=>$item['quantity'] ?? 0,
                 'last_quantity'=>$last_quantity
             ]);
 

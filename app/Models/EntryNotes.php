@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class EntryNotes extends Model
     {
      protected $guarded = [];
+
+     protected $casts = [
+    'user_id' => 'integer',
+    'stock_center_id' => 'integer',
+    'products_number' => 'integer',
+    'supplier_id' => 'integer',
+];
      public function stockcenter(){
         return $this->hasOne('App\Models\StockCenter', 'id', 'stock_center_id');
     }

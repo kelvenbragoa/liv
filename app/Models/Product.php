@@ -9,6 +9,14 @@ class Product extends Model
     //
     protected $guarded = [];
 
+    protected $casts = [
+    'department_id' => 'integer',
+    'category_id' => 'integer',
+    'sub_category_id' => 'integer',
+    'price' => 'float',
+    'stock' => 'integer',
+];
+
     public function category(){
         return $this->hasOne('App\Models\Category', 'id', 'category_id');
     }

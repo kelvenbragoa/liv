@@ -9,6 +9,16 @@ class CashRegister extends Model
     //
     protected $guarded = [];
 
+    protected $casts = [
+        'id' => 'integer',
+        'user_id' => 'integer',
+        'opening_balance' => 'float',
+        'closing_balance' => 'float',
+        'difference' => 'float',
+        'automatic_closing_balance' => 'float',
+        'cash_register_status_id' => 'integer',
+    ];
+
     public function orderitens()
     {
         return $this->hasMany(OrderItem::class);

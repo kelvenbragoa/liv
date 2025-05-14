@@ -335,7 +335,7 @@ class TableMobileController extends Controller
         
                 return response()->json([
                     'cash_register'=>$openCashRegister,
-                    'totalcash'=>$total
+                    'totalcash'=>(float) $total
                 ]);
             }
 

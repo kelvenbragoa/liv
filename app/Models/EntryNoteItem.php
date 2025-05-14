@@ -9,6 +9,14 @@ class EntryNoteItem extends Model
     //
     protected $guarded = [];
 
+    protected $casts = [
+    'stock_center_id' => 'integer',
+    'entry_note_id' => 'integer',
+    'product_id' => 'integer',
+    'quantity' => 'integer',
+    'last_quantity' => 'integer',
+];
+
     public function stockcenter(){
         return $this->hasOne('App\Models\StockCenter', 'id', 'stock_center_id');
     }

@@ -8,11 +8,13 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\StockSnapshot;
 use App\Models\Table;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CashRegisterController extends Controller
@@ -62,6 +64,20 @@ class CashRegisterController extends Controller
                 'message' => 'Já existe um caixa aberto para este usuário.',
                 'cash_register' => $existingCashRegister
             ], 400);
+        }
+
+        $today = Carbon::today();
+        $existingCash = CashRegister::whereDate('opened_at', $today)->first();
+
+        if (!$existingCash) {
+            // $products = Product::withQuantityInPrincipalStock()->get();
+            // foreach ($products as $product) {
+            //     // StockSnapshot::create([
+            //     //     'product_id' => $product->id,
+            //     //     'quantity' => $product->quantity_in_principal_stock,
+            //     //     'date' => $today,
+            //     // ]);
+            // }
         }
         $cashregister = CashRegister::create([
             'user_id' => Auth::user()->id,
