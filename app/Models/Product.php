@@ -35,6 +35,11 @@ class Product extends Model
         return $this->hasMany(StockCenterProduct::class);
     }
 
+    public function getQuantityInPrincipalStockAttribute($value)
+    {
+        return (int) $value;  // Converte o valor para inteiro
+    }
+
     // public function quantityInPrincipalStock()
     // {
     //     // Encontra o stock_center principal
