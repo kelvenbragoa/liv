@@ -366,7 +366,7 @@ onUnmounted(() => {
                                                 <p>
                                                     <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">Atualizado por:{{ item.deliveredby ? item.deliveredby.name : "N/A" }}</span>
                                                 </p>
-                                                <div class="text-lg font-medium mt-2">{{ item.product.name }}</div>
+                                                <div class="text-lg font-medium mt-2">{{ item.quantity }} * {{ item.product.name }}</div>
                                                 <span class="font-medium text-surface-500 dark:text-surface-400 text-sm">DC:{{ moment(item.created_at).format('DD-MM-YYYY H:mm') }} | DA:{{ moment(item.updated_at).format('DD-MM-YYYY H:mm') }}</span>
                                             </div>
                                         </div>
