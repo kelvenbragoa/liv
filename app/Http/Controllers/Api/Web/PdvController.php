@@ -100,6 +100,20 @@ class PdvController extends Controller
         $newBarItems = [];
         $newKitchenItems = [];
 
+        $totalVendasMensal = Order::where('table_id', $table->id)
+        // ->whereIn('order_status_id', [2,3])
+        ->whereMonth('created_at', now()->month)
+        ->whereYear('created_at', now()->year)
+        ->sum('total');
+        $novoPedidoTotal = $data['total'];
+
+
+        if ($table->monthly_limit > 0 && ($totalVendasMensal + $novoPedidoTotal) > $table->monthly_limit) {
+            return response()->json([
+                'message' => 'Esta mesa atingiu o limite de vendas mensal de ' . $table->monthly_limit . ' MT, atualmente em ' . $totalVendasMensal . ' MT. Por favor, aguarde o próximo mês ou aumente o limite.'
+            ], 403);
+        }
+
         $openCashRegister = CashRegister::where('user_id', Auth::id())
         ->where('cash_register_status_id', 1) // 1 = Aberto
         ->first();
@@ -249,10 +263,12 @@ class PdvController extends Controller
         ->where('cash_register_status_id', 1) // 1 = Aberto
         ->first();
 
-        if (!$openCashRegister) {
-            return response()->json([
-                'message' => 'Não é possível realizar ou iniciar a venda. Abra o caixa primeiro.'
-            ], 403); // Código HTTP 403 - Proibido
+        if(Auth::user()->role_id != 7 ) {
+            if (!$openCashRegister) {
+                return response()->json([
+                    'message' => 'Não é possível realizar ou iniciar a venda. Abra o caixa primeiro.'
+                ], 403); // Código HTTP 403 - Proibido
+            } 
         }
 
         $categories = Category::with(['sub_categories.products' => function($query) {
@@ -423,12 +439,20 @@ class PdvController extends Controller
     public function getreceipt(string $id) {
 
         
-        $order = Order::where('table_id', $id)->where('order_status_id', 1)->orWhere('order_status_id', 2)->first();
+        $order = Order::where('table_id', $id)
+              ->where(function ($query) {
+                  $query->where('order_status_id', 1)
+                        ->orWhere('order_status_id', 2);
+              })
+              ->with(['table', 'user'])
+              ->orderBy('id', 'desc')
+              ->first();
         if (!$order) {
             return response()->json([
                 'message' => 'Não existe conta aberta nesta mesa'
             ], 404);
         }
+
 
         $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
         // $table = $order->table; // Supondo que o relacionamento exista

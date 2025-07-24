@@ -30,6 +30,7 @@ const isLoadingButton = ref(false);
 const schema = yup.object({
     name: yup.string().required().trim().label('Name'),
     capacity: yup.string().required().trim().label('capacity'),
+    monthly_limit: yup.string().required().trim().label('Monthly Limit'),
 
 });
 const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
@@ -37,7 +38,7 @@ const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
 });
 const [name] = defineField('name');
 const [capacity] = defineField('capacity');
-
+const [monthly_limit] = defineField('monthly_limit');
 
 const image = ref();
 
@@ -190,6 +191,11 @@ onMounted(() => {
                         <label for="capacity">Capacidade</label>
                         <InputText v-model="capacity" id="capacity" placeholder="Capacidade máxima" :class="{ 'p-invalid': errors.capacity }" type="number" />
                         <small id="capacity-help" class="p-error">{{ errors.capacity }}</small>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="monthly_limit">Limite Mensal</label>
+                        <InputText v-model="monthly_limit" id="monthly_limit" placeholder="Limite Mensal" :class="{ 'p-invalid': errors.monthly_limit }" type="number" />
+                        <small id="monthly_limit-help" class="p-error">{{ errors.monthly_limit }}</small>
                     </div>
                     <Button label="Submeter" class="mr-2 mb-2" @click="onSubmit" :disabled="isLoadingButton"></Button>
                     <ProgressSpinner style="width: 35px; height: 35px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" v-if="isLoadingButton" />

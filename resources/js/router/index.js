@@ -2,6 +2,8 @@ import AppLayout from '@/layout/AppLayout.vue';
 import AppAdminLayout from '@/layout_admin/AppAdminLayout.vue';
 
 import AppWaiterLayout from '@/layout_waiter/AppWaiterLayout.vue';
+import AppTableManagerLayout from '@/layout_tablemanager/AppTableManagerLayout.vue';
+
 import AppKitchenLayout from '@/layout_kitchen/AppKitchenLayout.vue';
 import AppBarLayout from '@/layout_bar/AppBarLayout.vue';
 import AppStockLayout from '@/layout_stock/AppStockLayout.vue';
@@ -1033,6 +1035,63 @@ const router = createRouter({
                 },
             ]
         },
+        {
+            path: '/tablemanager/dashboard',
+            component: AppTableManagerLayout,
+            children: [
+                {
+                    path: '/tablemanager/dashboard',
+                    name: 'tablemanager.dashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/Dashboard.vue')
+                },
+                {
+                    path: '/tablemanager/pdv',
+                    name: 'tablemanager.pdv',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/pdv/IndexPdv.vue')
+                },
+                {
+                    path: '/tablemanager/pdv/:id/categories',
+                    name: 'tablemanager.pdv.categories',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/pdv/IndexPdvCategories.vue')
+                },
+                {
+                    path: '/tablemanager/pdv/quicksell',
+                    name: 'tablemanager.pdv.quicksell',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/pdv/IndexPdvQuickSell.vue')
+                },
+
+                {
+                    path: '/tablemanager/delivery',
+                    name: 'tablemanager.delivery',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/pdv/IndexDelivery.vue')
+                },
+
+                {
+                    path: '/tablemanager/cashregisters/dashboard',
+                    name: 'tablemanager.cashregisters.dashboard',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/tablemanager/pdv/IndexCashRegisterDashboard.vue')
+                },
+            ]
+        },
+
         {
             path: '/dashboard',
             component: AppLayout,

@@ -37,6 +37,8 @@ const loginUser = () => {
                 window.location.href = '/bar/pdv'
             } else if (response.data.user.role_id == 6) {
                 window.location.href = '/stock/dashboard'
+            } else if (response.data.user.role_id == 7) {
+                window.location.href = '/tablemanager/dashboard'
             };
            
         })

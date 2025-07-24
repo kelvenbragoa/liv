@@ -83,6 +83,7 @@ class ProductController extends Controller
         'category_id' => 'required|exists:categories,id',
         'sub_category_id' => 'nullable|exists:sub_categories,id',
         'price' => 'required|numeric|min:0',
+        'buy_price' => 'required|numeric|min:0',
         'name' => 'required|string|max:255',
         'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
     ]);
@@ -116,6 +117,7 @@ class ProductController extends Controller
             'sub_category_id' => $validated['sub_category_id'],
             'department_id' => $category->department_id,
             'price' => $validated['price'],
+            'buy_price' => $validated['buy_price'],
             'name' => $validated['name'],
             'image' => $imageName,
         ]);

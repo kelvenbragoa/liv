@@ -134,9 +134,11 @@ class CashRegisterController extends Controller
         }
 
         $order = Order::where('cash_register_id', $cashRegister->id)
-            ->where('order_status_id', 1) // 1 = Aberta
-            ->orWhere('order_status_id', 2)
-            ->first();
+        ->where(function ($query) {
+            $query->where('order_status_id', 1)
+                ->orWhere('order_status_id', 2);
+        })
+        ->first();
         if ($order) {
                 return response()->json([
                     'message' => 'Existe uma encomenda que não foi finalizada. Por Favor Finalize e Feche a sua conta.'

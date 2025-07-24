@@ -40,8 +40,13 @@ class RoleTableSeeder extends Seeder
             //     "created_at"=>now(),
             //     "updated_at"=>now(),
             // ],
+            // [
+            //     "name"=>"Stock Manager",
+            //     "created_at"=>now(),
+            //     "updated_at"=>now(),
+            // ],
             [
-                "name"=>"Stock Manager",
+                "name"=>"Gestor de Mesas",
                 "created_at"=>now(),
                 "updated_at"=>now(),
             ],

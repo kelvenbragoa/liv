@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Table;
+use App\Models\TableLogChange;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TableController extends Controller
 {
@@ -47,6 +50,7 @@ class TableController extends Controller
         $table = Table::create([
             'name' => $data['name'],
             'capacity' => $data['capacity'],
+            'monthly_limit' => $data['monthly_limit'] ?? 0,
             'table_status_id'=>1
         ]);
         return response()->json($table);
@@ -60,7 +64,43 @@ class TableController extends Controller
         //
         $table = Table::with('status')->find($id);
 
-        return response()->json($table);
+        $currentYear = Carbon::now()->year;
+
+        // $monthly = Order::selectRaw('MONTH(created_at) as month,MONTHNAME(created_at) as month_name, SUM(total) as total')
+        //     ->where('table_id', $table->id)
+        //     ->whereYear('created_at', $currentYear)
+        //     ->groupByRaw('MONTH(created_at)')
+        //     ->orderByRaw('MONTH(created_at)')
+        //     ->get();
+
+    // $monthly = Order::selectRaw("
+    //         MONTH(created_at) as month_number,
+    //         MONTHNAME(created_at) as month_name,
+    //         SUM(total_amount) as total
+    //     ")
+    //     ->where('table_id', $table->id)
+    //     ->whereYear('created_at', $currentYear)
+    //     ->groupByRaw('MONTH(created_at)')
+    //     ->orderByRaw('MONTH(created_at)')
+    //     ->get();
+
+    $monthly = Order::selectRaw("
+        MONTH(created_at) as month_number,
+        MONTHNAME(created_at) as month_name,
+        SUM(total) as total
+    ")
+    ->where('table_id', $table->id)
+    ->whereYear('created_at', now()->year)
+    ->groupByRaw('MONTH(created_at), MONTHNAME(created_at)')
+    ->orderByRaw('MONTH(created_at)')
+    ->get();
+
+
+        return response()->json([
+            'table' => $table,
+            'logs' => TableLogChange::where('table_id', $id)->with('user')->orderBy('created_at', 'desc')->paginate(),
+            'chart'=>$monthly
+        ]);
     }
 
     /**
@@ -84,6 +124,15 @@ class TableController extends Controller
         //
         $data = $request->all();
         $table = Table::find($id);
+
+        if (array_key_exists('monthly_limit', $data) && $data['monthly_limit'] != $table->monthly_limit) {
+            TableLogChange::create([
+                'table_id'  => $table->id,
+                'old_limit' => $table->monthly_limit,
+                'new_limit' => $data['monthly_limit'],
+                'user_id'   => Auth::id(),
+            ]);
+        }
         $table->update($data);
         return response()->json($table);
     }

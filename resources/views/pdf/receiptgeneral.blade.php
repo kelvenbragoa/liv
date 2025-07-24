@@ -69,8 +69,8 @@
         <div class="details">
             <p>Data: {{ $order->created_at->format('d-m-Y H:i') }}</p>
             <p>Pedido Nº: {{ $order->id }}</p>
-            <p>Mesa Nº: {{ $order->table->name }}</p>
-            <p>Atendente:{{$order->user->name}}</p>
+            <p>Mesa Nº: {{ $order->table?->name ?? 'NA' }}</p>
+            <p>Atendente:{{$order->user?->name ?? 'NA'}}</p>
         </div>
         <table class="items">
             <thead>

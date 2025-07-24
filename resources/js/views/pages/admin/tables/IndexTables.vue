@@ -171,6 +171,11 @@ onMounted(() => {
                             {{ data.capacity }}
                         </template>
                     </Column>
+                    <Column header="Limite Mensal" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.monthly_limit == 0 ? 'Sem Limite' : data.monthly_limit+' MT' }}
+                        </template>
+                    </Column>
                     <Column header="Estado" style="min-width: 12rem">
                         <template #body="{ data }">
                             <Tag :value="data.status.name" :severity="getSeverity(data.table_status_id)" />
