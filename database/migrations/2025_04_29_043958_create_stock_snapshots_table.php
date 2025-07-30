@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stock_snapshots', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('cash_session_id')->nullable();
+            $table->unsignedBigInteger('cash_register_id')->nullable();
             $table->integer('quantity');
             $table->date('date');
             $table->timestamps();

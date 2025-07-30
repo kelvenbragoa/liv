@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Category;
+use App\Models\DailyStockSnapshot;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\StockCenter;
+use App\Models\StockSnapshot;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -264,31 +266,95 @@ class TableMobileController extends Controller
         ]);
     }
 
-
     public function openCashRegister(Request $request)
     {
-        $data = $request->all();
-        $existingCashRegister = CashRegister::where('user_id', Auth::user()->id)
+        $userId = Auth::id();
+        $today = now()->toDateString();
+
+        // Verifica se já existe caixa aberto para este usuário
+        $existingCashRegister = CashRegister::where('user_id', $userId)
             ->where('cash_register_status_id', 1)
             ->first();
 
         if ($existingCashRegister) {
             return response()->json([
-                'message' => 'Já existe uma caixa aberto para este usuário.',
+                'message' => 'Já existe uma caixa aberta para este usuário.',
                 'cash_register' => $existingCashRegister
             ], 200);
         }
-        $cashregister = CashRegister::create([
-            'user_id' => Auth::user()->id,
+
+        // Cria novo caixa
+        $cashRegister = CashRegister::create([
+            'user_id' => $userId,
             'cash_register_status_id' => 1,
             'opening_balance' => 0,
             'opened_at' => now(),
         ]);
 
+        // Carrega produtos com stock atual no armazém principal
+        $products = Product::withQuantityInPrincipalStock()->get();
+
+        // Snapshot por caixa (stock visível ao vendedor)
+        $snapshots = [];
+        foreach ($products as $product) {
+            $snapshots[] = [
+                'product_id' => $product->id,
+                'cash_register_id' => $cashRegister->id,
+                'quantity' => $product->quantity_in_principal_stock,
+                'date' => $today,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        StockSnapshot::insert($snapshots);
+
+        // Snapshot diário geral (uma vez por dia)
+        $alreadySnapshotted = DailyStockSnapshot::where('date', $today)->exists();
+
+        if (!$alreadySnapshotted) {
+            $dailySnapshots = [];
+            foreach ($products as $product) {
+                $dailySnapshots[] = [
+                    'product_id' => $product->id,
+                    'quantity' => $product->quantity_in_principal_stock,
+                    'date' => $today,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            DailyStockSnapshot::insert($dailySnapshots);
+        }
+
         return response()->json([
             'message' => 'Caixa aberta com sucesso',
+            'cash_register' => $cashRegister
         ]);
     }
+
+    // public function openCashRegister(Request $request)
+    // {
+    //     $data = $request->all();
+    //     $existingCashRegister = CashRegister::where('user_id', Auth::user()->id)
+    //         ->where('cash_register_status_id', 1)
+    //         ->first();
+
+    //     if ($existingCashRegister) {
+    //         return response()->json([
+    //             'message' => 'Já existe uma caixa aberto para este usuário.',
+    //             'cash_register' => $existingCashRegister
+    //         ], 200);
+    //     }
+    //     $cashregister = CashRegister::create([
+    //         'user_id' => Auth::user()->id,
+    //         'cash_register_status_id' => 1,
+    //         'opening_balance' => 0,
+    //         'opened_at' => now(),
+    //     ]);
+
+    //     return response()->json([
+    //         'message' => 'Caixa aberta com sucesso',
+    //     ]);
+    // }
 
 
     public function closeCashRegister(Request $request)

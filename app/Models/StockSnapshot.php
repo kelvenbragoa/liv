@@ -10,7 +10,7 @@ class StockSnapshot extends Model
     protected $guarded = [];
     protected $casts = [
     'product_id' => 'integer',
-    'cash_session_id' => 'integer',
+    'cash_register_id' => 'integer',
     'quantity' => 'integer',
     'date' => 'date',
 ];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
+use App\Models\DailyStockSnapshot;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -53,41 +54,103 @@ class CashRegisterController extends Controller
         //
     }
 
-    public function open(Request $request){
-        $data = $request->all();
-        $existingCashRegister = CashRegister::where('user_id', Auth::user()->id)
+    public function open(Request $request)
+{
+    $data = $request->all();
+    $today = now()->toDateString();
+
+    // Verifica se o usuário já tem caixa aberto
+    $existingCashRegister = CashRegister::where('user_id', Auth::id())
         ->where('cash_register_status_id', 1)
         ->first();
 
-        if ($existingCashRegister) {
-            return response()->json([
-                'message' => 'Já existe um caixa aberto para este usuário.',
-                'cash_register' => $existingCashRegister
-            ], 400);
-        }
-
-        $today = Carbon::today();
-        $existingCash = CashRegister::whereDate('opened_at', $today)->first();
-
-        if (!$existingCash) {
-            // $products = Product::withQuantityInPrincipalStock()->get();
-            // foreach ($products as $product) {
-            //     // StockSnapshot::create([
-            //     //     'product_id' => $product->id,
-            //     //     'quantity' => $product->quantity_in_principal_stock,
-            //     //     'date' => $today,
-            //     // ]);
-            // }
-        }
-        $cashregister = CashRegister::create([
-            'user_id' => Auth::user()->id,
-            'cash_register_status_id' => 1,
-            'opening_balance'=>$data['opening_balance'],
-            'opened_at' => now(),
-        ]);
-
-        return response()->json($cashregister);
+    if ($existingCashRegister) {
+        return response()->json([
+            'message' => 'Já existe um caixa aberto para este usuário.',
+            'cash_register' => $existingCashRegister
+        ], 400);
     }
+
+    // Cria o caixa
+    $cashRegister = CashRegister::create([
+        'user_id' => Auth::id(),
+        'cash_register_status_id' => 1,
+        'opening_balance' => $data['opening_balance'],
+        'opened_at' => now(),
+    ]);
+
+    // Carrega os produtos com stock atual
+    $products = Product::withQuantityInPrincipalStock()->get();
+
+    // Snapshot por caixa (stock visível ao vendedor)
+    $snapshots = [];
+    foreach ($products as $product) {
+        $snapshots[] = [
+            'product_id' => $product->id,
+            'cash_register_id' => $cashRegister->id,
+            'quantity' => $product->quantity_in_principal_stock,
+            'date' => $today,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+    StockSnapshot::insert($snapshots);
+
+    // Snapshot diário geral (só se ainda não existir)
+    $alreadySnapshotted = DailyStockSnapshot::where('date', $today)->exists();
+
+    if (!$alreadySnapshotted) {
+        $dailySnapshots = [];
+        foreach ($products as $product) {
+            $dailySnapshots[] = [
+                'product_id' => $product->id,
+                'quantity' => $product->quantity_in_principal_stock,
+                'date' => $today,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        DailyStockSnapshot::insert($dailySnapshots);
+    }
+
+    return response()->json($cashRegister);
+}
+
+    // public function open(Request $request){
+    //     $data = $request->all();
+    //     $existingCashRegister = CashRegister::where('user_id', Auth::user()->id)
+    //     ->where('cash_register_status_id', 1)
+    //     ->first();
+
+    //     if ($existingCashRegister) {
+    //         return response()->json([
+    //             'message' => 'Já existe um caixa aberto para este usuário.',
+    //             'cash_register' => $existingCashRegister
+    //         ], 400);
+    //     }
+
+    //     $today = Carbon::today();
+    //     $existingCash = CashRegister::whereDate('opened_at', $today)->first();
+
+    //     if (!$existingCash) {
+    //         // $products = Product::withQuantityInPrincipalStock()->get();
+    //         // foreach ($products as $product) {
+    //         //     // StockSnapshot::create([
+    //         //     //     'product_id' => $product->id,
+    //         //     //     'quantity' => $product->quantity_in_principal_stock,
+    //         //     //     'date' => $today,
+    //         //     // ]);
+    //         // }
+    //     }
+    //     $cashregister = CashRegister::create([
+    //         'user_id' => Auth::user()->id,
+    //         'cash_register_status_id' => 1,
+    //         'opening_balance'=>$data['opening_balance'],
+    //         'opened_at' => now(),
+    //     ]);
+
+    //     return response()->json($cashregister);
+    // }
 
 
     /**

@@ -436,6 +436,24 @@ class PdvController extends Controller
         //
     }
 
+    public function getreceiptkitchen(string $id) {
+
+        $orderitem = OrderItem::with('product')->with('order.table')->with('user')->with('status')->find($id);
+        
+        
+
+    
+        $pdf = Pdf::loadView('pdf.receiptgeneralkitchen', compact('orderitem'))->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
+            'dpi' => 96, 
+            'defaultFont' => 'sans-serif',
+        ]);
+    
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptgeneralkitchen.pdf');
+    }
+
     public function getreceipt(string $id) {
 
         

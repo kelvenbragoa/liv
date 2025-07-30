@@ -43,7 +43,7 @@ class OrderItem extends Model
     }
 
     public function status(){
-        return $this->hasOne('App\Models\OrderItemStatus', 'id', 'order_item_status_id	');
+        return $this->hasOne('App\Models\OrderItemStatus', 'id', 'order_item_status_id');
     }
 
     public function user(){

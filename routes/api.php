@@ -71,7 +71,7 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('pdv/quicksell',[PdvController::class,'savequicksell']);
     
 
-
+    Route::post('getreceiptkitchen/{id}',[PdvController::class,'getreceiptkitchen']);
 
     Route::post('getreceipt/{id}',[PdvController::class,'getreceipt']);
     Route::post('getquickreceipt/{id}',[PdvController::class,'getquickreceipt']);

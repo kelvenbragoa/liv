@@ -23,20 +23,23 @@ const rowsPerPage = ref(15);
 const totalRecords = ref(0);
 const displayConfirmation = ref(false);
 // const chartData = ref(null);
+
+
+const documentStyle = getComputedStyle(document.documentElement);
+const borderColor = documentStyle.getPropertyValue('--surface-border');
+const textMutedColor = documentStyle.getPropertyValue('--text-color-primary');
+const chartBarColor = documentStyle.getPropertyValue('--p-button-primary-background');
+
 const chartData = ref({
   labels: [],
   datasets: [
     {
       label: 'Consumo Mensal',
-      backgroundColor: '#42A5F5',
+      backgroundColor: chartBarColor,
       data: []
     }
   ]
 });
-
-const documentStyle = getComputedStyle(document.documentElement);
-const borderColor = documentStyle.getPropertyValue('--surface-border');
-const textMutedColor = documentStyle.getPropertyValue('--text-color-secondary');
 
 const chartOptions = {
     maintainAspectRatio: false,
@@ -60,7 +63,8 @@ const chartOptions = {
             grid: {
                 color: borderColor.trim(),
                 borderColor: 'transparent',
-                drawTicks: false
+                drawTicks: false,
+
             }
         }
     }
