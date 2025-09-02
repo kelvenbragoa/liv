@@ -44,6 +44,20 @@ const chartData = ref({
 const chartOptions = {
     maintainAspectRatio: false,
     aspectRatio: 0.8,
+    // onClick: (event, elements, chart) => {
+    //     if (elements.length > 0) {
+    //     const chartElement = elements[0];
+    //     const datasetIndex = chartElement.datasetIndex;
+    //     const index = chartElement.index;
+
+    //     const label = chartData.value.labels[index];
+    //     const value = chartData.value.datasets[datasetIndex].data[index];
+
+    //     console.log('Clicou no ponto:', { label, value });
+    //     // Aqui você pode executar alguma ação, por exemplo:
+    //     // router.push(`/consumo/${label}`);
+    //     }
+    // },
     scales: {
         x: {
             stacked: true,
@@ -308,6 +322,94 @@ onMounted(() => {
             />
             <span>Tem certeza que deseja proceder?</span>
         </div>
+        <template #footer>
+            <Button
+                label="Não"
+                icon="pi pi-times"
+                @click="closeConfirmation"
+                class="p-button-text"
+            />
+            <Button
+                label="Sim"
+                icon="pi pi-check"
+                @click="deleteData"
+                class="p-button-text"
+                autofocus
+            />
+        </template>
+    </Dialog>
+
+
+    <Dialog
+        header="Vendas"
+        v-model:visible="displayConfirmationSales"
+        :style="{ width: '350px' }"
+        :modal="true"
+    >
+        <DataTable
+                    :value="retriviedData.data"
+                    :paginator="true"
+                    :rows="rowsPerPage"
+                    :totalRecords="totalRecords"
+                    dataKey="id"
+                    :lazy="true"
+                    :rowHover="true"
+                    :loading="isLoadingDiv"
+                    :first="(currentPage - 1) * rowsPerPage"
+                    :onPage="onPageChange"
+                    showGridlines
+                    >
+                    <template #header>
+                        <div class="flex justify-between">
+                            
+                                <!-- <Button label="Relatorio" class="mr-2 mb-2" @click="report()">Relatório<i class="pi pi-print"></i></Button> -->
+                            
+                            <IconField>
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="searchQuery" placeholder="Pesquisa" />
+                            </IconField>
+                        </div>
+                    </template>
+                    <template #empty>Nenhuma registro encontrado. </template>
+                    <template #loading> Carregando, por favor espere. </template>
+                    <Column header="ID" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.id }}
+                        </template>
+                    </Column>
+                    <Column header="Valor" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            MZN {{ data.total }}
+                        </template>
+                    </Column>
+                    <Column header="Mesa" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.table ? data.table.name : "Venda Rápida" }}
+                        </template>
+                    </Column>
+                    <Column header="Estado da Encomenda" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            <Tag :value="data.status.name" :severity="getSeverity(data.order_status_id)" />
+                        </template>
+                    </Column>
+                    <Column header="Efetuada por" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.user.name }}
+                        </template>
+                    </Column>
+                    <Column header="Data" dataType="date" style="min-width: 10rem">
+                        <template #body="{ data }">
+                            {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
+                        </template>
+                    </Column>
+                    <Column header="Ações" style="min-width: 12rem">
+                    <template #body="{ data }">
+                         <router-link class="m-3" :to="'/admin/orders/' + data.id"><i class="pi pi-eye"></i></router-link>
+                    </template>
+                </Column>
+                </DataTable>
         <template #footer>
             <Button
                 label="Não"

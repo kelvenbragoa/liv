@@ -697,6 +697,14 @@ public function reportstock(){
     }])
     ->get();
 
+    // Adicionar quantidade inicial do daily_stock_snapshots para cada produto da cozinha
+    foreach ($orderItemsTableReportKitchen as $item) {
+        $dailySnapshot = \App\Models\DailyStockSnapshot::where('product_id', $item->product_id)
+            ->where('date', $date)
+            ->first();
+        $item->initial_stock_quantity = $dailySnapshot ? $dailySnapshot->quantity : 0;
+    }
+
     $orderItemsTableReportBar = OrderItem::whereIn('cash_register_id', $cashRegisterId)
     ->whereHas('product', function ($query) {
         $query->where('department_id', 2);
@@ -708,8 +716,16 @@ public function reportstock(){
     }])
     ->get();
 
+    // Adicionar quantidade inicial do daily_stock_snapshots para cada produto do bar
+    foreach ($orderItemsTableReportBar as $item) {
+        $dailySnapshot = \App\Models\DailyStockSnapshot::where('product_id', $item->product_id)
+            ->where('date', $date)
+            ->first();
+        $item->initial_stock_quantity = $dailySnapshot ? $dailySnapshot->quantity : 0;
+    }
+
     $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReportKitchen','orderItemsTableReportBar'))->setOptions([
-        'setPaper'=>'a8',
+        'setPaper'=>'a4',
         // 'setPaper' => [0, 0, 640, 2376],
         'defaultFont' => 'sans-serif',
         'isRemoteEnabled' => 'true'

@@ -91,6 +91,7 @@
                     <th>Produto</th>
                     <th>Quantidade Vendida</th>
                     <th>Valor Total</th>
+                    <th>Quantidade Inicial</th>
                     <th>Stock Atual</th>
                 </tr>
                 @php
@@ -102,6 +103,7 @@
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
                         <td>{{ $item->total_quantity }}</td>
                         <td>{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
+                        <td>{{ $item->initial_stock_quantity ?? 0 }}</td>
                         <td>{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
                     </tr>
                     @php
@@ -123,6 +125,7 @@
                     <th>Produto</th>
                     <th>Quantidade Vendida</th>
                     <th>Valor Total</th>
+                    <th>Quantidade Inicial</th>
                     <th>Stock Atual</th>
                 </tr>
                 @php
@@ -134,6 +137,7 @@
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
                         <td>{{ $item->total_quantity }}</td>
                         <td>{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
+                        <td>{{ $item->initial_stock_quantity ?? 0 }}</td>
                         <td>{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
                     </tr>
                     @php
