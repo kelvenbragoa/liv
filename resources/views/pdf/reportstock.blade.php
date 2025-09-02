@@ -83,7 +83,9 @@
 
     <div class="container">
         <div class="content">
-            <h3>Relatório de Stock</h3>
+            <h3>Relatório de Stockss</h3>
+                <small>Data e hora de registro de Quantidade atual dos produtos: {{ $orderItemsTableReportBar[0]['initial_created'] ?? 'N/A' }}  </small>
+
 
             <h3>Produtos Stock Bar</h3>
             <table class="details">
@@ -157,6 +159,9 @@
 
         </div>
     </div>
+    <br>
+
+    <br>
     
     <div class="footer">
         &copy; {{ date('Y') }} LIV Beira. Todos os direitos reservados. | Beira, Mozambique

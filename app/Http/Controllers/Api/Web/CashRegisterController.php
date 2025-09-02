@@ -703,6 +703,7 @@ public function reportstock(){
             ->where('date', $date)
             ->first();
         $item->initial_stock_quantity = $dailySnapshot ? $dailySnapshot->quantity : 0;
+        $item->initial_created = $dailySnapshot ? $dailySnapshot->created_at : null;
     }
 
     $orderItemsTableReportBar = OrderItem::whereIn('cash_register_id', $cashRegisterId)
@@ -722,6 +723,7 @@ public function reportstock(){
             ->where('date', $date)
             ->first();
         $item->initial_stock_quantity = $dailySnapshot ? $dailySnapshot->quantity : 0;
+        $item->initial_created = $dailySnapshot ? $dailySnapshot->created_at : null;
     }
 
     $pdf = Pdf::loadView('pdf.reportstock', compact('orderItemsTableReportKitchen','orderItemsTableReportBar'))->setOptions([
