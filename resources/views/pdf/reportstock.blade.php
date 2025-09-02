@@ -83,8 +83,8 @@
 
     <div class="container">
         <div class="content">
-            <h3>Relatório de Stockss</h3>
-                <small>Data e hora de registro de Quantidade atual dos produtos: {{ $orderItemsTableReportBar[0]['initial_created'] ?? 'N/A' }}  </small>
+            <h3>Relatório de Stocks</h3>
+                <small style="font-size: 11px">Data e hora de registro de Quantidade atual dos produtos: {{ $orderItemsTableReportBar[0]['initial_created'] ?? 'N/A' }}  </small>
 
 
             <h3>Produtos Stock Bar</h3>
