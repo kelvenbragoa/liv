@@ -89,21 +89,19 @@
     <!-- Hero Section -->
     <section id="hero" class="hero section dark-background">
 
-      <img src="{{asset('template/assets/img/hero-bg.jpg')}}" alt="" data-aos="fade-in">
+      <img src="{{asset('template/assets/img/gallery/gallery-1.jpg')}}" alt="" data-aos="fade-in">
 
       <div class="container">
         <div class="row">
           <div class="col-lg-8 d-flex flex-column align-items-center align-items-lg-start">
-            <h2 data-aos="fade-up" data-aos-delay="100">Bem Vindo <span> ao Restaurante</span></h2>
-            <p data-aos="fade-up" data-aos-delay="200">Delivering great food for more than 18 years!</p>
+            <h2 data-aos="fade-up" data-aos-delay="100">Bem Vindo <span> ao Liv Beira</span></h2>
+            <p data-aos="fade-up" data-aos-delay="200">Sabor autêntico, ambiente único no coração da Beira!</p>
             <div class="d-flex mt-4" data-aos="fade-up" data-aos-delay="300">
               <a href="#menu" class="cta-btn">Nosso Menu</a>
               <a href="#book-a-table" class="cta-btn">Agendar Mesa</a>
             </div>
           </div>
-          <div class="col-lg-4 d-flex align-items-center justify-content-center mt-5 mt-lg-0">
-            <a href="https://www.youtube.com/watch?v=Y7f98aduVJ8" class="glightbox pulsating-play-btn"></a>
-          </div>
+          
         </div>
       </div>
 
@@ -154,105 +152,31 @@
           <div class="col-lg-12 d-flex justify-content-center">
             <ul class="menu-filters isotope-filters">
               <li data-filter="*" class="filter-active">Tudo</li>
-              <li data-filter=".filter-starters">Entradas</li>
-              <li data-filter=".filter-salads">Saladas</li>
-              <li data-filter=".filter-specialty">Especial</li>
+              @foreach($categories as $index => $category)
+              <li data-filter=".filter-{{ Str::slug($category->name) }}">{{ $category->name }}</li>
+              @endforeach
             </ul>
           </div>
         </div><!-- Menu Filters -->
 
         <div class="row isotope-container" data-aos="fade-up" data-aos-delay="200">
-
-          <div class="col-lg-6 menu-item isotope-item filter-starters">
-            <img src="{{asset('template/assets/img/menu/lobster-bisque.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Lobster Bisque</a><span>$5.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Lorem, deren, trataro, filede, nerada
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-specialty">
-            <img src="{{asset('template/assets/img/menu/bread-barrel.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Bread Barrel</a><span>$6.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Lorem, deren, trataro, filede, nerada
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-starters">
-            <img src="{{asset('template/assets/img/menu/cake.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Crab Cake</a><span>$7.95</span>
-            </div>
-            <div class="menu-ingredients">
-              A delicate crab cake served on a toasted roll with lettuce and tartar sauce
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-salads">
-            <img src="{{asset('template/assets/img/menu/caesar.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Caesar Selections</a><span>$8.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Lorem, deren, trataro, filede, nerada
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-specialty">
-            <img src="{{asset('template/assets/img/menu/tuscan-grilled.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Tuscan Grilled</a><span>$9.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Grilled chicken with provolone, artichoke hearts, and roasted red pesto
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-starters">
-            <img src="{{asset('template/assets/img/menu/mozzarella.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Mozzarella Stick</a><span>$4.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Lorem, deren, trataro, filede, nerada
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-salads">
-            <img src="{{asset('template/assets/img/menu/greek-salad.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Greek Salad</a><span>$9.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Fresh spinach, crisp romaine, tomatoes, and Greek olives
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-salads">
-            <img src="{{asset('template/assets/img/menu/spinach-salad.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Spinach Salad</a><span>$9.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Fresh spinach with mushrooms, hard boiled egg, and warm bacon vinaigrette
-            </div>
-          </div><!-- Menu Item -->
-
-          <div class="col-lg-6 menu-item isotope-item filter-specialty">
-            <img src="{{asset('template/assets/img/menu/lobster-roll.jpg')}}" class="menu-img" alt="">
-            <div class="menu-content">
-              <a href="#">Lobster Roll</a><span>$12.95</span>
-            </div>
-            <div class="menu-ingredients">
-              Plump lobster meat, mayo and crisp lettuce on a toasted bulky roll
-            </div>
-          </div><!-- Menu Item -->
-
+          @foreach($categories as $category)
+            @foreach($category->randomProducts as $product)
+            <div class="col-lg-6 menu-item isotope-item filter-{{ Str::slug($category->name) }}">
+              @if($product->image)
+                <img src="{{ asset('storage/' . $product->image) }}" class="menu-img" alt="{{ $product->name }}">
+              @else
+                <img src="{{asset('template/assets/img/menu/bread-barrel.jpg')}}" class="menu-img" alt="{{ $product->name }}">
+              @endif
+              <div class="menu-content">
+                <a href="#">{{ $product->name }}</a><span>{{ number_format($product->price, 2) }} MT</span>
+              </div>
+              <div class="menu-ingredients">
+                {{ $product->description ?? $category->name }}
+              </div>
+            </div><!-- Menu Item -->
+            @endforeach
+          @endforeach
         </div><!-- Menu Container -->
 
       </div>
@@ -273,85 +197,36 @@
         <div class="row">
           <div class="col-lg-3">
             <ul class="nav nav-tabs flex-column">
+              @foreach($specialProducts as $index => $specialProduct)
               <li class="nav-item">
-                <a class="nav-link active show" data-bs-toggle="tab" href="#specials-tab-1">Bife ao Liv</a>
+                <a class="nav-link {{ $index == 0 ? 'active show' : '' }}" data-bs-toggle="tab" href="#specials-tab-{{ $index + 1 }}">{{ $specialProduct->name }}</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#specials-tab-2">Camarão</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#specials-tab-3">Peixe</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#specials-tab-4">Frango</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#specials-tab-5">Lulas</a>
-              </li>
+              @endforeach
             </ul>
           </div>
           <div class="col-lg-9 mt-4 mt-lg-0">
             <div class="tab-content">
-              <div class="tab-pane active show" id="specials-tab-1">
+              @foreach($specialProducts as $index => $specialProduct)
+              <div class="tab-pane {{ $index == 0 ? 'active show' : '' }}" id="specials-tab-{{ $index + 1 }}">
                 <div class="row">
                   <div class="col-lg-8 details order-2 order-lg-1">
-                    <h3>Architecto ut aperiam autem id</h3>
-                    <p class="fst-italic">Qui laudantium consequatur laborum sit qui ad sapiente dila parde sonata raqer a videna mareta paulona marka</p>
-                    <p>Et nobis maiores eius. Voluptatibus ut enim blanditiis atque harum sint. Laborum eos ipsum ipsa odit magni. Incidunt hic ut molestiae aut qui. Est repellat minima eveniet eius et quis magni nihil. Consequatur dolorem quaerat quos qui similique accusamus nostrum rem vero</p>
+                    <h3>{{ $specialProduct->name }}</h3>
+                    <p class="fst-italic">{{ $specialProduct->category->name ?? 'Prato especial' }}</p>
+                    <p>{{ $specialProduct->description ?? 'Delicioso prato preparado com ingredientes frescos e selecionados, seguindo as melhores técnicas culinárias. Ideal para acompanhar com nossas bebidas especiais e desfrutar em boa companhia.' }}</p>
+                    <div class="price mt-3">
+                      <p><span>{{ number_format($specialProduct->price, 2) }} MT</span></p>
+                    </div>
                   </div>
                   <div class="col-lg-4 text-center order-1 order-lg-2">
-                    <img src="{{asset('template/assets/img/specials-1.png')}}" alt="" class="img-fluid">
+                    @if($specialProduct->image)
+                      <img src="{{ asset('storage/' . $specialProduct->image) }}" alt="{{ $specialProduct->name }}" class="img-fluid">
+                    @else
+                      <img src="{{asset('template/assets/img/specials-1.png')}}" alt="{{ $specialProduct->name }}" class="img-fluid">
+                    @endif
                   </div>
                 </div>
               </div>
-              <div class="tab-pane" id="specials-tab-2">
-                <div class="row">
-                  <div class="col-lg-8 details order-2 order-lg-1">
-                    <h3>Et blanditiis nemo veritatis excepturi</h3>
-                    <p class="fst-italic">Qui laudantium consequatur laborum sit qui ad sapiente dila parde sonata raqer a videna mareta paulona marka</p>
-                    <p>Ea ipsum voluptatem consequatur quis est. Illum error ullam omnis quia et reiciendis sunt sunt est. Non aliquid repellendus itaque accusamus eius et velit ipsa voluptates. Optio nesciunt eaque beatae accusamus lerode pakto madirna desera vafle de nideran pal</p>
-                  </div>
-                  <div class="col-lg-4 text-center order-1 order-lg-2">
-                    <img src="{{asset('template/assets/img/specials-2.png')}}" alt="" class="img-fluid">
-                  </div>
-                </div>
-              </div>
-              <div class="tab-pane" id="specials-tab-3">
-                <div class="row">
-                  <div class="col-lg-8 details order-2 order-lg-1">
-                    <h3>Impedit facilis occaecati odio neque aperiam sit</h3>
-                    <p class="fst-italic">Eos voluptatibus quo. Odio similique illum id quidem non enim fuga. Qui natus non sunt dicta dolor et. In asperiores velit quaerat perferendis aut</p>
-                    <p>Iure officiis odit rerum. Harum sequi eum illum corrupti culpa veritatis quisquam. Neque necessitatibus illo rerum eum ut. Commodi ipsam minima molestiae sed laboriosam a iste odio. Earum odit nesciunt fugiat sit ullam. Soluta et harum voluptatem optio quae</p>
-                  </div>
-                  <div class="col-lg-4 text-center order-1 order-lg-2">
-                    <img src="{{asset('template/assets/img/specials-3.png')}}" alt="" class="img-fluid">
-                  </div>
-                </div>
-              </div>
-              <div class="tab-pane" id="specials-tab-4">
-                <div class="row">
-                  <div class="col-lg-8 details order-2 order-lg-1">
-                    <h3>Fuga dolores inventore laboriosam ut est accusamus laboriosam dolore</h3>
-                    <p class="fst-italic">Totam aperiam accusamus. Repellat consequuntur iure voluptas iure porro quis delectus</p>
-                    <p>Eaque consequuntur consequuntur libero expedita in voluptas. Nostrum ipsam necessitatibus aliquam fugiat debitis quis velit. Eum ex maxime error in consequatur corporis atque. Eligendi asperiores sed qui veritatis aperiam quia a laborum inventore</p>
-                  </div>
-                  <div class="col-lg-4 text-center order-1 order-lg-2">
-                    <img src="{{asset('template/assets/img/specials-4.png')}}" alt="" class="img-fluid">
-                  </div>
-                </div>
-              </div>
-              <div class="tab-pane" id="specials-tab-5">
-                <div class="row">
-                  <div class="col-lg-8 details order-2 order-lg-1">
-                    <h3>Est eveniet ipsam sindera pad rone matrelat sando reda</h3>
-                    <p class="fst-italic">Omnis blanditiis saepe eos autem qui sunt debitis porro quia.</p>
-                    <p>Exercitationem nostrum omnis. Ut reiciendis repudiandae minus. Omnis recusandae ut non quam ut quod eius qui. Ipsum quia odit vero atque qui quibusdam amet. Occaecati sed est sint aut vitae molestiae voluptate vel</p>
-                  </div>
-                  <div class="col-lg-4 text-center order-1 order-lg-2">
-                    <img src="{{asset('template/assets/img/specials-5.png')}}" alt="" class="img-fluid">
-                  </div>
-                </div>
-              </div>
+              @endforeach
             </div>
           </div>
         </div>
@@ -396,16 +271,15 @@
                     <p><span>1000 MT</span></p>
                   </div>
                   <p class="fst-italic">
-                    Um novo conceito a ser implementado na cidade da Beira, sabados com Djs de renome de moçambique e internacionais, eventos unicos depois do seu almoço calmo.
+                    Um novo conceito a ser implementado na cidade da Beira, sábados com DJs de renome de Moçambique e internacionais, eventos únicos depois do seu almoço calmo.
                   </p>
                   <ul>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Duis aute irure dolor in reprehenderit in voluptate velit.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Música ao vivo com DJs profissionais</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Cardápio especial para o evento</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Ambiente descontraído e festivo</span></li>
                   </ul>
                   <p>
-                    Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-                    velit esse cillum dolore eu fugiat nulla pariatur
+                    Venha desfrutar do melhor da música e gastronomia na Beira. Um espetáculo de sabores e sons que promete marcar os seus fins de semana.
                   </p>
                 </div>
               </div>
@@ -422,17 +296,15 @@
                     <p><span>1000 MT</span></p>
                   </div>
                   <p class="fst-italic">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-                    magna aliqua.
+                    As sextas-feiras no Liv Beira são especiais! Venha relaxar depois de uma semana de trabalho com boa música e excelente comida.
                   </p>
                   <ul>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Duis aute irure dolor in reprehenderit in voluptate velit.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Happy hour com promoções especiais</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Música ao vivo</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Ambiente acolhedor e familiar</span></li>
                   </ul>
                   <p>
-                    Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-                    velit esse cillum dolore eu fugiat nulla pariatur
+                    Perfeito para começar o fim de semana com os amigos ou família. Aproveite nossas ofertas especiais e desfrute de momentos inesquecíveis.
                   </p>
                 </div>
               </div>
@@ -444,22 +316,20 @@
                   <img src="{{asset('template/assets/img/events-slider/events-slider-3.jpg')}}" class="img-fluid" alt="">
                 </div>
                 <div class="col-lg-6 pt-4 pt-lg-0 content">
-                  <h3>Festas de aniversarios</h3>
+                  <h3>Festas de Aniversários</h3>
                   <div class="price">
-                    <p><span>$99</span></p>
+                    <p><span>Sob Consulta</span></p>
                   </div>
                   <p class="fst-italic">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-                    magna aliqua.
+                    Organize o seu aniversário no Liv Beira! Dispomos de espaço reservado e pacotes personalizados para tornar seu dia ainda mais especial.
                   </p>
                   <ul>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Duis aute irure dolor in reprehenderit in voluptate velit.</span></li>
-                    <li><i class="bi bi-check2-circle"></i> <span>Ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Espaço privado disponível</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Menu personalizado conforme sua preferência</span></li>
+                    <li><i class="bi bi-check2-circle"></i> <span>Decoração e animação sob medida</span></li>
                   </ul>
                   <p>
-                    Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-                    velit esse cillum dolore eu fugiat nulla pariatur
+                    Entre em contacto connosco para criar o evento perfeito. Nossa equipe está pronta para tornar sua celebração inesquecível.
                   </p>
                 </div>
               </div>
