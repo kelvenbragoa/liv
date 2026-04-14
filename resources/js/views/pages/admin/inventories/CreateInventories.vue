@@ -110,8 +110,37 @@ const onSubmit = handleSubmit((values) => {
         })
         .catch((error) => {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error.response.data.message}`, life: 3000 });
-            if (error.response.data.errors) {
+            
+            // Tratar erro de estoque insuficiente
+            if (error.response?.data?.insufficient_stock) {
+                const insufficientProducts = error.response.data.insufficient_stock;
+                let errorDetails = 'Estoque insuficiente:\n';
+                insufficientProducts.forEach(item => {
+                    errorDetails += `\n• ${item.product}: Disponível ${item.available}, Solicitado ${item.requested}`;
+                });
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Estoque Insuficiente', 
+                    detail: errorDetails, 
+                    life: 5000 
+                });
+            } else if (error.response?.data?.message) {
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Erro', 
+                    detail: error.response.data.message, 
+                    life: 3000 
+                });
+            } else {
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Erro', 
+                    detail: 'Ocorreu um erro ao processar a solicitação', 
+                    life: 3000 
+                });
+            }
+            
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })

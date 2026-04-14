@@ -30,7 +30,10 @@ class CashRegisterController extends Controller
 
             $categories = CashRegister::query()
             ->when(request('query'),function($query,$searchQuery){
-                $query->where('name','like',"%{$searchQuery}%");
+                $query->where('id','like',"%{$searchQuery}%")
+                    ->orWhereHas('user', function($q) use ($searchQuery) {
+                        $q->where('name','like',"%{$searchQuery}%");
+                    });
             })
             ->with('orderitens')
             ->with('user')

@@ -55,6 +55,13 @@ class EntryNotesController extends Controller
         //
         $data = $request->all();
 
+        // Validar se stockcenterproducts existe e não está vazio
+        if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
+            return response()->json([
+                'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
+            ], 422);
+        }
+
         
         $entrynote = EntryNotes::create([
             'user_id'=>Auth::user()->id,

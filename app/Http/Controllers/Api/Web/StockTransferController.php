@@ -51,6 +51,46 @@ class StockTransferController extends Controller
         //
         $data = $request->all();
 
+        // Validar se stockcenterproducts existe e não está vazio
+        if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
+            return response()->json([
+                'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
+            ], 422);
+        }
+
+        // Validar estoque antes de processar
+        $insufficientStock = [];
+        foreach($data['stockcenterproducts'] as $item){
+            // Ignorar produtos com quantidade 0
+            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
+                continue;
+            }
+
+            $stockcenterproduct = StockCenterProduct::find($item['id']);
+            if (!$stockcenterproduct) {
+                continue;
+            }
+
+            if ($stockcenterproduct->quantity < $item['quantity']) {
+                $insufficientStock[] = [
+                    'product' => $stockcenterproduct->product->name ?? "ID: {$item['product_id']}",
+                    'available' => $stockcenterproduct->quantity,
+                    'requested' => $item['quantity']
+                ];
+            }
+        }
+
+        if (!empty($insufficientStock)) {
+            $errorMessage = "Estoque insuficiente para os seguintes produtos:\n";
+            foreach ($insufficientStock as $stock) {
+                $errorMessage .= "- {$stock['product']}: disponível {$stock['available']}, solicitado {$stock['requested']}\n";
+            }
+            return response()->json([
+                'message' => $errorMessage,
+                'insufficient_stock' => $insufficientStock
+            ], 422);
+        }
+
         // dd($data);
 
 
@@ -65,6 +105,11 @@ class StockTransferController extends Controller
         ]);
 
         foreach($data['stockcenterproducts'] as $item){
+
+            // Ignorar produtos com quantidade 0
+            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
+                continue;
+            }
 
             //origin
 
@@ -82,11 +127,9 @@ class StockTransferController extends Controller
             //         'quantity'=>$product_last_quantity - $item['quantity']
             //     ]);
             // }
-            if($last_quantity>=$item['quantity']){
-                $stockcenterproduct->update([
-                    'quantity'=> $last_quantity - $item['quantity']
-                ]);
-            }
+            $stockcenterproduct->update([
+                'quantity'=> $last_quantity - $item['quantity']
+            ]);
 
             
 
@@ -94,11 +137,9 @@ class StockTransferController extends Controller
             $stockcenterproductdestination = StockCenterProduct::where('stock_center_id',$data['stock_center_destination_id'])->where('product_id',$item['product_id'])->first();
             $stockcenterproductdestination_last_quantity = $stockcenterproductdestination->quantity;
 
-            if($last_quantity>=$item['quantity']){
-                $stockcenterproductdestination->update([
-                    'quantity'=> $stockcenterproductdestination_last_quantity + $item['quantity']
-                ]);
-            }
+            $stockcenterproductdestination->update([
+                'quantity'=> $stockcenterproductdestination_last_quantity + $item['quantity']
+            ]);
 
             
 
@@ -112,15 +153,13 @@ class StockTransferController extends Controller
 
           
 
-            if($last_quantity>=$item['quantity']){
-                $stockTransferItem = StockCenterTransferItem::create([
-                    // 'stock_center_origin_id'=>$data['stock_center_origin_id'],
-                    // 'stock_center_destination_id'=>$data['stock_center_destination_id'],
-                    'stock_center_transfer_id'=>$stock_transfer->id,
-                    'product_id'=>$item['product_id'],
-                    'quantity'=>$item['quantity'],
-                ]);
-            }
+            $stockTransferItem = StockCenterTransferItem::create([
+                // 'stock_center_origin_id'=>$data['stock_center_origin_id'],
+                // 'stock_center_destination_id'=>$data['stock_center_destination_id'],
+                'stock_center_transfer_id'=>$stock_transfer->id,
+                'product_id'=>$item['product_id'],
+                'quantity'=>$item['quantity'],
+            ]);
 
 
             

@@ -55,6 +55,46 @@ class ExitNotesController extends Controller
         //
         $data = $request->all();
 
+        // Validar se stockcenterproducts existe e não está vazio
+        if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
+            return response()->json([
+                'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
+            ], 422);
+        }
+
+        // Validar estoque antes de processar
+        $insufficientStock = [];
+        foreach($data['stockcenterproducts'] as $item){
+            // Ignorar produtos com quantidade 0
+            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
+                continue;
+            }
+
+            $stockcenterproduct = StockCenterProduct::find($item['id']);
+            if (!$stockcenterproduct) {
+                continue;
+            }
+
+            if ($stockcenterproduct->quantity < $item['quantity']) {
+                $insufficientStock[] = [
+                    'product' => $stockcenterproduct->product->name ?? "ID: {$item['product_id']}",
+                    'available' => $stockcenterproduct->quantity,
+                    'requested' => $item['quantity']
+                ];
+            }
+        }
+
+        if (!empty($insufficientStock)) {
+            $errorMessage = "Estoque insuficiente para os seguintes produtos:\n";
+            foreach ($insufficientStock as $stock) {
+                $errorMessage .= "- {$stock['product']}: disponível {$stock['available']}, solicitado {$stock['requested']}\n";
+            }
+            return response()->json([
+                'message' => $errorMessage,
+                'insufficient_stock' => $insufficientStock
+            ], 422);
+        }
+
         
         $exitnote = ExitNotes::create([
             'user_id'=>Auth::user()->id,
@@ -67,6 +107,11 @@ class ExitNotesController extends Controller
         ]);
 
         foreach($data['stockcenterproducts'] as $item){
+
+            // Ignorar produtos com quantidade 0
+            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
+                continue;
+            }
 
             $stockcenterproduct = StockCenterProduct::find($item['id']);
             $last_quantity = $stockcenterproduct->quantity;
