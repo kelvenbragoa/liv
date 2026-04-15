@@ -177,37 +177,57 @@
             </table>
 
             <h3>Produtos Stock Cozinha</h3>
-            <table class="details">
+            <table class="details compact">
                 <tr>
-                    <th style="width: 42%;">Produto</th>
-                    <th class="text-center" style="width: 14%;">Qtd. Vend.</th>
-                    <th class="text-right" style="width: 18%;">V. Total</th>
-                    <th class="text-center" style="width: 13%;">Qtd. Inicial</th>
-                    <th class="text-center" style="width: 13%;">Stock Atual</th>
+                    <th class="col-product">Produto</th>
+                    <th class="col-qty text-center">Qtd. Vend.</th>
+                    <th class="col-money text-right">P. Venda</th>
+                    <th class="col-money text-right">V. Total</th>
+                    <th class="col-stock text-center">Qtd. Inicial</th>
+                    <th class="col-stock text-center">Stock Atual</th>
+                    <th class="col-money text-right">P. Compra</th>
+                    <th class="col-money text-right">T. Compra</th>
+                    <th class="col-money text-right">Lucro</th>
                 </tr>
                 @php
                     $total_geral_quantidade_kitchen = 0;
                     $total_geral_valor_kitchen = 0;
+                    $total_geral_compra_kitchen = 0;
+                    $total_geral_lucro_kitchen = 0;
                 @endphp
                 @foreach ($orderItemsTableReportKitchen as $item)
+                    @php
+                        $total_compra_item_kitchen = ($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0);
+                        $lucro_item_kitchen = $item->total_value - $total_compra_item_kitchen;
+                    @endphp
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
                         <td class="text-center">{{ $item->total_quantity }}</td>
+                        <td class="text-right">{{ number_format($item->product->price ?? 0, 2, ',', '.') }} MT</td>
                         <td class="text-right">{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
                         <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
                         <td class="text-center">{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
+                        <td class="text-right">{{ number_format($item->product->buy_price ?? 0, 2, ',', '.') }} MT</td>
+                        <td class="text-right">{{ number_format($total_compra_item_kitchen, 2, ',', '.') }} MT</td>
+                        <td class="text-right">{{ number_format($lucro_item_kitchen, 2, ',', '.') }} MT</td>
                     </tr>
                     @php
                         $total_geral_quantidade_kitchen += $item->total_quantity;
                         $total_geral_valor_kitchen += $item->total_value;
+                        $total_geral_compra_kitchen += $total_compra_item_kitchen;
+                        $total_geral_lucro_kitchen += $lucro_item_kitchen;
                     @endphp
                 @endforeach
                 <tr class="total-row">
                     <th>Total</th>
                     <td class="text-center">{{ $total_geral_quantidade_kitchen }}</td>
+                    <td></td>
                     <td class="text-right">{{ number_format($total_geral_valor_kitchen, 2, ',', '.') }} MT</td>
                     <td></td>
                     <td></td>
+                    <td></td>
+                    <td class="text-right">{{ number_format($total_geral_compra_kitchen, 2, ',', '.') }} MT</td>
+                    <td class="text-right">{{ number_format($total_geral_lucro_kitchen, 2, ',', '.') }} MT</td>
                 </tr>
                 
             </table>
