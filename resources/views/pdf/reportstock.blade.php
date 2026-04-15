@@ -2,64 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório de Vendas</title>
+    <title>Relatório de Stocks</title>
     <style type="text/css">
         @page {
-            margin: 20px;
+            size: A4 landscape;
+            margin: 14px 12px 30px;
         }
         body {
             font-family: Verdana, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            font-size: 10px;
+            color: #111827;
         }
         .container {
-            width: 90%;
-            margin: auto;
+            width: 100%;
+            margin: 0;
         }
         .header, .footer {
             background-color: #01090e;
             color: white;
-            padding: 10px;
+            padding: 8px 10px;
             text-align: center;
         }
         .header img {
-            max-width: 150px;
+            max-width: 110px;
         }
         .info-table {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         .info-table td {
-            padding: 5px;
+            padding: 4px;
+            vertical-align: middle;
         }
         .content {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 14px;
         }
         .content h3 {
-            margin-bottom: 10px;
-            font-size: 18px;
+            margin: 10px 0 6px;
+            font-size: 14px;
         }
         .details, .cards {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
+            table-layout: fixed;
         }
         .details th, .details td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 4px 5px;
             text-align: left;
+            font-size: 9px;
+            line-height: 1.25;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         .details th {
             background-color: #1795ee;
             color: white;
         }
+        .details.compact th,
+        .details.compact td {
+            font-size: 8px;
+            padding: 4px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .section-note {
+            font-size: 10px;
+        }
+        .total-row th,
+        .total-row td {
+            font-weight: bold;
+            background-color: #f3f4f6;
+        }
+        .col-product {
+            width: 22%;
+        }
+        .col-qty {
+            width: 8%;
+        }
+        .col-money {
+            width: 11%;
+        }
+        .col-stock {
+            width: 9%;
+        }
         
         .footer {
-            position: absolute;
+            position: fixed;
             bottom: 0;
             width: 100%;
             text-align: center;
+            font-size: 9px;
         }
     </style>
 </head>
@@ -84,17 +125,21 @@
     <div class="container">
         <div class="content">
             <h3>Relatório de Stocks</h3>
-                <small style="font-size: 11px">Data e hora de registro de Quantidade atual dos produtos: {{ $orderItemsTableReportBar[0]['initial_created'] ?? 'N/A' }}  </small>
+                <small class="section-note">Data e hora de registro de quantidade atual dos produtos: {{ $orderItemsTableReportBar[0]['initial_created'] ?? 'N/A' }}</small>
 
 
             <h3>Produtos Stock Bar</h3>
-            <table class="details">
+            <table class="details compact">
                 <tr>
-                    <th>Produto</th>
-                    <th>Quantidade Vendida</th>
-                    <th>Valor Total</th>
-                    <th>Quantidade Inicial</th>
-                    <th>Stock Atual</th>
+                    <th class="col-product">Produto</th>
+                    <th class="col-qty text-center">Qtd. Vend.</th>
+                    <th class="col-money text-right">P. Venda</th>
+                    <th class="col-money text-right">V. Total</th>
+                    <th class="col-stock text-center">Qtd. Inicial</th>
+                    <th class="col-stock text-center">Stock Atual</th>
+                    <th class="col-money text-right">P. Compra</th>
+                    <th class="col-money text-right">T. Compra</th>
+                    <th class="col-money text-right">Lucro</th>
                 </tr>
                 @php
                     $total_geral_quantidade = 0;
@@ -103,20 +148,30 @@
                 @foreach ($orderItemsTableReportBar as $item)
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
-                        <td>{{ $item->total_quantity }}</td>
-                        <td>{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
-                        <td>{{ $item->initial_stock_quantity ?? 0 }}</td>
-                        <td>{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
+                        <td class="text-center">{{ $item->total_quantity }}</td>
+                        <td class="text-right">{{ number_format($item->product->price ?? 0, 2, ',', '.') }} MT</td>
+                        <td class="text-right">{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
+                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
+                        <td class="text-center">{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
+                        <td class="text-right">{{ number_format($item->product->buy_price ?? 0, 2, ',', '.') }} MT</td>
+                        <td class="text-right">{{ number_format(($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0), 2, ',', '.') }} MT</td>
+                        <td class="text-right">{{ number_format($item->total_value - (($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0)), 2, ',', '.') }} MT</td>
                     </tr>
                     @php
                         $total_geral_quantidade += $item->total_quantity;
                         $total_geral_valor += $item->total_value;
                     @endphp
                 @endforeach
-                <tr>
+                <tr class="total-row">
                     <th>Total</th>
-                    <td>{{ $total_geral_quantidade }}</td>
-                    <td>{{ number_format($total_geral_valor, 2, ',', '.') }} MT</td>
+                    <td class="text-center">{{ $total_geral_quantidade }}</td>
+                    <td></td>
+                    <td class="text-right">{{ number_format($total_geral_valor, 2, ',', '.') }} MT</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                 </tr>
                 
             </table>
@@ -124,11 +179,11 @@
             <h3>Produtos Stock Cozinha</h3>
             <table class="details">
                 <tr>
-                    <th>Produto</th>
-                    <th>Quantidade Vendida</th>
-                    <th>Valor Total</th>
-                    <th>Quantidade Inicial</th>
-                    <th>Stock Atual</th>
+                    <th style="width: 42%;">Produto</th>
+                    <th class="text-center" style="width: 14%;">Qtd. Vend.</th>
+                    <th class="text-right" style="width: 18%;">V. Total</th>
+                    <th class="text-center" style="width: 13%;">Qtd. Inicial</th>
+                    <th class="text-center" style="width: 13%;">Stock Atual</th>
                 </tr>
                 @php
                     $total_geral_quantidade_kitchen = 0;
@@ -137,20 +192,22 @@
                 @foreach ($orderItemsTableReportKitchen as $item)
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
-                        <td>{{ $item->total_quantity }}</td>
-                        <td>{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
-                        <td>{{ $item->initial_stock_quantity ?? 0 }}</td>
-                        <td>{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
+                        <td class="text-center">{{ $item->total_quantity }}</td>
+                        <td class="text-right">{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
+                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
+                        <td class="text-center">{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
                     </tr>
                     @php
                         $total_geral_quantidade_kitchen += $item->total_quantity;
                         $total_geral_valor_kitchen += $item->total_value;
                     @endphp
                 @endforeach
-                <tr>
+                <tr class="total-row">
                     <th>Total</th>
-                    <td>{{ $total_geral_quantidade_kitchen }}</td>
-                    <td>{{ number_format($total_geral_valor_kitchen, 2, ',', '.') }} MT</td>
+                    <td class="text-center">{{ $total_geral_quantidade_kitchen }}</td>
+                    <td class="text-right">{{ number_format($total_geral_valor_kitchen, 2, ',', '.') }} MT</td>
+                    <td></td>
+                    <td></td>
                 </tr>
                 
             </table>
