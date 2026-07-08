@@ -12,6 +12,11 @@ class StockMovement extends Model
     public const REASON_SALE = 'sale';
     public const REASON_SALE_CANCEL = 'sale_cancel';
     public const REASON_ADJUSTMENT = 'adjustment';
+    public const REASON_ENTRY = 'entry';
+    public const REASON_EXIT = 'exit';
+    public const REASON_TRANSFER_OUT = 'transfer_out';
+    public const REASON_TRANSFER_IN = 'transfer_in';
+    public const REASON_INVENTORY = 'inventory';
 
     protected $fillable = [
         'stock_center_id',

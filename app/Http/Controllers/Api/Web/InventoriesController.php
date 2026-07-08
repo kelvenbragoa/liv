@@ -2,166 +2,135 @@
 
 namespace App\Http\Controllers\Api\Web;
 
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Http\Controllers\Controller;
 use App\Models\Inventory;
 use App\Models\InventoryItem;
 use App\Models\StockCenter;
-use App\Models\StockCenterProduct;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class InventoriesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    use ManagesPrincipalStock;
+
     public function index()
     {
-        //
         $searchQuery = request('query');
 
-            $inventories = Inventory::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('ref','like',"%{$searchQuery}%");
+        $inventories = Inventory::query()
+            ->when(request('query'), function ($query, $searchQuery) {
+                $query->where('ref', 'like', "%{$searchQuery}%");
             })
             ->with('stockcenter')
-            ->orderBy('created_at','desc')
+            ->orderBy('created_at', 'desc')
             ->paginate();
-            return response()->json($inventories);
+
+        return response()->json($inventories);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
         $stockcenters = StockCenter::all();
-        return response()->json(["stockcenters"=>$stockcenters]);
 
+        return response()->json(["stockcenters" => $stockcenters]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
         $data = $request->all();
 
-        // Validar se stockcenterproducts existe e não está vazio
         if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
             return response()->json([
                 'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
             ], 422);
         }
 
-        
-        $inventory = Inventory::create([
-            'user_id'=>Auth::user()->id,
-            'ref'=>$data['reference'],
-            'stock_center_id'=>$data['stock_center_id'],
-            'products_number'=>count($data['stockcenterproducts']),
-        ]);
+        try {
+            $inventory = DB::transaction(function () use ($data) {
+                $stockCenterId = (int) $data['stock_center_id'];
 
-        foreach($data['stockcenterproducts'] as $item){
+                $inventory = Inventory::create([
+                    'user_id' => Auth::user()->id,
+                    'ref' => $data['reference'],
+                    'stock_center_id' => $stockCenterId,
+                    'products_number' => count($data['stockcenterproducts']),
+                ]);
 
-            $stockcenterproduct = StockCenterProduct::find($item['id']);
-            $last_quantity = $stockcenterproduct->quantity;
-            // $product = Product::find($item['product_id']);
+                foreach ($data['stockcenterproducts'] as $item) {
+                    $newQty = (int) ($item['quantity'] ?? 0);
+                    $productId = (int) $item['product_id'];
 
-            // if($data['stock_center_id'] == 1){
+                    $inventoryItem = InventoryItem::create([
+                        'stock_center_id' => $stockCenterId,
+                        'inventory_id' => $inventory->id,
+                        'product_id' => $productId,
+                        'quantity' => $newQty,
+                        'last_quantity' => 0, // actualizado a seguir com o valor real
+                    ]);
 
-            //     $product->update([
-            //         'quantity'=>$item['quantity']
-            //     ]);
-            // }
+                    $lastQuantity = $this->setStockAbsolute(
+                        $stockCenterId,
+                        $productId,
+                        $newQty,
+                        StockMovement::REASON_INVENTORY,
+                        InventoryItem::class,
+                        (int) $inventoryItem->id
+                    );
 
-            $stockcenterproduct->update([
-                'quantity'=>$item['quantity'] ?? 0
-            ]);
+                    $inventoryItem->update([
+                        'last_quantity' => $lastQuantity,
+                    ]);
+                }
 
-            $inventoryItem = InventoryItem::create([
-                'stock_center_id'=>$data['stock_center_id'],
-                'inventory_id'=>$inventory->id,
-                'product_id'=>$item['product_id'],
-                'quantity'=>$item['quantity'] ?? 0,
-                'last_quantity'=>$last_quantity
-            ]);
-
-
+                return $inventory;
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json($inventory);
-
-
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
-        $inventory = Inventory::
-        with('stockcenter')
-        ->with('itens.product')
-        ->with('user')
-        ->find($id);
+        $inventory = Inventory::with('stockcenter')
+            ->with('itens.product')
+            ->with('user')
+            ->find($id);
 
         return response()->json($inventory);
-
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
-
         $inventory = Inventory::find($id);
-        
-
 
         return $inventory;
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
         $data = $request->all();
-
-
         $inventory = Inventory::find($id);
-
         $inventory->update($data);
 
         return $inventory;
-
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
-
         $inventory = Inventory::find($id);
-
         $inventory->delete();
 
         return true;
     }
 
-    public function center(){
-        
+    public function center()
+    {
+        //
     }
-
-
-
 }

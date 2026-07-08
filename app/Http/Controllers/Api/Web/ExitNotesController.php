@@ -2,203 +2,167 @@
 
 namespace App\Http\Controllers\Api\Web;
 
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Http\Controllers\Controller;
 use App\Models\ExitNoteItem;
 use App\Models\ExitNotes;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
+use App\Models\StockMovement;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class ExitNotesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    use ManagesPrincipalStock;
+
     public function index()
     {
-        //
         $searchQuery = request('query');
 
-            $exitnotes = ExitNotes::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('ref','like',"%{$searchQuery}%");
+        $exitnotes = ExitNotes::query()
+            ->when(request('query'), function ($query, $searchQuery) {
+                $query->where('ref', 'like', "%{$searchQuery}%");
             })
             ->with('stockcenter')
             ->with('supplier')
-            ->orderBy('created_at','desc')
+            ->orderBy('created_at', 'desc')
             ->paginate();
-            return response()->json($exitnotes);
+
+        return response()->json($exitnotes);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
         $suppliers = Supplier::get();
         $stockcenters = StockCenter::get();
 
         return response()->json([
-           'suppliers'=>$suppliers,
-           'stockcenters'=>$stockcenters
+            'suppliers' => $suppliers,
+            'stockcenters' => $stockcenters
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
         $data = $request->all();
 
-        // Validar se stockcenterproducts existe e não está vazio
         if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
             return response()->json([
                 'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
             ], 422);
         }
 
-        // Validar estoque antes de processar
-        $insufficientStock = [];
-        foreach($data['stockcenterproducts'] as $item){
-            // Ignorar produtos com quantidade 0
-            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
-                continue;
-            }
+        try {
+            $exitnote = DB::transaction(function () use ($data) {
+                $stockCenterId = (int) $data['stock_center_id'];
 
-            $stockcenterproduct = StockCenterProduct::find($item['id']);
-            if (!$stockcenterproduct) {
-                continue;
-            }
+                // Validação com lock dentro da mesma transação
+                foreach ($data['stockcenterproducts'] as $item) {
+                    $qty = (int) ($item['quantity'] ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
 
-            if ($stockcenterproduct->quantity < $item['quantity']) {
-                $insufficientStock[] = [
-                    'product' => $stockcenterproduct->product->name ?? "ID: {$item['product_id']}",
-                    'available' => $stockcenterproduct->quantity,
-                    'requested' => $item['quantity']
-                ];
-            }
-        }
+                    $row = StockCenterProduct::where('id', $item['id'])->lockForUpdate()->first()
+                        ?? StockCenterProduct::where('stock_center_id', $stockCenterId)
+                            ->where('product_id', $item['product_id'])
+                            ->lockForUpdate()
+                            ->first();
 
-        if (!empty($insufficientStock)) {
-            $errorMessage = "Estoque insuficiente para os seguintes produtos:\n";
-            foreach ($insufficientStock as $stock) {
-                $errorMessage .= "- {$stock['product']}: disponível {$stock['available']}, solicitado {$stock['requested']}\n";
-            }
-            return response()->json([
-                'message' => $errorMessage,
-                'insufficient_stock' => $insufficientStock
-            ], 422);
-        }
+                    if (!$row || $row->quantity < $qty) {
+                        $name = $row?->product?->name ?? ("ID: " . ($item['product_id'] ?? '?'));
+                        $available = $row?->quantity ?? 0;
+                        throw new RuntimeException(
+                            "Estoque insuficiente para {$name}: disponível {$available}, solicitado {$qty}."
+                        );
+                    }
+                }
 
-        
-        $exitnote = ExitNotes::create([
-            'user_id'=>Auth::user()->id,
-            'ref'=>$data['reference'],
-            'document_ref'=>$data['document_reference'],
-            'serie'=>$data['serie'],
-            'supplier_id'=>$data['stock_supplier_id'],
-            'stock_center_id'=>$data['stock_center_id'],
-            'products_number'=>count($data['stockcenterproducts']),
-        ]);
+                $exitnote = ExitNotes::create([
+                    'user_id' => Auth::user()->id,
+                    'ref' => $data['reference'],
+                    'document_ref' => $data['document_reference'],
+                    'serie' => $data['serie'],
+                    'supplier_id' => $data['stock_supplier_id'],
+                    'stock_center_id' => $stockCenterId,
+                    'products_number' => count($data['stockcenterproducts']),
+                ]);
 
-        foreach($data['stockcenterproducts'] as $item){
+                foreach ($data['stockcenterproducts'] as $item) {
+                    $qty = (int) ($item['quantity'] ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
 
-            // Ignorar produtos com quantidade 0
-            if (!isset($item['quantity']) || $item['quantity'] <= 0) {
-                continue;
-            }
+                    $productId = (int) $item['product_id'];
 
-            $stockcenterproduct = StockCenterProduct::find($item['id']);
-            $last_quantity = $stockcenterproduct->quantity;
-            // $product = Product::find($item['product_id']);
+                    $existing = StockCenterProduct::where('stock_center_id', $stockCenterId)
+                        ->where('product_id', $productId)
+                        ->lockForUpdate()
+                        ->first();
+                    $lastQuantity = (int) ($existing?->quantity ?? 0);
 
-            // if($data['stock_center_id'] == 1){
+                    $exitNoteItem = ExitNoteItem::create([
+                        'stock_center_id' => $stockCenterId,
+                        'exit_note_id' => $exitnote->id,
+                        'product_id' => $productId,
+                        'quantity' => $qty,
+                        'last_quantity' => $lastQuantity,
+                    ]);
 
-            //     $product->update([
-            //         'quantity'=>$last_quantity - $item['quantity']
-            //     ]);
-            // }
+                    $this->debitStock(
+                        $stockCenterId,
+                        $productId,
+                        $qty,
+                        StockMovement::REASON_EXIT,
+                        ExitNoteItem::class,
+                        (int) $exitNoteItem->id
+                    );
+                }
 
-            $stockcenterproduct->update([
-                'quantity'=>$last_quantity - $item['quantity']
-            ]);
-
-            $exitNoteItem = ExitNoteItem::create([
-                'stock_center_id'=>$data['stock_center_id'],
-                'exit_note_id'=>$exitnote->id,
-                'product_id'=>$item['product_id'],
-                'quantity'=>$item['quantity'],
-                'last_quantity'=>$last_quantity
-            ]);
-
-
+                return $exitnote;
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json($exitnote);
-
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
-        $exitnote = ExitNotes::
-        with('stockcenter')
-        ->with('user')
-        ->with('supplier')
-        ->with('itens.product')
-        ->find($id);
+        $exitnote = ExitNotes::with('stockcenter')
+            ->with('user')
+            ->with('supplier')
+            ->with('itens.product')
+            ->find($id);
 
         return response()->json($exitnote);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
-
         $exitnote = ExitNotes::find($id);
-        
-
 
         return $exitnote;
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
         $data = $request->all();
-
-
         $exitnote = ExitNotes::find($id);
-
         $exitnote->update($data);
 
         return response()->json($exitnote);
-
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
-
         $exitnote = ExitNotes::find($id);
-
         $exitnote->delete();
 
         return true;

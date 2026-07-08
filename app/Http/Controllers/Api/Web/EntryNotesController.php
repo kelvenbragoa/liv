@@ -2,165 +2,145 @@
 
 namespace App\Http\Controllers\Api\Web;
 
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Http\Controllers\Controller;
 use App\Models\EntryNoteItem;
 use App\Models\EntryNotes;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
+use App\Models\StockMovement;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class EntryNotesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    use ManagesPrincipalStock;
+
     public function index()
     {
-        //
         $searchQuery = request('query');
 
-            $entrynotes = EntryNotes::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('ref','like',"%{$searchQuery}%");
+        $entrynotes = EntryNotes::query()
+            ->when(request('query'), function ($query, $searchQuery) {
+                $query->where('ref', 'like', "%{$searchQuery}%");
             })
             ->with('stockcenter')
             ->with('supplier')
-            ->orderBy('created_at','desc')
+            ->orderBy('created_at', 'desc')
             ->paginate();
 
-            return response()->json($entrynotes);
+        return response()->json($entrynotes);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $suppliers = Supplier::get();
         $stockcenters = StockCenter::get();
 
         return response()->json([
-           'suppliers'=>$suppliers,
-           'stockcenters'=>$stockcenters
+            'suppliers' => $suppliers,
+            'stockcenters' => $stockcenters
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
         $data = $request->all();
 
-        // Validar se stockcenterproducts existe e não está vazio
         if (!isset($data['stockcenterproducts']) || !is_array($data['stockcenterproducts']) || empty($data['stockcenterproducts'])) {
             return response()->json([
                 'message' => 'Nenhum produto foi selecionado. Por favor, selecione pelo menos um produto.'
             ], 422);
         }
 
-        
-        $entrynote = EntryNotes::create([
-            'user_id'=>Auth::user()->id,
-            'ref'=>$data['reference'],
-            'document_ref'=>$data['document_reference'],
-            'serie'=>$data['serie'],
-            'supplier_id'=>$data['stock_supplier_id'],
-            'stock_center_id'=>$data['stock_center_id'],
-            'products_number'=>count($data['stockcenterproducts']),
-        ]);
+        try {
+            $entrynote = DB::transaction(function () use ($data) {
+                $entrynote = EntryNotes::create([
+                    'user_id' => Auth::user()->id,
+                    'ref' => $data['reference'],
+                    'document_ref' => $data['document_reference'],
+                    'serie' => $data['serie'],
+                    'supplier_id' => $data['stock_supplier_id'],
+                    'stock_center_id' => $data['stock_center_id'],
+                    'products_number' => count($data['stockcenterproducts']),
+                ]);
 
-        foreach($data['stockcenterproducts'] as $item){
+                $stockCenterId = (int) $data['stock_center_id'];
 
-            $stockcenterproduct = StockCenterProduct::find($item['id']);
-            $last_quantity = $stockcenterproduct->quantity;
-            // $product = Product::find($item['product_id']);
+                foreach ($data['stockcenterproducts'] as $item) {
+                    $qty = (int) ($item['quantity'] ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
 
-            // if($data['stock_center_id'] == 1){
+                    $productId = (int) $item['product_id'];
 
-            //     $product->update([
-            //         'quantity'=>$last_quantity + $item['quantity']
-            //     ]);
-            // }
+                    $existing = StockCenterProduct::where('stock_center_id', $stockCenterId)
+                        ->where('product_id', $productId)
+                        ->lockForUpdate()
+                        ->first();
+                    $lastQuantity = (int) ($existing?->quantity ?? 0);
 
-            $stockcenterproduct->update([
-                'quantity'=>$last_quantity + ($item['quantity'] ?? 0)
-            ]);
+                    $entryNoteItem = EntryNoteItem::create([
+                        'stock_center_id' => $stockCenterId,
+                        'entry_note_id' => $entrynote->id,
+                        'product_id' => $productId,
+                        'quantity' => $qty,
+                        'last_quantity' => $lastQuantity,
+                    ]);
 
-            $entryNoteItem = EntryNoteItem::create([
-                'stock_center_id'=>$data['stock_center_id'],
-                'entry_note_id'=>$entrynote->id,
-                'product_id'=>$item['product_id'],
-                'quantity'=>$item['quantity'] ?? 0,
-                'last_quantity'=>$last_quantity
-            ]);
+                    $this->creditStock(
+                        $stockCenterId,
+                        $productId,
+                        $qty,
+                        StockMovement::REASON_ENTRY,
+                        EntryNoteItem::class,
+                        (int) $entryNoteItem->id
+                    );
+                }
 
-
+                return $entrynote;
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json($entrynote);
-        
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
-        $entrynote = EntryNotes::
-        with('stockcenter')
-        ->with('user')
-        ->with('supplier')
-        ->with('itens.product')
-        ->find($id);
-        return response()->json($entrynote);
+        $entrynote = EntryNotes::with('stockcenter')
+            ->with('user')
+            ->with('supplier')
+            ->with('itens.product')
+            ->find($id);
 
+        return response()->json($entrynote);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
-
         $entrynote = EntryNotes::find($id);
-        
-
 
         return response()->json($entrynote);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
         $data = $request->all();
-
-
         $entrynote = EntryNotes::find($id);
-
         $entrynote->update($data);
 
         return response()->json($entrynote);
-
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
-
         $entrynote = EntryNotes::find($id);
-
         $entrynote->delete();
 
         return true;
