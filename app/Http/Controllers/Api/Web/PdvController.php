@@ -10,16 +10,23 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Http\Controllers\Concerns\HandlesIdempotency;
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Models\Product;
-use App\Models\StockCenter;
 use App\Models\Table;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use RuntimeException;
 
 
 class PdvController extends Controller
 {
+    use HandlesIdempotency;
+    use ManagesPrincipalStock;
+
     /**
      * Display a listing of the resource.
      */
@@ -91,8 +98,9 @@ class PdvController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
+        return $this->withIdempotency($request, 'pdv.store', function () use ($request) {
         //
         $data = $request->all();
         $table = Table::find($data['table_id']);
@@ -129,129 +137,112 @@ class PdvController extends Controller
             return response()->json(['message'=>'A mesa esta finalizada.'],403);
         }
 
-        foreach ($data['products'] as $item) {
-            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-        
-            // Correção do operador de comparação e da propriedade
-            if ($product->quantity_in_principal_stock < $item['quantity'] || $product->quantity_in_principal_stock == 0) {
-                return response()->json([
-                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
-                ], 403); // Código HTTP 403 - Proibido
-            }
-        }
-
-        if($table->table_status_id == 1){
-            $order =  Order::create([
-                'table_id' => $table->id,
-                'user_id' => Auth::user()->id,
-                'total'=>$data['total'],
-                'order_status_id' => 1,
-                'cash_register_id' => $openCashRegister->id
-            ]);
-            foreach($data['products'] as $item){
-
-                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-
-                $orderItem = OrderItem::create([
-                    'order_id'=>$order->id,
-                    'user_id' => Auth::user()->id,
-                    'product_id' => $item['id'],
-                    'quantity' => $item['quantity'],
-                    'order_item_status_id' =>1,
-                    'department_id' => $product->department_id,
-                    'price'=>$product->price,
-                    'total'=>$product->price * $item['quantity'],
-                    'cash_register_id' => $openCashRegister->id
-                ]);
-                if ($product->department_id == 1) {
-                    $newKitchenItems[] = $orderItem;
-                } elseif ($product->department_id == 2) {
-                    $newBarItems[] = $orderItem;
-                }
-                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                if ($principalStockCenter) {
-                    $stockCenterProduct = $product->stockCenterProducts()
-                        ->where('stock_center_id', $principalStockCenter->id)
-                        ->first();
-
-                    if ($stockCenterProduct) {
-                        $stockCenterProduct->quantity -= $item['quantity'];
-                        $stockCenterProduct->save();
-                    }
-                }
-            }
-            $total_consumed = $data['total'];
-        }
-        if($table->table_status_id == 2){
-
-
-
-            $last_order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
-
-            if($last_order->user_id != Auth::user()->id){
-                return response()->json([
-                    'message' => "Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por".$last_order->user->name
-                ], 403); // Código HTTP 403 - Proibido
-            }
-
-
-            
-            foreach($data['products'] as $item){
-                
-                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-
-                $orderItem = OrderItem::create([
-                        'order_id'=>$last_order->id,
-                        'product_id' => $item['id'],
-                        'quantity' => $item['quantity'],
-                        'department_id' => $product->department_id,
-                        'order_item_status_id' =>1,
-                        'price'=>$product->price,
-                        'total'=>$product->price * $item['quantity'],
-                        'user_id'=>Auth::user()->id,
+        try {
+            DB::transaction(function () use ($data, $table, $openCashRegister, &$newBarItems, &$newKitchenItems, &$total_consumed) {
+                if ($table->table_status_id == 1) {
+                    $order = Order::create([
+                        'table_id' => $table->id,
+                        'user_id' => Auth::user()->id,
+                        'total' => $data['total'],
+                        'order_status_id' => 1,
                         'cash_register_id' => $openCashRegister->id
-                ]);
-                if ($product->department_id == 1) {
-                    $newKitchenItems[] = $orderItem;
-                } elseif ($product->department_id == 2) {
-                    $newBarItems[] = $orderItem;
-                }
-                // }
-                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                if ($principalStockCenter) {
-                    $stockCenterProduct = $product->stockCenterProducts()
-                        ->where('stock_center_id', $principalStockCenter->id)
-                        ->first();
+                    ]);
 
-                    if ($stockCenterProduct) {
-                        $stockCenterProduct->quantity -= $item['quantity'];
-                        $stockCenterProduct->save();
+                    foreach ($data['products'] as $item) {
+                        $product = Product::find($item['id']);
+
+                        $orderItem = OrderItem::create([
+                            'order_id' => $order->id,
+                            'user_id' => Auth::user()->id,
+                            'product_id' => $item['id'],
+                            'quantity' => $item['quantity'],
+                            'order_item_status_id' => 1,
+                            'department_id' => $product->department_id,
+                            'price' => $product->price,
+                            'total' => $product->price * $item['quantity'],
+                            'cash_register_id' => $openCashRegister->id
+                        ]);
+
+                        if ($product->department_id == 1) {
+                            $newKitchenItems[] = $orderItem;
+                        } elseif ($product->department_id == 2) {
+                            $newBarItems[] = $orderItem;
+                        }
+
+                        $this->debitPrincipalStock(
+                            (int) $item['id'],
+                            (int) $item['quantity'],
+                            \App\Models\StockMovement::REASON_SALE,
+                            OrderItem::class,
+                            (int) $orderItem->id
+                        );
                     }
+
+                    $total_consumed = $data['total'];
                 }
-                
-            }
 
-            $last_order->update([
-                'total'=>OrderItem::where('order_id', $last_order->id)->sum('total')
-            ]);
-            $total_consumed = OrderItem::where('order_id', $last_order->id)->sum('total');
+                if ($table->table_status_id == 2) {
+                    $last_order = Order::where('table_id', $table->id)->where('order_status_id', 1)->lockForUpdate()->first();
+
+                    if ($last_order->user_id != Auth::user()->id) {
+                        throw new RuntimeException(
+                            'Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por' . $last_order->user->name
+                        );
+                    }
+
+                    foreach ($data['products'] as $item) {
+                        $product = Product::find($item['id']);
+
+                        $orderItem = OrderItem::create([
+                            'order_id' => $last_order->id,
+                            'product_id' => $item['id'],
+                            'quantity' => $item['quantity'],
+                            'department_id' => $product->department_id,
+                            'order_item_status_id' => 1,
+                            'price' => $product->price,
+                            'total' => $product->price * $item['quantity'],
+                            'user_id' => Auth::user()->id,
+                            'cash_register_id' => $openCashRegister->id
+                        ]);
+
+                        if ($product->department_id == 1) {
+                            $newKitchenItems[] = $orderItem;
+                        } elseif ($product->department_id == 2) {
+                            $newBarItems[] = $orderItem;
+                        }
+
+                        $this->debitPrincipalStock(
+                            (int) $item['id'],
+                            (int) $item['quantity'],
+                            \App\Models\StockMovement::REASON_SALE,
+                            OrderItem::class,
+                            (int) $orderItem->id
+                        );
+                    }
+
+                    $last_order->update([
+                        'total' => OrderItem::where('order_id', $last_order->id)->sum('total')
+                    ]);
+                    $total_consumed = OrderItem::where('order_id', $last_order->id)->sum('total');
+                }
+
+                $table->update([
+                    'table_status_id' => 2
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
         }
-        $table->update([
-            'table_status_id'=>2
+
+        $order = Order::where('table_id', $table->id)->where('order_status_id', 1)->first();
+
+        return response()->json([
+            'message' => 'Pedido registado com sucesso.',
+            'order_id' => $order->id,
+            'table_id' => $table->id,
+            'total_consumed' => $total_consumed,
         ]);
-
-        $order = Order::where('table_id',$table->id)->where('order_status_id',1)->first();
-        $orderitens = OrderItem::where('order_id',$order->id)->get();
-
-        $barItems = $orderitens->where('department_id', 2);
-        $kitchenItems = $orderitens->where('department_id', 1);
-
-
-        $pdf = Pdf::loadView('pdf.receipt', compact('order','orderitens','barItems','kitchenItems'))->setOptions([
-            'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => 'true'
-        ]);
-        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receipt.pdf');
+        });
     }
 
     /**
@@ -308,9 +299,13 @@ class PdvController extends Controller
         ]);
     }
 
-    public function savequicksell(Request $request){
+    public function savequicksell(Request $request): JsonResponse
+    {
+        return $this->withIdempotency($request, 'pdv.quicksell', function () use ($request) {
         $data = $request->all();
         $total_consumed = 0;
+        $order = null;
+        $payment = null;
 
         $openCashRegister = CashRegister::where('user_id', Auth::id())
         ->where('cash_register_status_id', 1) // 1 = Aberto
@@ -322,73 +317,60 @@ class PdvController extends Controller
             ], 403); // Código HTTP 403 - Proibido
         }
 
-        foreach ($data['products'] as $item) {
-            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-        
-            // Correção do operador de comparação e da propriedade
-            if ($product->quantity_in_principal_stock < $item['quantity'] || $product->quantity_in_principal_stock == 0) {
-                return response()->json([
-                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
-                ], 403); // Código HTTP 403 - Proibido
-            }
-        }
-
-
-
-
-            $order =  Order::create([
-                'user_id' => Auth::user()->id,
-                // 'user_id'=>1,
-                'total'=>$data['total'],
-                'order_status_id' => 3,
-                'cash_register_id' => $openCashRegister->id
-            ]);
-            foreach($data['products'] as $item){
-                $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-                OrderItem::create([
-                    'order_id'=>$order->id,
-                    'product_id' => $item['id'],
-                    'department_id' => $product->department_id,
-                    'quantity' => $item['quantity'],
-                    'order_item_status_id' =>1,
-                    'price'=>$product->price,
+        try {
+            DB::transaction(function () use ($data, $openCashRegister, &$order, &$payment, &$total_consumed) {
+                $order = Order::create([
                     'user_id' => Auth::user()->id,
-                    'total'=>$product->price * $item['quantity'],
+                    'total' => $data['total'],
+                    'order_status_id' => 3,
                     'cash_register_id' => $openCashRegister->id
                 ]);
-                $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                if ($principalStockCenter) {
-                    $stockCenterProduct = $product->stockCenterProducts()
-                        ->where('stock_center_id', $principalStockCenter->id)
-                        ->first();
 
-                    if ($stockCenterProduct) {
-                        $stockCenterProduct->quantity -= $item['quantity'];
-                        $stockCenterProduct->save();
-                    }
+                foreach ($data['products'] as $item) {
+                    $product = Product::find($item['id']);
+
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['id'],
+                        'department_id' => $product->department_id,
+                        'quantity' => $item['quantity'],
+                        'order_item_status_id' => 1,
+                        'price' => $product->price,
+                        'user_id' => Auth::user()->id,
+                        'total' => $product->price * $item['quantity'],
+                        'cash_register_id' => $openCashRegister->id
+                    ]);
+
+                    $this->debitPrincipalStock(
+                        (int) $item['id'],
+                        (int) $item['quantity'],
+                        \App\Models\StockMovement::REASON_SALE,
+                        OrderItem::class,
+                        (int) $orderItem->id
+                    );
                 }
-            }
-            $total_consumed = $data['total'];
-  
-        // $table = Table::find($id);
-        $orderitens = OrderItem::where('order_id',$order->id)->get();
 
-        $payment = Payment::create([
-            "order_id"=>$order->id,
-            "payment_method_id"=>$data["payment_method_id"],
-            "amount"=>$data['total'],
-            "cash_register_id" => $openCashRegister->id,
-            "user_id" => Auth::user()->id
+                $total_consumed = $data['total'];
+
+                $payment = Payment::create([
+                    "order_id" => $order->id,
+                    "payment_method_id" => $data["payment_method_id"],
+                    "amount" => $data['total'],
+                    "cash_register_id" => $openCashRegister->id,
+                    "user_id" => Auth::user()->id
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
+
+        return response()->json([
+            'message' => 'Venda rápida registada com sucesso.',
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'total_consumed' => $total_consumed,
         ]);
-
-        $barItems = $orderitens->where('department_id', 2);
-        $kitchenItems = $orderitens->where('department_id', 1);
-
-        $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order','orderitens','barItems','kitchenItems','payment'))->setOptions([
-            'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => 'true'
-        ]);
-        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptquicksell.pdf');
+        });
     }
 
     public function quicksell(){
@@ -488,20 +470,58 @@ class PdvController extends Controller
         return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptgeneral.pdf');
     }
 
+    /**
+     * Recibo de cozinha/bar após adicionar itens à mesa (PDF separado da venda).
+     */
+    public function getorderreceipt(string $id)
+    {
+        $order = Order::with(['table', 'user'])->find($id);
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Pedido não encontrado.'
+            ], 404);
+        }
+
+        $orderitens = OrderItem::where('order_id', $order->id)->get();
+        $barItems = $orderitens->where('department_id', 2);
+        $kitchenItems = $orderitens->where('department_id', 1);
+
+        $pdf = Pdf::loadView('pdf.receipt', compact('order', 'orderitens', 'barItems', 'kitchenItems'))->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('receipt.pdf');
+    }
+
     public function getquickreceipt(string $id) {
 
         
         $order = Order::find($id);
         if (!$order) {
             return response()->json([
-                'message' => 'Não existe conta aberta nesta mesa'
+                'message' => 'Pedido não encontrado.'
             ], 404);
         }
 
-        $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
-        // $table = $order->table; // Supondo que o relacionamento exista
+        $orderitens = OrderItem::where('order_id', $order->id)->get();
+        $payment = Payment::where('order_id', $order->id)->latest('id')->first();
+        $barItems = $orderitens->where('department_id', 2);
+        $kitchenItems = $orderitens->where('department_id', 1);
 
-    
+        // Mesmo template da venda rápida (com pagamento quando existir)
+        if ($payment) {
+            $pdf = Pdf::loadView('pdf.receiptquicksell', compact('order', 'orderitens', 'barItems', 'kitchenItems', 'payment'))->setOptions([
+                'defaultFont' => 'sans-serif',
+                'isRemoteEnabled' => 'true'
+            ]);
+
+            return $pdf->setPaper([0, 0, 226.77, 500])->stream('receiptquicksell.pdf');
+        }
+
+        $orderitens = OrderItem::where('order_id', $order->id)->with('product')->get();
+
         $pdf = Pdf::loadView('pdf.receiptquicktable', compact('order', 'orderitens'))->setOptions([
             'isHtml5ParserEnabled' => true,
             'isPhpEnabled' => true,
@@ -514,7 +534,9 @@ class PdvController extends Controller
     }
 
 
-    public function closeaccount(string $id){
+    public function closeaccount(Request $request, string $id): JsonResponse
+    {
+        return $this->withIdempotency($request, 'pdv.closeaccount.' . $id, function () use ($id) {
         $table = Table::find($id);
         $order = Order::where('table_id', $id)->where('order_status_id', 1)->first();
 
@@ -527,28 +549,46 @@ class PdvController extends Controller
         $order->update([
             "order_status_id"=>2,
             "closed_by_user_id"=>Auth::user()->id,
-
         ]);
 
         $table->update([
             "table_status_id"=>5
         ]);
 
-        $orderitens = OrderItem::where('order_id',$order->id)->get();
+        return response()->json([
+            'message' => 'Conta encerrada com sucesso.',
+            'order_id' => $order->id,
+            'table_id' => $table->id,
+        ]);
+        });
+    }
 
-        $pdf = Pdf::loadView('pdf.finalreceipt', compact('order','orderitens'))->setOptions([
-            // 'setPaper'=>'a4',
-            // 'setPaper' => [0, 0, 226.77, 500],
+    /**
+     * PDF do fecho de conta (separado do closeaccount).
+     */
+    public function getfinalreceipt(string $id)
+    {
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Pedido não encontrado.'
+            ], 404);
+        }
+
+        $orderitens = OrderItem::where('order_id', $order->id)->get();
+
+        $pdf = Pdf::loadView('pdf.finalreceipt', compact('order', 'orderitens'))->setOptions([
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
+
         return $pdf->setPaper([0, 0, 226.77, 500])->stream('finalreceipt.pdf');
-
-
-
     }
 
-    public function payaccount(Request $request){
+    public function payaccount(Request $request): JsonResponse
+    {
+        return $this->withIdempotency($request, 'pdv.payaccount', function () use ($request) {
         $data = $request->all();
         $table = Table::find($data['table_id']);
         $order = Order::where('table_id', $data['table_id'])->where('order_status_id', 2)->first();
@@ -617,14 +657,43 @@ class PdvController extends Controller
             "customer_id"=>$isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null)
         ]);
 
-        $pdf = Pdf::loadView('pdf.customerreceipt', compact('order','orderitens','payment'))->setOptions([
-            // 'setPaper'=>'a4',
-            // 'setPaper' => [0, 0, 226.77, 500],
+        return response()->json([
+            'message' => 'Pagamento registado com sucesso.',
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'table_id' => $table->id,
+        ]);
+        });
+    }
+
+    /**
+     * PDF do recibo do cliente após pagamento (separado do payaccount).
+     */
+    public function getcustomerreceipt(string $id)
+    {
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Pedido não encontrado.'
+            ], 404);
+        }
+
+        $orderitens = OrderItem::where('order_id', $order->id)->get();
+        $payment = Payment::where('order_id', $order->id)->latest('id')->first();
+
+        if (!$payment) {
+            return response()->json([
+                'message' => 'Pagamento não encontrado para este pedido.'
+            ], 404);
+        }
+
+        $pdf = Pdf::loadView('pdf.customerreceipt', compact('order', 'orderitens', 'payment'))->setOptions([
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
         ]);
-        return $pdf->setPaper([0, 0, 226.77, 500])->stream('customerreceipt.pdf');
 
+        return $pdf->setPaper([0, 0, 226.77, 500])->stream('customerreceipt.pdf');
     }
 
 

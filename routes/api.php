@@ -74,9 +74,12 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('getreceiptkitchen/{id}',[PdvController::class,'getreceiptkitchen']);
 
     Route::post('getreceipt/{id}',[PdvController::class,'getreceipt']);
+    Route::post('getorderreceipt/{id}',[PdvController::class,'getorderreceipt']);
     Route::post('getquickreceipt/{id}',[PdvController::class,'getquickreceipt']);
 
     Route::get('pdv/closeaccount/{id}',[PdvController::class,'closeaccount']);
+    Route::post('getfinalreceipt/{id}',[PdvController::class,'getfinalreceipt']);
+    Route::post('getcustomerreceipt/{id}',[PdvController::class,'getcustomerreceipt']);
 
     Route::post('payaccount',[PdvController::class,'payaccount']);
     Route::post('order/report',[OrderController::class,'report']);
@@ -100,6 +103,7 @@ Route::middleware([Sanctum::class])->group(function () {
 
 
     Route::get('centerstock/report/{id}',[CenterStocksController::class,'reportstock']);
+    Route::get('centerstock/reconcile',[CenterStocksController::class,'reconcile']);
 
 
 

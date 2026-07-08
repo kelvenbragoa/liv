@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Web;
 
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
@@ -9,15 +10,18 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
-use App\Models\StockCenter;
 use App\Models\Table;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use RuntimeException;
 
 
 class OrderController extends Controller
 {
+    use ManagesPrincipalStock;
+
     /**
      * Display a listing of the resource.
      */
@@ -117,22 +121,28 @@ class OrderController extends Controller
         $table_id = $orderitem->order->table_id;
         $total = $orderitem->total;
         $quantity = $orderitem->quantity;
-        $product = Product::find($orderitem->product_id);
+        $productId = (int) $orderitem->product_id;
 
+        try {
+            DB::transaction(function () use ($orderitem, $quantity, $productId, $total) {
+                $this->creditPrincipalStock(
+                    $productId,
+                    (int) $quantity,
+                    \App\Models\StockMovement::REASON_SALE_CANCEL,
+                    OrderItem::class,
+                    (int) $orderitem->id
+                );
 
-        $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                if ($principalStockCenter) {
-                    $stockCenterProduct = $product->stockCenterProducts()
-                        ->where('stock_center_id', $principalStockCenter->id)
-                        ->first();
+                $order = $orderitem->order;
+                $orderitem->delete();
 
-                    if ($stockCenterProduct) {
-                        $stockCenterProduct->quantity += $quantity;
-                        $stockCenterProduct->save();
-                    }
-                }
-
-        $orderitem->delete();
+                $order->update([
+                    'total' => $order->total - $total
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
 
         $categories = Category::with(['sub_categories.products' => function($query) {
             $query->withQuantityInPrincipalStock();
@@ -147,9 +157,6 @@ class OrderController extends Controller
         if ($order) {
             $order_id = $order->id;
         }
-        $order->update([
-            'total' => $order->total - $total
-        ]);
 
         
         $total_consumed = Order::where('table_id', $table_id)
@@ -175,26 +182,26 @@ class OrderController extends Controller
 
     public function deleteorder($id){
         $order = Order::find($id);
-        foreach($order->itens as $item){
-            $product = Product::find($item->product_id);
-            $quantity = $item->quantity;
 
-
-            $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                if ($principalStockCenter) {
-                    $stockCenterProduct = $product->stockCenterProducts()
-                        ->where('stock_center_id', $principalStockCenter->id)
-                        ->first();
-
-                    if ($stockCenterProduct) {
-                        $stockCenterProduct->quantity += $quantity;
-                        $stockCenterProduct->save();
-                    }
+        try {
+            DB::transaction(function () use ($order) {
+                foreach ($order->itens as $item) {
+                    $this->creditPrincipalStock(
+                        (int) $item->product_id,
+                        (int) $item->quantity,
+                        \App\Models\StockMovement::REASON_SALE_CANCEL,
+                        OrderItem::class,
+                        (int) $item->id
+                    );
+                    $item->delete();
                 }
-            $item->delete();
+                Payment::where('order_id', $order->id)->delete();
+                $order->delete();
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
         }
-        Payment::where('order_id', $order->id)->delete();
-        $order->delete();
+
         return response()->noContent();
     }
 }

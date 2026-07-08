@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 
@@ -186,5 +188,68 @@ class CenterStocksController extends Controller
             'isRemoteEnabled' => 'true'
         ]);
         return $pdf->setPaper('a4')->stream('report_stock_center.pdf');
+    }
+
+    /**
+     * Reconciliação on_hand vs ledger (stock_movements).
+     */
+    public function reconcile(Request $request)
+    {
+        $centerId = $request->integer('center_id')
+            ?: StockCenter::where('is_principal_stock', 1)->value('id');
+
+        if (!$centerId) {
+            return response()->json(['message' => 'Centro de stock não encontrado.'], 404);
+        }
+
+        $onlyDiff = $request->boolean('only_diff', true);
+
+        $ledger = DB::table('stock_movements')
+            ->selectRaw("
+                product_id,
+                SUM(CASE WHEN direction = 'in' THEN quantity ELSE 0 END) -
+                SUM(CASE WHEN direction = 'out' THEN quantity ELSE 0 END) as ledger_qty
+            ")
+            ->where('stock_center_id', $centerId)
+            ->groupBy('product_id')
+            ->pluck('ledger_qty', 'product_id');
+
+        $items = [];
+        $diffCount = 0;
+
+        $products = StockCenterProduct::with('product')
+            ->where('stock_center_id', $centerId)
+            ->orderBy('product_id')
+            ->get();
+
+        foreach ($products as $row) {
+            $onHand = (int) $row->quantity;
+            $ledgerQty = (int) ($ledger[$row->product_id] ?? 0);
+            $diff = $onHand - $ledgerQty;
+
+            if ($diff !== 0) {
+                $diffCount++;
+            }
+
+            if ($onlyDiff && $diff === 0) {
+                continue;
+            }
+
+            $items[] = [
+                'product_id' => (int) $row->product_id,
+                'product_name' => $row->product?->name,
+                'on_hand' => $onHand,
+                'ledger' => $ledgerQty,
+                'diff' => $diff,
+            ];
+        }
+
+        return response()->json([
+            'stock_center_id' => (int) $centerId,
+            'only_diff' => $onlyDiff,
+            'total_products' => $products->count(),
+            'diff_count' => $diffCount,
+            'items' => $items,
+        ]);
     }
 }

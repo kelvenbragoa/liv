@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash-es';
 
 import moment from 'moment';
+import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
@@ -120,7 +121,8 @@ function saveCart() {
         total: product.price * product.quantity
       })),
       total: total.value,
-      table_id: router.currentRoute.value.params.id
+      table_id: router.currentRoute.value.params.id,
+      request_id: createRequestId(),
     };
 
     isLoadingButton.value = true;
@@ -130,22 +132,33 @@ function saveCart() {
             'Content-Type': 'multipart/form-data'
           }
         })
-        .then((response) => {
-            // resetForm();
-            router.back();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'recibo.pdf');
-            document.body.appendChild(link);
-            link.click();
-            loadingprint.value = false;
+        .then(async (response) => {
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
+
+            const orderId = response.data.order_id;
+            if (orderId) {
+                try {
+                    const pdfResponse = await axios.post(`/api/getorderreceipt/${orderId}`, {}, { responseType: 'blob' });
+                    const url = window.URL.createObjectURL(new Blob([pdfResponse.data], { type: 'application/pdf' }));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', 'recibo.pdf');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                } catch (pdfError) {
+                    console.error('Erro ao obter recibo:', pdfError);
+                    toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Pedido gravado, mas falhou a impressão do recibo.', life: 4000 });
+                }
+            }
+
+            router.back();
         })
         .catch((error) => {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro}`, detail: `${error.response.data.message}`, life: 3000 });
-            if (error.response.data.errors) {
+            toast.add({ severity: 'error', summary: `Erro`, detail: `${error.response?.data?.message || 'Ocorreu um erro inesperado.'}`, life: 3000 });
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })

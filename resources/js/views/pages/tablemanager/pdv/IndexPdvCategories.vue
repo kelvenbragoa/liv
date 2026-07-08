@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash-es';
 
 import moment from 'moment';
+import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
@@ -175,51 +176,45 @@ function saveCart() {
         total: product.price * product.quantity
       })),
       total: total.value,
-      table_id: router.currentRoute.value.params.id
+      table_id: router.currentRoute.value.params.id,
+      request_id: createRequestId(),
     };
 
     isLoadingButton.value = true;
     axios
-        .post(`/api/pdv`, cartData,{
+        .post(`/api/pdv`, cartData, {
             headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          responseType:'blob'
+                'Content-Type': 'multipart/form-data'
+            }
         })
-        .then((response) => {
-            // router.back();
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-            // const link = document.createElement('a');
-            // link.href = url;
-            // link.setAttribute('download', 'recibo.pdf');
-            // document.body.appendChild(link);
-            // link.click();
+        .then(async (response) => {
             loadingprint.value = false;
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialog.value = true;  // Abre o diálogo modal
-            openPrintReceipt.value = false;
-            // toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
-        })
-        .catch(async (error) =>  {
-            isLoadingButton.value = false;
-            let errorMessage = 'Ocorreu um erro inesperado.';
+            selectedProducts.value = [];
+            updateTotal();
+            await getData(currentPage.value);
 
-            if (error.response && error.response.data instanceof Blob) {
-                try {
-                    const text = await error.response.data.text();
-                    const json = JSON.parse(text);
-                    errorMessage = json.message || json.error || errorMessage;
-                } catch (e) {
-                    console.error('Erro ao processar o blob:', e);
-                }
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
+            const orderId = response.data.order_id;
+            if (!orderId) {
+                return;
             }
 
+            try {
+                const pdfResponse = await axios.post(`/api/getorderreceipt/${orderId}`, {}, { responseType: 'blob' });
+                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
+                pdfUrl.value = URL.createObjectURL(blob);
+                showDialog.value = true;
+                openPrintReceipt.value = false;
+            } catch (pdfError) {
+                console.error('Erro ao obter recibo:', pdfError);
+                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Pedido gravado, mas falhou a impressão do recibo.', life: 4000 });
+            }
+        })
+        .catch((error) =>  {
+            isLoadingButton.value = false;
+            let errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
             toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response.data.errors) {
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })
@@ -229,38 +224,35 @@ function saveCart() {
   }
 
   function closeAccount() {
-    // Exemplo de dados para salvar
-
     isLoadingButton.value = true;
     axios
-        .get(`/api/pdv/closeaccount/${router.currentRoute.value.params.id}`,{  
-          responseType:'blob'
+        .get(`/api/pdv/closeaccount/${router.currentRoute.value.params.id}`, {
+            params: { request_id: createRequestId() }
         })
-        .then((response) => {
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialog.value = true;  // Abre o diálogo modal
+        .then(async (response) => {
             closeAccountDialog.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
-        })
-        .catch(async (error) => {
-            isLoadingButton.value = false;
-            let errorMessage = 'Ocorreu um erro inesperado.';
 
-            if (error.response && error.response.data instanceof Blob) {
-                try {
-                    const text = await error.response.data.text();
-                    const json = JSON.parse(text);
-                    errorMessage = json.message || json.error || errorMessage;
-                } catch (e) {
-                    console.error('Erro ao processar o blob:', e);
-                }
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
+            const orderId = response.data.order_id;
+            if (!orderId) {
+                return;
             }
 
-    toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response.data.errors) {
+            try {
+                const pdfResponse = await axios.post(`/api/getfinalreceipt/${orderId}`, {}, { responseType: 'blob' });
+                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
+                pdfUrl.value = URL.createObjectURL(blob);
+                showDialog.value = true;
+            } catch (pdfError) {
+                console.error('Erro ao obter recibo:', pdfError);
+                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Conta fechada, mas falhou a impressão do recibo.', life: 4000 });
+            }
+        })
+        .catch((error) => {
+            isLoadingButton.value = false;
+            const errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
+            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })
@@ -272,7 +264,8 @@ function saveCart() {
 function payAccount() {
     const payData = {
       payment_method_id: payment_method_id.value,
-      table_id: router.currentRoute.value.params.id
+      table_id: router.currentRoute.value.params.id,
+      request_id: createRequestId(),
     };
 
     isLoadingButton.value = true;
@@ -280,38 +273,36 @@ function payAccount() {
         .post(`/api/payaccount`, payData,{
             headers: {
             'Content-Type': 'multipart/form-data'
-          },
-          responseType:'blob'
+          }
         })
-        .then((response) => {
-            if (pdfUrl.value) {
-                URL.revokeObjectURL(pdfUrl.value);
-            }
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob); 
-            showDialog.value = true; 
+        .then(async (response) => {
             openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
-        })
-        .catch(async (error) => {
-            console.log(error)
-            isLoadingButton.value = false;
-            let errorMessage = 'Ocorreu um erro inesperado.';
 
-            if (error.response && error.response.data instanceof Blob) {
-                try {
-                    const text = await error.response.data.text();
-                    const json = JSON.parse(text);
-                    errorMessage = json.message || json.error || errorMessage;
-                } catch (e) {
-                    console.error('Erro ao processar o blob:', e);
-                }
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
+            const orderId = response.data.order_id;
+            if (!orderId) {
+                return;
             }
 
-    toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response.data.errors) {
+            try {
+                if (pdfUrl.value) {
+                    URL.revokeObjectURL(pdfUrl.value);
+                }
+                const pdfResponse = await axios.post(`/api/getcustomerreceipt/${orderId}`, {}, { responseType: 'blob' });
+                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
+                pdfUrl.value = URL.createObjectURL(blob);
+                showDialog.value = true;
+            } catch (pdfError) {
+                console.error('Erro ao obter recibo:', pdfError);
+                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Pagamento gravado, mas falhou a impressão do recibo.', life: 4000 });
+            }
+        })
+        .catch((error) => {
+            console.log(error)
+            isLoadingButton.value = false;
+            const errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
+            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })

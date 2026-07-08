@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Http\Controllers\Concerns\ManagesPrincipalStock;
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Category;
@@ -10,14 +11,17 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
-use App\Models\StockCenter;
 use App\Models\StockSnapshot;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class TableMobileController extends Controller
 {
+    use ManagesPrincipalStock;
+
     /**
      * Display a listing of the resource.
      */
@@ -65,7 +69,7 @@ class TableMobileController extends Controller
         if ($table->table_status_id == 5) {
             return response()->json(['message' => 'A mesa esta finalizada.'], 200);
         }
-        $product = Product::withQuantityInPrincipalStock()->find($data['product_id']);
+        $product = Product::find($data['product_id']);
 
         $novoPedidoTotal = $data['quantity'] * $product->price;
 
@@ -75,131 +79,79 @@ class TableMobileController extends Controller
             ], 403);
         }
 
-        if ($product->quantity_in_principal_stock < $data['quantity'] || $product->quantity_in_principal_stock == 0) {
-            return response()->json([
-                'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
-            ], 400); // Código HTTP 403 - Proibido
-        }
+        try {
+            DB::transaction(function () use ($data, $table, $openCashRegister, $product) {
+                if ($table->table_status_id == 1) {
+                    $order = Order::create([
+                        'table_id' => $table->id,
+                        'user_id' => $data['user_id'],
+                        'total' => $data['quantity'] * $product->price,
+                        'order_status_id' => 1,
+                        'cash_register_id' => $openCashRegister->id
+                    ]);
 
-        if ($table->table_status_id == 1) {
-            $order =  Order::create([
-                'table_id' => $table->id,
-                // 'user_id' => Auth::user()->id,
-                'user_id' => $data['user_id'],
-                'total' => $data['quantity'] * $product->price,
-                'order_status_id' => 1,
-                'cash_register_id' => $openCashRegister->id
-            ]);
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $data['product_id'],
+                        'quantity' => $data['quantity'],
+                        'order_item_status_id' => 1,
+                        'department_id' => $product->department_id,
+                        'price' => $product->price,
+                        'total' => $data['quantity'] * $product->price,
+                        'user_id' => Auth::user()->id,
+                        'cash_register_id' => $openCashRegister->id
+                    ]);
 
-            $product = Product::withQuantityInPrincipalStock()->find($data['product_id']);
-            $orderItem = OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $data['product_id'],
-                'quantity' => $data['quantity'],
-                'order_item_status_id' => 1,
-                'department_id' => $product->department_id,
-                'price' => $product->price,
-                'total' => $data['quantity'] * $product->price,
-                'user_id' => Auth::user()->id,
-                'cash_register_id' => $openCashRegister->id
-            ]);
-            $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-            if ($principalStockCenter) {
-                $stockCenterProduct = $product->stockCenterProducts()
-                    ->where('stock_center_id', $principalStockCenter->id)
-                    ->first();
-
-                if ($stockCenterProduct) {
-                    $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                    if ($principalStockCenter) {
-                        $stockCenterProduct = $product->stockCenterProducts()
-                            ->where('stock_center_id', $principalStockCenter->id)
-                            ->first();
-
-                        if ($stockCenterProduct) {
-                            $stockCenterProduct->quantity -= $data['quantity'];
-                            $stockCenterProduct->save();
-                        }
-                    };
-                    $stockCenterProduct->save();
+                    $this->debitPrincipalStock(
+                        (int) $data['product_id'],
+                        (int) $data['quantity'],
+                        \App\Models\StockMovement::REASON_SALE,
+                        OrderItem::class,
+                        (int) $orderItem->id
+                    );
                 }
-            }
-        }
 
-        if ($table->table_status_id == 2) {
+                if ($table->table_status_id == 2) {
+                    $last_order = Order::where('table_id', $table->id)->where('order_status_id', 1)->lockForUpdate()->first();
 
-            $last_order = Order::where('table_id', $table->id)->where('order_status_id', 1)->first();
+                    if ($last_order->user_id != Auth::user()->id) {
+                        throw new RuntimeException(
+                            'Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por' . $last_order->user->name
+                        );
+                    }
 
-            if ($last_order->user_id != Auth::user()->id) {
-                return response()->json([
-                    'message' => "Impossivel adicionar itens a esta mesa. Esta mesa foi aberta por" . $last_order->user->name
-                ], 400); // Código HTTP 403 - Proibido
-            }
+                    $orderItem = OrderItem::create([
+                        'order_id' => $last_order->id,
+                        'product_id' => $data['product_id'],
+                        'quantity' => $data['quantity'],
+                        'department_id' => $product->department_id,
+                        'order_item_status_id' => 1,
+                        'price' => $product->price,
+                        'total' => $product->price * $data['quantity'],
+                        'user_id' => Auth::user()->id,
+                        'cash_register_id' => $openCashRegister->id
+                    ]);
 
+                    $this->debitPrincipalStock(
+                        (int) $data['product_id'],
+                        (int) $data['quantity'],
+                        \App\Models\StockMovement::REASON_SALE,
+                        OrderItem::class,
+                        (int) $orderItem->id
+                    );
 
-            // $orderItem = OrderItem::where('order_id', $last_order->id)->where('product_id', $data['product_id'])->first();
-            $product = Product::withQuantityInPrincipalStock()->find($data['product_id']);
-
-            // if($orderItem){
-            //     $quantity_updated = $orderItem->quantity + $data['quantity'];
-
-            //     $orderItem->update([
-            //         'quantity' => $quantity_updated,
-            //         'total'=>$orderItem->price * $quantity_updated,
-            //     ]);
-            // }else{
-            if ($product->quantity_in_principal_stock < $data['quantity'] || $product->quantity_in_principal_stock == 0) {
-                return response()->json([
-                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
-                ], 400); // Código HTTP 403 - Proibido
-            }
-
-            $orderItem = OrderItem::create([
-                'order_id' => $last_order->id,
-                'product_id' => $data['product_id'],
-                'quantity' => $data['quantity'],
-                'department_id' => $product->department_id,
-                'order_item_status_id' => 1,
-                'price' => $product->price,
-                'total' => $product->price * $data['quantity'],
-                'user_id' => Auth::user()->id,
-                'cash_register_id' => $openCashRegister->id
-            ]);
-            $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-            if ($principalStockCenter) {
-                $stockCenterProduct = $product->stockCenterProducts()
-                    ->where('stock_center_id', $principalStockCenter->id)
-                    ->first();
-
-                if ($stockCenterProduct) {
-                    $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-                    if ($principalStockCenter) {
-                        $stockCenterProduct = $product->stockCenterProducts()
-                            ->where('stock_center_id', $principalStockCenter->id)
-                            ->first();
-
-                        if ($stockCenterProduct) {
-                            $stockCenterProduct->quantity -= $data['quantity'];
-                            $stockCenterProduct->save();
-                        }
-                    };
-                    $stockCenterProduct->save();
+                    $last_order->update([
+                        'total' => OrderItem::where('order_id', $last_order->id)->sum('total')
+                    ]);
                 }
-            }
-            // }
 
-            $last_order->update([
-                'total' => OrderItem::where('order_id', $last_order->id)->sum('total')
-            ]);
-            $total_consumed = OrderItem::where('order_id', $last_order->id)->sum('total');
+                $table->update([
+                    'table_status_id' => 2
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
         }
-
-
-
-
-        $table->update([
-            'table_status_id' => 2
-        ]);
 
         return response()->json([
             'message' => "Produto adiconado a conta"
@@ -457,10 +409,6 @@ class TableMobileController extends Controller
     {
         $data = $request->all();
 
-        // return $data;
-
-
-
         $openCashRegister = CashRegister::where('user_id', Auth::id())
             ->where('cash_register_status_id', 1) // 1 = Aberto
             ->first();
@@ -471,64 +419,50 @@ class TableMobileController extends Controller
             ], 400); // Código HTTP 403 - Proibido
         }
 
-        foreach ($data['products'] as $item) {
-            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
+        try {
+            DB::transaction(function () use ($data, $openCashRegister) {
+                $order = Order::create([
+                    'user_id' => Auth::user()->id,
+                    'total' => $data['total'],
+                    'order_status_id' => 3,
+                    'cash_register_id' => $openCashRegister->id
+                ]);
 
-            // Correção do operador de comparação e da propriedade
-            if ($product->quantity_in_principal_stock < $item['quantity'] || $product->quantity_in_principal_stock == 0) {
-                return response()->json([
-                    'message' => "A quantidade de {$product->name} não é suficiente. Atualmente tem {$product->quantity_in_principal_stock} unidades em estoque."
-                ], 400); // Código HTTP 403 - Proibido
-            }
-        }
+                foreach ($data['products'] as $item) {
+                    $product = Product::find($item['id']);
 
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['id'],
+                        'department_id' => $product->department_id,
+                        'quantity' => $item['quantity'],
+                        'order_item_status_id' => 1,
+                        'price' => $product->price,
+                        'user_id' => Auth::user()->id,
+                        'total' => $product->price * $item['quantity'],
+                        'cash_register_id' => $openCashRegister->id
+                    ]);
 
-
-
-        $order =  Order::create([
-            'user_id' => Auth::user()->id,
-            // 'user_id'=>1,
-            'total' => $data['total'],
-            'order_status_id' => 3,
-            'cash_register_id' => $openCashRegister->id
-        ]);
-        foreach ($data['products'] as $item) {
-            $product = Product::withQuantityInPrincipalStock()->find($item['id']);
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['id'],
-                'department_id' => $product->department_id,
-                'quantity' => $item['quantity'],
-                'order_item_status_id' => 1,
-                'price' => $product->price,
-                'user_id' => Auth::user()->id,
-                'total' => $product->price * $item['quantity'],
-                'cash_register_id' => $openCashRegister->id
-            ]);
-            $principalStockCenter = StockCenter::where('is_principal_stock', 1)->first();
-            if ($principalStockCenter) {
-                $stockCenterProduct = $product->stockCenterProducts()
-                    ->where('stock_center_id', $principalStockCenter->id)
-                    ->first();
-
-                if ($stockCenterProduct) {
-                    $stockCenterProduct->quantity -= $item['quantity'];
-                    $stockCenterProduct->save();
+                    $this->debitPrincipalStock(
+                        (int) $item['id'],
+                        (int) $item['quantity'],
+                        \App\Models\StockMovement::REASON_SALE,
+                        OrderItem::class,
+                        (int) $orderItem->id
+                    );
                 }
-            }
+
+                Payment::create([
+                    "order_id" => $order->id,
+                    "payment_method_id" => $data["payment_method_id"],
+                    "amount" => $data['total'],
+                    "cash_register_id" => $openCashRegister->id,
+                    "user_id" => Auth::user()->id
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
         }
-        $total_consumed = $data['total'];
-
-        // $table = Table::find($id);
-        // $orderitens = OrderItem::where('order_id',$order->id)->get();
-
-        $payment = Payment::create([
-            "order_id" => $order->id,
-            "payment_method_id" => $data["payment_method_id"],
-            "amount" => $data['total'],
-            "cash_register_id" => $openCashRegister->id,
-            "user_id" => Auth::user()->id
-        ]);
 
         return response()->json([
             "message" => "Pedido realizado com sucesso",

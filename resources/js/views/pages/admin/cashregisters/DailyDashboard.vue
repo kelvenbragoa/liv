@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash-es';
 import * as yup from 'yup';
 import moment from 'moment';
+import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
@@ -170,39 +171,38 @@ function saveCart() {
         total: product.price * product.quantity
       })),
       total: total.value,
-      payment_method_id: payment_method_id.value
+      payment_method_id: payment_method_id.value,
+      request_id: createRequestId(),
     };
 
     isLoadingButton.value = true;
     axios.post(`/api/pdv/quicksell`, cartData, {
     headers: {
         'Content-Type': 'multipart/form-data'
-    },
-    responseType:'blob'
+    }
     })
-    .then((response) => {
-        
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-        showDialog.value = true;  // Abre o diálogo modal
-        // const url = window.URL.createObjectURL(new Blob([response.data]));
-        // const link = document.createElement('a');
-        // link.href = url;
-        // link.setAttribute('download', 'recibo.pdf');
-        // document.body.appendChild(link);
-        // link.click();
-        // document.body.removeChild(link);
-        // URL.revokeObjectURL(url); // Libera a URL criada
-        // loadingprint.value = false;
+    .then(async (response) => {
         toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
-        // router.back();
-        // 
 
+        const orderId = response.data.order_id;
+        if (!orderId) {
+            return;
+        }
+
+        try {
+            const pdfResponse = await axios.post(`/api/getquickreceipt/${orderId}`, {}, { responseType: 'blob' });
+            const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);
+            showDialog.value = true;
+        } catch (pdfError) {
+            console.error('Erro ao obter recibo:', pdfError);
+            toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Venda gravada, mas falhou a impressão do recibo.', life: 4000 });
+        }
     })
     .catch((error) => {
         console.log(error)
-        toast.add({ severity: 'error', summary: 'Erro', detail: error.response.data.message, life: 3000 });
-        if (error.response.data.errors) {
+        toast.add({ severity: 'error', summary: 'Erro', detail: error.response?.data?.message || 'Ocorreu um erro inesperado.', life: 3000 });
+        if (error.response?.data?.errors) {
             setErrors(error.response.data.errors);
         }
     })
