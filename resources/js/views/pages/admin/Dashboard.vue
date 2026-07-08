@@ -83,6 +83,8 @@ const selectedOrder = ref(null);
 
 const openPrintReport = ref(false); // Controla a visibilidade do dialog
 const showDialogReport = ref(false);
+const currentReportType = ref(null); // casa | evento | stock | trash
+const currentReportLabel = ref('Relatório');
 
 // Função para abrir o dialog com os itens do pedido
 const seeOrderItens = (order) => {
@@ -402,11 +404,76 @@ const debouncedSearch = debounce(() => {
 }, 300);
 
 function printPDF() {
-    const iframe = document.querySelector('iframe');
+    const iframe = document.querySelector('#report-pdf-iframe') || document.querySelector('iframe');
     if (iframe) {
         iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+        iframe.contentWindow.print();
     }
+}
+
+function downloadPdfFile() {
+    if (!pdfUrl.value) {
+        toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Nenhum PDF para baixar.', life: 3000 });
+        return;
+    }
+    const link = document.createElement('a');
+    link.href = pdfUrl.value;
+    link.download = `${currentReportLabel.value || 'relatorio'}-${date.value || 'hoje'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function downloadExcelFile() {
+    if (!currentReportType.value) {
+        toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Abra um relatório primeiro.', life: 3000 });
+        return;
+    }
+
+    const endpoints = {
+        casa: '/api/cashregisters/reportexcel',
+        evento: '/api/cashregisters/reporteventoexcel',
+        stock: '/api/cashregisters/reportstockexcel',
+        trash: '/api/cashregisters/reporttrashexcel',
+    };
+
+    const url = endpoints[currentReportType.value];
+    if (!url) {
+        toast.add({ severity: 'error', summary: 'Erro', detail: 'Exportação Excel não disponível para este relatório.', life: 3000 });
+        return;
+    }
+
+    axios
+        .get(url, {
+            params: { date: date.value },
+            responseType: 'blob',
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], {
+                type: 'application/vnd.ms-excel;charset=utf-8',
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${currentReportLabel.value || 'relatorio'}-${date.value || 'hoje'}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Excel baixado com sucesso!', life: 3000 });
+        })
+        .catch((error) => {
+            toast.add({ severity: 'error', summary: 'Erro', detail: `${error}`, life: 3000 });
+        });
+}
+
+function openReportDialog(blob, type, label) {
+    if (pdfUrl.value) {
+        URL.revokeObjectURL(pdfUrl.value);
+    }
+    pdfUrl.value = URL.createObjectURL(blob);
+    currentReportType.value = type;
+    currentReportLabel.value = label;
+    showDialogReport.value = true;
+    openPrintReport.value = false;
 }
 
 function downloadReport () {
@@ -419,9 +486,7 @@ function downloadReport () {
         })
         .then((response) => {
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialogReport.value = true;  // Abre o diálogo modal
-            openPrintReport.value = false;
+            openReportDialog(blob, 'casa', 'Relatorio-Casa');
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Casa gerado com sucesso!', life: 3000 });
 
         })
@@ -442,9 +507,7 @@ function downloadReportEvento () {
         })
         .then((response) => {
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);
-            showDialogReport.value = true;
-            openPrintReport.value = false;
+            openReportDialog(blob, 'evento', 'Relatorio-Evento-Promotor');
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Evento gerado com sucesso!', life: 3000 });
         })
         .catch((error) => {
@@ -463,9 +526,7 @@ function downloadReportStock () {
         })
         .then((response) => {
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialogReport.value = true;  // Abre o diálogo modal
-            openPrintReport.value = false;
+            openReportDialog(blob, 'stock', 'Relatorio-Stock');
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Stock gerado com sucesso!', life: 3000 });
 
         })
@@ -486,9 +547,7 @@ function downloadReportTrash () {
         })
         .then((response) => {
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialogReport.value = true;  // Abre o diálogo modal
-            openPrintReport.value = false;
+            openReportDialog(blob, 'trash', 'Relatorio-Lixeira');
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Lixeira gerado com sucesso!', life: 3000 });
 
         })
@@ -1062,12 +1121,16 @@ onMounted(() => {
         <p>Nenhum item encontrado para este pedido.</p>
       </template>
     </Dialog>
-    <Dialog v-model:visible="showDialogReport" header="Relatório" :modal="true" :style="{ width: '600px' }" :closable="false">
-      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
+    <Dialog v-model:visible="showDialogReport" :header="currentReportLabel || 'Relatório'" :modal="true" :style="{ width: '700px' }" :closable="false">
+      <iframe id="report-pdf-iframe" v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
       
       <template #footer>
-        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
+        <div class="flex flex-wrap gap-2 justify-end">
+          <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+          <Button label="Baixar PDF" icon="pi pi-file-pdf" severity="danger" @click="downloadPdfFile" />
+          <Button label="Baixar Excel" icon="pi pi-file-excel" severity="success" @click="downloadExcelFile" />
+          <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
+        </div>
       </template>
     </Dialog>
 </template>

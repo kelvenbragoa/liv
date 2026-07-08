@@ -961,4 +961,378 @@ public function reporttrash(){
     return $pdf->setPaper('a4')->stream('reporttrash.pdf');
 }
 
+private function excelDownload(string $filename, array $sheets): \Symfony\Component\HttpFoundation\StreamedResponse
+{
+    return response()->streamDownload(function () use ($sheets) {
+        echo "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
+        echo '<html><head><meta charset="UTF-8"></head><body>';
+        foreach ($sheets as $sheet) {
+            echo '<h3>' . e($sheet['title']) . '</h3>';
+            echo '<table border="1" cellspacing="0" cellpadding="4">';
+            if (!empty($sheet['headers'])) {
+                echo '<tr>';
+                foreach ($sheet['headers'] as $header) {
+                    echo '<th>' . e($header) . '</th>';
+                }
+                echo '</tr>';
+            }
+            foreach ($sheet['rows'] as $row) {
+                echo '<tr>';
+                foreach ($row as $cell) {
+                    echo '<td>' . e((string) $cell) . '</td>';
+                }
+                echo '</tr>';
+            }
+            echo '</table><br/>';
+        }
+        echo '</body></html>';
+    }, $filename, [
+        'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+    ]);
+}
+
+private function cashRegisterIdsForDate(?string $dateURL): array
+{
+    $date = $dateURL ? date('Y-m-d', strtotime($dateURL)) : date('Y-m-d');
+    return CashRegister::whereDate('created_at', $date)->pluck('id')->all();
+}
+
+public function reportexcel()
+{
+    $date = request('date') ? date('Y-m-d', strtotime(request('date'))) : date('Y-m-d');
+    $cashRegisterId = $this->cashRegisterIdsForDate(request('date'));
+
+    $cashRegister = CashRegister::with(['user', 'status', 'orderitens'])
+        ->whereDate('created_at', $date)
+        ->get();
+
+    $cashRegister->transform(function ($cash) {
+        $cash->order_itens_total = $cash->orderitens->sum('total');
+        return $cash;
+    });
+
+    $orders = Order::with(['itens', 'table', 'status', 'user'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->get();
+
+    $orderItems = $orders->flatMap->itens;
+    $orderItemsTable = $orderItems->filter(fn ($item) => $item->order->table_id !== null);
+
+    $totalSales = $orderItems->sum('total');
+    $tableOrders = $orders->whereNotNull('table_id');
+    $quickSellOrders = $orders->whereNull('table_id');
+    $totalOrderTables = $tableOrders->count();
+    $totalOrderQuickSell = $quickSellOrders->count();
+    $totalOrderTablesAmount = $orderItemsTable->sum('total');
+    $totalOrderQuickSellAmount = $quickSellOrders->flatMap->itens->sum('total');
+
+    $paymentsRevenue = Payment::with(['method', 'order.table'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 1))
+        ->get();
+
+    $credits = Payment::with(['customer', 'order.table'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('is_credit', 1))
+        ->get();
+
+    $internal = Payment::with(['method', 'order.table'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->get();
+
+    $totalPayments = $paymentsRevenue->count();
+    $totalPaymentsAmount = $paymentsRevenue->sum('amount');
+    $totalCreditSettled = CreditSettlement::whereIn('cash_register_id', $cashRegisterId)->sum('amount_paid');
+    $totalRevenue = $totalPaymentsAmount + $totalCreditSettled;
+    $totalCreditIssued = $credits->sum('amount');
+    $totalInternalConsumption = $internal->sum('amount');
+    $ticket = $totalPayments > 0 ? round($totalRevenue / $totalPayments, 2) : 0;
+
+    $ordersReport = $orders->whereNotNull('table_id');
+    $quickOrderReport = $orders->whereNull('table_id');
+
+    return $this->excelDownload("Relatorio-Casa-{$date}.xls", [
+        [
+            'title' => 'Relatório de Vendas — Casa',
+            'headers' => ['Descrição', 'Valor'],
+            'rows' => [
+                ['Consumo total (operação)', number_format($totalSales, 2, ',', '.') . ' MT'],
+                ['Receita real (pagamentos + liquidações)', number_format($totalRevenue, 2, ',', '.') . ' MT'],
+                ['Pagamentos (counts_in_revenue)', $totalPayments . ' | ' . number_format($totalPaymentsAmount, 2, ',', '.') . ' MT'],
+                ['Crédito emitido', number_format($totalCreditIssued, 2, ',', '.') . ' MT'],
+                ['Crédito liquidado', number_format($totalCreditSettled, 2, ',', '.') . ' MT'],
+                ['Consumo interno', number_format($totalInternalConsumption, 2, ',', '.') . ' MT'],
+                ['Total de Pedidos Em Mesa', $totalOrderTables . ' | ' . number_format($totalOrderTablesAmount, 2, ',', '.') . ' MT'],
+                ['Total de Pedidos Venda Rápida', $totalOrderQuickSell . ' | ' . number_format($totalOrderQuickSellAmount, 2, ',', '.') . ' MT'],
+                ['Ticket médio (receita)', $ticket . ' MT'],
+            ],
+        ],
+        [
+            'title' => 'Caixa',
+            'headers' => ['ID', 'Usuário', 'Valor', 'Valor Final', 'Diferença', 'Estado', 'Abertura', 'Fechamento'],
+            'rows' => $cashRegister->map(fn ($item) => [
+                $item->id,
+                $item->user->name ?? '',
+                $item->order_itens_total . ' MT',
+                $item->closing_balance . ' MT',
+                ($item->difference ?? 0) . ' MT',
+                $item->status->name ?? '',
+                (string) $item->opened_at,
+                $item->closed_at ? (string) $item->closed_at : '-',
+            ])->all(),
+        ],
+        [
+            'title' => 'Pagamentos (Receita)',
+            'headers' => ['ID', 'Venda', 'Pedido', 'Metodo de Pagamento', 'Valor', 'Data'],
+            'rows' => $paymentsRevenue->map(fn ($p) => [
+                $p->id,
+                $p->order_id,
+                $p->order->table->name ?? 'Pedido Rápido',
+                $p->method->name ?? '',
+                $p->amount . ' MT',
+                (string) $p->created_at,
+            ])->all(),
+        ],
+        [
+            'title' => 'Créditos Emitidos',
+            'headers' => ['ID', 'Cliente', 'Pedido', 'Valor', 'Data'],
+            'rows' => $credits->map(fn ($p) => [
+                $p->id,
+                $p->customer->name ?? '—',
+                $p->order->table->name ?? ('Pedido #' . $p->order_id),
+                $p->amount . ' MT',
+                (string) $p->created_at,
+            ])->all(),
+        ],
+        [
+            'title' => 'Consumo Interno',
+            'headers' => ['ID', 'Pedido', 'Método', 'Valor', 'Data'],
+            'rows' => $internal->map(fn ($p) => [
+                $p->id,
+                $p->order->table->name ?? ('Pedido #' . $p->order_id),
+                $p->method->name ?? '—',
+                $p->amount . ' MT',
+                (string) $p->created_at,
+            ])->all(),
+        ],
+        [
+            'title' => 'Vendas Em Mesa',
+            'headers' => ['ID', 'Pedido', 'Garçom', 'Estado', 'Itens', 'Valor', 'Data'],
+            'rows' => $ordersReport->map(fn ($item) => [
+                $item->id,
+                $item->table->name ?? '',
+                $item->user->name ?? '',
+                $item->status->name ?? '',
+                count($item->itens),
+                $item->total,
+                (string) $item->created_at,
+            ])->all(),
+        ],
+        [
+            'title' => 'Vendas Rápidas',
+            'headers' => ['ID', 'Pedido', 'Garçom', 'Estado', 'Itens', 'Valor', 'Data'],
+            'rows' => $quickOrderReport->map(fn ($item) => [
+                $item->id,
+                'Pedido Rápido',
+                $item->user->name ?? '',
+                $item->status->name ?? '',
+                count($item->itens),
+                $item->total,
+                (string) $item->created_at,
+            ])->all(),
+        ],
+    ]);
+}
+
+public function reporteventoexcel()
+{
+    $date = request('date') ? date('Y-m-d', strtotime(request('date'))) : date('Y-m-d');
+    $cashRegisterId = $this->cashRegisterIdsForDate(request('date'));
+
+    $allOrderItems = OrderItem::with(['product', 'order'])->whereIn('cash_register_id', $cashRegisterId)->get();
+    $totalSales = $allOrderItems->sum('total');
+
+    $revenuePayments = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 1))
+        ->get();
+    $totalRevenuePayments = $revenuePayments->sum('amount');
+
+    $creditPayments = Payment::with(['customer', 'order.table'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('is_credit', 1))
+        ->get();
+    $totalCreditIssued = $creditPayments->sum('amount');
+
+    $totalInternalConsumption = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->sum('amount');
+
+    $totalCreditSettled = CreditSettlement::whereIn('cash_register_id', $cashRegisterId)->sum('amount_paid');
+    $totalRevenue = $totalRevenuePayments + $totalCreditSettled;
+    $shareBase = max(0, $totalSales - $totalInternalConsumption);
+
+    $creditsReport = $creditPayments->map(function ($payment) {
+        $settled = CreditSettlement::where('payment_id', $payment->id)->sum('amount_paid');
+        return [
+            $payment->id,
+            $payment->customer->name ?? '—',
+            $payment->order->table->name ?? ('Pedido #' . $payment->order_id),
+            number_format($payment->amount, 2, ',', '.') . ' MT',
+            number_format($settled, 2, ',', '.') . ' MT',
+            number_format(max(0, (float) $payment->amount - (float) $settled), 2, ',', '.') . ' MT',
+            (string) $payment->created_at,
+        ];
+    });
+
+    $totalCreditOpenBalance = $creditPayments->sum(function ($payment) {
+        $settled = CreditSettlement::where('payment_id', $payment->id)->sum('amount_paid');
+        return max(0, (float) $payment->amount - (float) $settled);
+    });
+
+    $revenueOrderIds = $revenuePayments->pluck('order_id');
+    $paidItems = $allOrderItems->filter(fn ($item) => $revenueOrderIds->contains($item->order_id));
+
+    $buildRows = function ($items, $departmentId) {
+        return $items
+            ->filter(fn ($item) => (int) ($item->product->department_id ?? $item->department_id) === $departmentId)
+            ->groupBy('product_id')
+            ->map(function ($group) {
+                $first = $group->first();
+                return [
+                    $first->product->name ?? 'Desconhecido',
+                    $group->sum('quantity'),
+                    number_format($first->product->price ?? 0, 2, ',', '.') . ' MT',
+                    number_format($group->sum('total'), 2, ',', '.') . ' MT',
+                ];
+            })
+            ->sortBy(0)
+            ->values()
+            ->all();
+    };
+
+    return $this->excelDownload("Relatorio-Evento-{$date}.xls", [
+        [
+            'title' => 'Relatório Evento / Promotor',
+            'headers' => ['Descrição', 'Valor'],
+            'rows' => [
+                ['Consumo total (operação)', number_format($totalSales, 2, ',', '.') . ' MT'],
+                ['(-) Consumo interno', number_format($totalInternalConsumption, 2, ',', '.') . ' MT'],
+                ['Base de partilha (consumo − interno)', number_format($shareBase, 2, ',', '.') . ' MT'],
+                ['Receita já cobrada (pagamentos)', number_format($totalRevenuePayments, 2, ',', '.') . ' MT'],
+                ['Crédito liquidado no dia', number_format($totalCreditSettled, 2, ',', '.') . ' MT'],
+                ['Receita real (cash)', number_format($totalRevenue, 2, ',', '.') . ' MT'],
+                ['Crédito emitido no dia', number_format($totalCreditIssued, 2, ',', '.') . ' MT'],
+                ['Crédito em aberto (saldo)', number_format($totalCreditOpenBalance, 2, ',', '.') . ' MT'],
+            ],
+        ],
+        [
+            'title' => 'Vendas por Produto — Bar (apenas pagos)',
+            'headers' => ['Produto', 'Qtd. Vend.', 'P. Venda', 'V. Total'],
+            'rows' => $buildRows($paidItems, 2),
+        ],
+        [
+            'title' => 'Vendas por Produto — Cozinha (apenas pagos)',
+            'headers' => ['Produto', 'Qtd. Vend.', 'P. Venda', 'V. Total'],
+            'rows' => $buildRows($paidItems, 1),
+        ],
+        [
+            'title' => 'Créditos do Dia',
+            'headers' => ['ID', 'Cliente', 'Pedido / Mesa', 'Total', 'Liquidado', 'Saldo', 'Data'],
+            'rows' => $creditsReport->all(),
+        ],
+    ]);
+}
+
+public function reportstockexcel()
+{
+    $date = request('date') ? date('Y-m-d', strtotime(request('date'))) : date('Y-m-d');
+    $cashRegisterId = $this->cashRegisterIdsForDate(request('date'));
+
+    $build = function ($departmentId) use ($cashRegisterId, $date) {
+        $items = OrderItem::whereIn('cash_register_id', $cashRegisterId)
+            ->whereHas('product', fn ($q) => $q->where('department_id', $departmentId))
+            ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_value'))
+            ->groupBy('product_id')
+            ->with(['product' => fn ($q) => $q->withQuantityInPrincipalStock()])
+            ->get();
+
+        return $items->map(function ($item) use ($date) {
+            $snapshot = DailyStockSnapshot::where('product_id', $item->product_id)->where('date', $date)->first();
+            $buy = $item->product->buy_price ?? 0;
+            $qty = $item->total_quantity ?? 0;
+            $total = $item->total_value ?? 0;
+            return [
+                $item->product->name ?? 'Desconhecido',
+                $snapshot->quantity ?? 0,
+                $qty,
+                number_format($item->product->price ?? 0, 2, ',', '.') . ' MT',
+                number_format($total, 2, ',', '.') . ' MT',
+                $item->product->quantity_in_principal_stock ?? 0,
+                number_format($buy, 2, ',', '.') . ' MT',
+                number_format($buy * $qty, 2, ',', '.') . ' MT',
+                number_format($total - ($buy * $qty), 2, ',', '.') . ' MT',
+            ];
+        })->all();
+    };
+
+    return $this->excelDownload("Relatorio-Stock-{$date}.xls", [
+        [
+            'title' => 'Relatório de Stocks',
+            'headers' => ['Nota'],
+            'rows' => [
+                ['Data do relatório: ' . $date],
+            ],
+        ],
+        [
+            'title' => 'Produtos Stock Bar',
+            'headers' => ['Produto', 'Qtd. Inicial', 'Qtd. Vend.', 'P. Venda', 'V. Total', 'Stock Atual', 'P. Compra', 'T. Compra', 'Lucro'],
+            'rows' => $build(2),
+        ],
+        [
+            'title' => 'Produtos Stock Cozinha',
+            'headers' => ['Produto', 'Qtd. Inicial', 'Qtd. Vend.', 'P. Venda', 'V. Total', 'Stock Atual', 'P. Compra', 'T. Compra', 'Lucro'],
+            'rows' => $build(1),
+        ],
+    ]);
+}
+
+public function reporttrashexcel()
+{
+    $date = request('date') ? date('Y-m-d', strtotime(request('date'))) : date('Y-m-d');
+    $cashRegisterId = $this->cashRegisterIdsForDate(request('date'));
+
+    $orderItems = OrderItem::onlyTrashed()
+        ->with(['product', 'order', 'user', 'deliveredby', 'updatedby'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->get();
+
+    $totalSales = $orderItems->sum('total');
+
+    return $this->excelDownload("Relatorio-Lixeira-{$date}.xls", [
+        [
+            'title' => 'Relatório de Vendas - Bar',
+            'headers' => ['Descrição', 'Valor'],
+            'rows' => [
+                ['Valor de Venda', $totalSales . ' MT'],
+            ],
+        ],
+        [
+            'title' => 'Vendas',
+            'headers' => ['ID', 'Produto', 'Quantidade', 'Total', 'Pedido', 'Garçom', 'Entregue por', 'Usuario', 'Data'],
+            'rows' => $orderItems->map(fn ($item) => [
+                $item->id,
+                $item->product->name ?? '',
+                $item->quantity,
+                $item->total . ' MT',
+                $item->order->id ?? '',
+                $item->user->name ?? '',
+                $item->deliveredby->name ?? 'N/A',
+                $item->updatedby->name ?? 'N/A',
+                (string) $item->updated_at,
+            ])->all(),
+        ],
+    ]);
+}
+
 }
