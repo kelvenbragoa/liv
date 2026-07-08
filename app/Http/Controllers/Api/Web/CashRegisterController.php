@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
+use App\Models\CreditSettlement;
 use App\Models\DailyStockSnapshot;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -502,9 +503,9 @@ public function dailydashboard()
         return $item->order->table_id !== null;
     });
 
+    // Consumo bruto (stock/operação) — inclui crédito e interno
     $totalSales = $orderItems->sum('total');
     $totalOrders = $orderItems->count();
-    $averageTicket = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
 
     $tableOrders = $orders->whereNotNull('table_id');
     $quickSellOrders = $orders->whereNull('table_id');
@@ -515,8 +516,54 @@ public function dailydashboard()
     $totalOrderTablesAmount = $orderItemsTable->sum('total');
     $totalOrderQuickSellAmount = $quickSellOrders->flatMap->itens->sum('total');
 
-    $totalPayments = Payment::whereIn('cash_register_id', $cashRegisterId)->count();
-    $totalPaymentsAmount = Payment::whereIn('cash_register_id', $cashRegisterId)->sum('amount');
+    // Pagamentos que entram em receita (exclui crédito e consumo interno)
+    $revenuePaymentsQuery = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', function ($query) {
+            $query->where('counts_in_revenue', 1);
+        });
+    $totalPayments = (clone $revenuePaymentsQuery)->count();
+    $totalPaymentsAmount = (clone $revenuePaymentsQuery)->sum('amount');
+
+    // Crédito emitido no dia
+    $creditPaymentsQuery = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', function ($query) {
+            $query->where('is_credit', 1);
+        });
+    $totalCreditIssued = (clone $creditPaymentsQuery)->sum('amount');
+    $totalCreditCount = (clone $creditPaymentsQuery)->count();
+
+    // Consumo interno / cortesia
+    $internalPaymentsQuery = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', function ($query) {
+            $query->where('counts_in_revenue', 0)->where('is_credit', 0);
+        });
+    $totalInternalConsumption = (clone $internalPaymentsQuery)->sum('amount');
+    $totalInternalCount = (clone $internalPaymentsQuery)->count();
+
+    // Liquidações de crédito no dia (caixas do dia)
+    $creditSettlementsQuery = CreditSettlement::whereIn('cash_register_id', $cashRegisterId);
+    $totalCreditSettled = (clone $creditSettlementsQuery)->sum('amount_paid');
+    $totalCreditSettlementsCount = (clone $creditSettlementsQuery)->count();
+
+    // Receita real = pagamentos que contam + liquidações
+    $totalRevenue = $totalPaymentsAmount + $totalCreditSettled;
+
+    // Crédito ainda em aberto (pedidos status Crédito = 4), descontando liquidações
+    $openCreditPayments = Payment::whereHas('method', function ($query) {
+            $query->where('is_credit', 1);
+        })
+        ->whereHas('order', function ($query) {
+            $query->where('order_status_id', 4);
+        })
+        ->get();
+
+    $totalCreditOpenBalance = $openCreditPayments->sum(function ($payment) {
+        $paid = CreditSettlement::where('payment_id', $payment->id)->sum('amount_paid');
+        return max(0, (float) $payment->amount - (float) $paid);
+    });
+    $totalCreditOpenCount = $openCreditPayments->count();
+
+    $averageTicket = $totalPayments > 0 ? $totalRevenue / $totalPayments : 0;
 
     return response()->json([
         'cash_register' => $cashRegister,
@@ -529,6 +576,15 @@ public function dailydashboard()
         'total_quick_sell_amount' => $totalOrderQuickSellAmount,
         'total_payments' => $totalPayments,
         'total_payments_amount' => $totalPaymentsAmount,
+        'total_revenue' => $totalRevenue,
+        'total_credit_issued' => $totalCreditIssued,
+        'total_credit_count' => $totalCreditCount,
+        'total_credit_settled' => $totalCreditSettled,
+        'total_credit_settlements_count' => $totalCreditSettlementsCount,
+        'total_credit_open_balance' => $totalCreditOpenBalance,
+        'total_credit_open_count' => $totalCreditOpenCount,
+        'total_internal_consumption' => $totalInternalConsumption,
+        'total_internal_count' => $totalInternalCount,
     ]);
 }
 
@@ -630,7 +686,6 @@ public function report(){
 
     $totalSales = $orderItems->sum('total');
     $totalOrders = $orderItems->count();
-    $averageTicket = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
 
     $tableOrders = $orders->whereNotNull('table_id');
     $quickSellOrders = $orders->whereNull('table_id');
@@ -641,32 +696,163 @@ public function report(){
     $totalOrderTablesAmount = $orderItemsTable->sum('total');
     $totalOrderQuickSellAmount = $quickSellOrders->flatMap->itens->sum('total');
 
-    $totalPayments = Payment::whereIn('cash_register_id', $cashRegisterId)->count();
-    $totalPaymentsAmount = Payment::whereIn('cash_register_id', $cashRegisterId)->sum('amount');
+    $revenuePaymentsQuery = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 1));
+    $totalPayments = (clone $revenuePaymentsQuery)->count();
+    $totalPaymentsAmount = (clone $revenuePaymentsQuery)->sum('amount');
 
-    $ticket = round($averageTicket, 2);
-    
-    
-    $paymentsReport = Payment::with('method')->with('order.table')->whereIn('cash_register_id',$cashRegisterId)->get();
+    $totalCreditIssued = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('is_credit', 1))
+        ->sum('amount');
+
+    $totalInternalConsumption = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->sum('amount');
+
+    $totalCreditSettled = CreditSettlement::whereIn('cash_register_id', $cashRegisterId)->sum('amount_paid');
+    $totalRevenue = $totalPaymentsAmount + $totalCreditSettled;
+
+    $ticket = $totalPayments > 0 ? round($totalRevenue / $totalPayments, 2) : 0;
+
+    $paymentsReport = Payment::with('method')->with('order.table')
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 1))
+        ->get();
+
+    $creditsReport = Payment::with('method')->with('order.table')->with('customer')
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('is_credit', 1))
+        ->get();
+
+    $internalReport = Payment::with('method')->with('order.table')
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->get();
+
     $orderItemsTableReport = OrderItem::whereIn('cash_register_id', $cashRegisterId)->get();
     $groupedOrderItems = $orderItemsTableReport->groupBy('order_id');
     $orderIds = $groupedOrderItems->keys();
     $ordersReport = Order::whereIn('id', $orderIds)->whereNotNull('table_id')->with(['itens.product','itens.status','itens.user','table','status','user'])->get();
     $quickOrderReport = Order::with(['itens.product','itens.status','itens.user','table','status','user'])->whereIn('cash_register_id', $cashRegisterId)->whereNull('table_id')->get();
 
-    // $orderItemsTableReportGrouped = OrderItem::whereIn('cash_register_id', $cashRegisterId)
-    // ->join('products', 'order_items.product_id', '=', 'products.id')
-    // ->select('products.name as product_name', DB::raw('SUM(order_items.price * order_items.quantity) as total_amount'), DB::raw('SUM(order_items.quantity) as total_quantity'))
-    // ->groupBy('products.name')
-    // ->get();
-
-    $pdf = Pdf::loadView('pdf.report', compact('cashRegister','totalSales','totalOrders','totalOrderTables','totalOrderQuickSell','ticket','totalOrderTablesAmount','totalOrderQuickSellAmount','totalPayments','totalPaymentsAmount','paymentsReport','ordersReport','quickOrderReport'))->setOptions([
+    $pdf = Pdf::loadView('pdf.report', compact(
+        'cashRegister',
+        'totalSales',
+        'totalOrders',
+        'totalOrderTables',
+        'totalOrderQuickSell',
+        'ticket',
+        'totalOrderTablesAmount',
+        'totalOrderQuickSellAmount',
+        'totalPayments',
+        'totalPaymentsAmount',
+        'totalRevenue',
+        'totalCreditIssued',
+        'totalCreditSettled',
+        'totalInternalConsumption',
+        'paymentsReport',
+        'creditsReport',
+        'internalReport',
+        'ordersReport',
+        'quickOrderReport'
+    ))->setOptions([
         'setPaper'=>'a8',
-        // 'setPaper' => [0, 0, 640, 2376],
         'defaultFont' => 'sans-serif',
         'isRemoteEnabled' => 'true'
     ]);
     return $pdf->setPaper('a4')->stream('report.pdf');
+}
+
+public function reportevento()
+{
+    $dateURL = request('date');
+    $date = $dateURL ? date('Y-m-d', strtotime($dateURL)) : date('Y-m-d');
+
+    $cashRegister = CashRegister::whereDate('created_at', $date)->get();
+    $cashRegisterId = $cashRegister->pluck('id');
+
+    $allOrderItems = OrderItem::with(['product', 'order'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->get();
+
+    $totalSales = $allOrderItems->sum('total');
+
+    $revenuePayments = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 1))
+        ->get();
+    $totalRevenuePayments = $revenuePayments->sum('amount');
+
+    $creditPayments = Payment::with(['customer', 'order.table'])
+        ->whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('is_credit', 1))
+        ->get();
+    $totalCreditIssued = $creditPayments->sum('amount');
+
+    $internalOrderIds = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->pluck('order_id');
+    $totalInternalConsumption = Payment::whereIn('cash_register_id', $cashRegisterId)
+        ->whereHas('method', fn ($q) => $q->where('counts_in_revenue', 0)->where('is_credit', 0))
+        ->sum('amount');
+
+    $totalCreditSettled = CreditSettlement::whereIn('cash_register_id', $cashRegisterId)->sum('amount_paid');
+    $totalRevenue = $totalRevenuePayments + $totalCreditSettled;
+    $shareBase = max(0, $totalSales - $totalInternalConsumption);
+
+    $creditsReport = $creditPayments->map(function ($payment) {
+        $settled = CreditSettlement::where('payment_id', $payment->id)->sum('amount_paid');
+        $payment->amount_settled = (float) $settled;
+        $payment->amount_balance = max(0, (float) $payment->amount - (float) $settled);
+        return $payment;
+    });
+
+    $totalCreditOpenBalance = $creditsReport->sum('amount_balance');
+
+    $revenueOrderIds = $revenuePayments->pluck('order_id');
+
+    // Produtos para promotor: apenas vendas pagas (counts_in_revenue), sem crédito nem interno
+    $paidItems = $allOrderItems->filter(fn ($item) => $revenueOrderIds->contains($item->order_id));
+
+    $buildProductRows = function ($items, $departmentId) {
+        return $items
+            ->filter(fn ($item) => (int) ($item->product->department_id ?? $item->department_id) === $departmentId)
+            ->groupBy('product_id')
+            ->map(function ($group) {
+                $first = $group->first();
+                return (object) [
+                    'product_id' => $first->product_id,
+                    'product' => $first->product,
+                    'total_quantity' => $group->sum('quantity'),
+                    'total_value' => $group->sum('total'),
+                ];
+            })
+            ->filter(fn ($row) => $row->total_quantity > 0)
+            ->sortBy(fn ($row) => $row->product->name ?? '')
+            ->values();
+    };
+
+    $productsBar = $buildProductRows($paidItems, 2);
+    $productsKitchen = $buildProductRows($paidItems, 1);
+
+    $pdf = Pdf::loadView('pdf.reportevento', compact(
+        'date',
+        'totalSales',
+        'totalInternalConsumption',
+        'shareBase',
+        'totalRevenuePayments',
+        'totalCreditSettled',
+        'totalRevenue',
+        'totalCreditIssued',
+        'totalCreditOpenBalance',
+        'productsBar',
+        'productsKitchen',
+        'creditsReport'
+    ))->setOptions([
+        'defaultFont' => 'sans-serif',
+        'isRemoteEnabled' => 'true'
+    ]);
+
+    return $pdf->setPaper('a4', 'landscape')->stream('reportevento.pdf');
 }
 
 

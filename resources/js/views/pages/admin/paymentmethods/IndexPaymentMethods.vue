@@ -143,9 +143,9 @@ onMounted(() => {
                     >
                     <template #header>
                         <div class="flex justify-between">
-                            <router-link to="/admin/paymentmethods/create">
+                            <!-- <router-link to="/admin/paymentmethods/create">
                                 <Button label="Voltar" class="mr-2 mb-2">Novo Registro<i class="pi pi-plus"></i></Button>
-                            </router-link>
+                            </router-link> -->
                             <IconField>
                                 <InputIcon>
                                     <i class="pi pi-search" />
@@ -178,8 +178,9 @@ onMounted(() => {
                     </Column>
                     <Column header="Ações" style="min-width: 12rem">
                     <template #body="{ data }">
-                        <router-link class="m-3" :to="'/admin/paymentmethods/' + data.id + '/edit'"><i class="pi pi-file-edit"></i></router-link>  <router-link class="m-3" :to="'/admin/paymentmethods/' + data.id"><i class="pi pi-eye"></i></router-link>
-                        <a class="m-3" href="#" @click.prevent="confirmDeletion(data.id)"><i class="pi pi-trash"></i></a>
+                        <!-- <router-link class="m-3" :to="'/admin/paymentmethods/' + data.id + '/edit'"><i class="pi pi-file-edit"></i></router-link>   -->
+                        <router-link class="m-3" :to="'/admin/paymentmethods/' + data.id"><i class="pi pi-eye"></i></router-link>
+                        <!-- <a class="m-3" href="#" @click.prevent="confirmDeletion(data.id)"><i class="pi pi-trash"></i></a> -->
                     </template>
                 </Column>
                 </DataTable>

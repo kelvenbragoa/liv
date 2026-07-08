@@ -2,7 +2,7 @@
 import { CustomerService } from '@/service/CustomerService';
 import { ProductService } from '@/service/ProductService';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
 
 // import { debounce } from 'lodash';
@@ -30,8 +30,12 @@ const total_consumed = ref(0);
 const isLoadingButton = ref(false);
 const order_items = ref([]);
 const loadingprint = ref(false);
+const CREDIT_PAYMENT_METHOD_ID = 8;
 const payment_method_id = ref(1);
 const payment_methods = ref([]);
+const selectedCustomer = ref(null);
+const customerSuggestions = ref([]);
+const isCreditPayment = computed(() => payment_method_id.value === CREDIT_PAYMENT_METHOD_ID);
 const selectedItemToDelete = ref(null);
 const confirmationCode = ref(null);
 const correct_code = '142502';
@@ -269,10 +273,41 @@ function saveCart() {
         });
   }
 
+const searchCustomers = debounce((event) => {
+    const query = event.query?.trim() ?? '';
+
+    if (!query) {
+        customerSuggestions.value = [];
+        return;
+    }
+
+    axios
+        .get('/api/customers', {
+            params: { query }
+        })
+        .then((response) => {
+            customerSuggestions.value = response.data.data ?? [];
+        })
+        .catch(() => {
+            customerSuggestions.value = [];
+        });
+}, 300);
+
 function payAccount() {
+    if (isCreditPayment.value && !selectedCustomer.value?.id) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: 'Selecione o cliente para venda a crédito.',
+            life: 3000
+        });
+        return;
+    }
+
     const payData = {
       payment_method_id: payment_method_id.value,
-      table_id: router.currentRoute.value.params.id
+      table_id: router.currentRoute.value.params.id,
+      ...(isCreditPayment.value && { customer_id: selectedCustomer.value.id }),
     };
 
     isLoadingButton.value = true;
@@ -498,6 +533,20 @@ const debouncedSearch = debounce(() => {
 
 watch(searchQuery,debouncedSearch);
 
+watch(payment_method_id, (value) => {
+    if (value !== CREDIT_PAYMENT_METHOD_ID) {
+        selectedCustomer.value = null;
+        customerSuggestions.value = [];
+    }
+});
+
+watch(payAccountDialog, (visible) => {
+    if (!visible) {
+        selectedCustomer.value = null;
+        customerSuggestions.value = [];
+    }
+});
+
 onMounted(() => {
     getData();
 });
@@ -700,7 +749,20 @@ onMounted(() => {
             <span>MZN {{ item.total }}</span>
         </li>
       </ul>
-      <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" class="mt-2" placeholder="Selecionar" />
+      <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" class="mt-2 w-full" placeholder="Selecionar" />
+
+      <div v-if="isCreditPayment" class="mt-3">
+        <label class="block font-medium mb-2">Cliente</label>
+        <AutoComplete
+          v-model="selectedCustomer"
+          :suggestions="customerSuggestions"
+          optionLabel="name"
+          placeholder="Pesquisar cliente..."
+          class="w-full"
+          forceSelection
+          @complete="searchCustomers"
+        />
+      </div>
 
       <p class="mt-4 text-lg font-semibold">
         <span>Total: </span>

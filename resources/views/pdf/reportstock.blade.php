@@ -132,10 +132,10 @@
             <table class="details compact">
                 <tr>
                     <th class="col-product">Produto</th>
+                    <th class="col-stock text-center">Qtd. Inicial</th>
                     <th class="col-qty text-center">Qtd. Vend.</th>
                     <th class="col-money text-right">P. Venda</th>
                     <th class="col-money text-right">V. Total</th>
-                    <th class="col-stock text-center">Qtd. Inicial</th>
                     <th class="col-stock text-center">Stock Atual</th>
                     <th class="col-money text-right">P. Compra</th>
                     <th class="col-money text-right">T. Compra</th>
@@ -144,14 +144,17 @@
                 @php
                     $total_geral_quantidade = 0;
                     $total_geral_valor = 0;
+                    $total_geral_compra = 0;
+                    $total_geral_lucro = 0;
                 @endphp
                 @foreach ($orderItemsTableReportBar as $item)
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
+                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
                         <td class="text-center">{{ $item->total_quantity }}</td>
                         <td class="text-right">{{ number_format($item->product->price ?? 0, 2, ',', '.') }} MT</td>
                         <td class="text-right">{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
-                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
+                        
                         <td class="text-center">{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
                         <td class="text-right">{{ number_format($item->product->buy_price ?? 0, 2, ',', '.') }} MT</td>
                         <td class="text-right">{{ number_format(($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0), 2, ',', '.') }} MT</td>
@@ -160,6 +163,8 @@
                     @php
                         $total_geral_quantidade += $item->total_quantity;
                         $total_geral_valor += $item->total_value;
+                        $total_geral_compra += ($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0);
+                        $total_geral_lucro += $item->total_value - (($item->product->buy_price ?? 0) * ($item->total_quantity ?? 0));
                     @endphp
                 @endforeach
                 <tr class="total-row">
@@ -170,8 +175,8 @@
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td></td>
-                    <td></td>
+                    <td class="text-right">{{ number_format($total_geral_compra, 2, ',', '.') }} MT</td>
+                    <td class="text-right">{{ number_format($total_geral_lucro, 2, ',', '.') }} MT</td>
                 </tr>
                 
             </table>
@@ -180,10 +185,11 @@
             <table class="details compact">
                 <tr>
                     <th class="col-product">Produto</th>
+                    <th class="col-stock text-center">Qtd. Inicial</th>
                     <th class="col-qty text-center">Qtd. Vend.</th>
                     <th class="col-money text-right">P. Venda</th>
                     <th class="col-money text-right">V. Total</th>
-                    <th class="col-stock text-center">Qtd. Inicial</th>
+                    
                     <th class="col-stock text-center">Stock Atual</th>
                     <th class="col-money text-right">P. Compra</th>
                     <th class="col-money text-right">T. Compra</th>
@@ -202,10 +208,11 @@
                     @endphp
                     <tr>
                         <td>{{ $item->product->name ?? 'Desconhecido' }}</td>
+                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
                         <td class="text-center">{{ $item->total_quantity }}</td>
                         <td class="text-right">{{ number_format($item->product->price ?? 0, 2, ',', '.') }} MT</td>
                         <td class="text-right">{{ number_format($item->total_value, 2, ',', '.') }} MT</td>
-                        <td class="text-center">{{ $item->initial_stock_quantity ?? 0 }}</td>
+                        
                         <td class="text-center">{{ $item->product->quantity_in_principal_stock ?? 0 }}</td>
                         <td class="text-right">{{ number_format($item->product->buy_price ?? 0, 2, ',', '.') }} MT</td>
                         <td class="text-right">{{ number_format($total_compra_item_kitchen, 2, ',', '.') }} MT</td>

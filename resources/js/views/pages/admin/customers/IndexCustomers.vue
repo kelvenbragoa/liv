@@ -180,6 +180,11 @@ onMounted(() => {
                             {{ data.address }}
                         </template>
                     </Column>
+                    <Column header="Número de Identificação Fiscal" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ data.tax_number }}
+                        </template>
+                    </Column>
                     <Column header="Data" dataType="date" style="min-width: 10rem">
                         <template #body="{ data }">
                             {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}

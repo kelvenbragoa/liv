@@ -95,6 +95,9 @@
         <div class="total">
             <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
             <p>Metódo Pagamento: {{ $payment->method->name}}</p>
+            @if($payment->customer_id && $payment->payment_method_id == 8)
+            <p>Cliente: {{ $payment->customer->name }}</p>
+            @endif
         </div>
     </div>
     <hr>

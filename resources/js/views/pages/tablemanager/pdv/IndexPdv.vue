@@ -143,46 +143,58 @@ const closeListQuickSellDialog = () =>{
     openListQuickSellDialog.value = false
 }
 
-function getSeverity2(status) {
-    switch (status) {
+function getTableCardClass(statusId) {
+    switch (statusId) {
         case 1:
-            return 'red';
-
+            return 'bg-green-100';
         case 2:
-            return 'red';
-
+            return 'bg-orange-100';
         case 3:
-            return 'warn';
-
+            return 'bg-yellow-100';
         case 4:
-            return 'danger';
-
+            return 'bg-purple-100';
         case 5:
-            return 'info';
-        
+            return 'bg-blue-100';
         case 6:
-            return 'info';
+            return 'bg-gray-200';
+        default:
+            return '';
     }
 }
+
+function getTableIconClasses(statusId) {
+    switch (statusId) {
+        case 1:
+            return ['bg-green-100', 'dark:bg-green-400/10'];
+        case 2:
+            return ['bg-orange-100', 'dark:bg-orange-400/10'];
+        case 3:
+            return ['bg-yellow-100', 'dark:bg-yellow-400/10'];
+        case 4:
+            return ['bg-purple-100', 'dark:bg-purple-400/10'];
+        case 5:
+            return ['bg-blue-100', 'dark:bg-blue-400/10'];
+        case 6:
+            return ['bg-gray-200', 'dark:bg-gray-400/10'];
+        default:
+            return ['bg-surface-100', 'dark:bg-surface-400/10'];
+    }
+}
+
 function getSeverity(status) {
     switch (status) {
         case 1:
             return 'success';
-
         case 2:
-            return 'danger';
-
-        case 3:
             return 'warn';
-
+        case 3:
+            return 'secondary';
         case 4:
-            return 'danger';
-
+            return 'contrast';
         case 5:
             return 'info';
-        
         case 6:
-            return 'info';
+            return 'danger';
     }
 }
 
@@ -385,19 +397,15 @@ onUnmounted(() => {
             <div class="grid grid-cols-12 gap-8">
                     <div class="col-span-12 lg:col-span-6 xl:col-span-3" v-for="(table,index) in retriviedData.data" :key="table.id">
                         <router-link :to="'/tablemanager/pdv/' + table.id + '/categories'">
-                            <div class="card mb-0" :class="{
-                                    'bg-green-100': table.table_status_id === 1, 
-                                    'bg-red-100': table.table_status_id === 2
-                                }">
+                            <div class="card mb-0" :class="getTableCardClass(table.table_status_id)">
                                 <div class="flex justify-between mb-4">
                                     <div>
                                         <!-- <span class="block text-muted-color font-medium mb-4 text-xxl">{{table.name}}</span> -->
                                         <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{table.name}}</div>
                                     </div>
                                     <div :class="[
-                                            'flex items-center justify-center rounded-full', 
-                                            `bg-${getSeverity2(table.status_id)}-100`, 
-                                            `dark:bg-${getSeverity2(table.status_id)}-400/10`
+                                            'flex items-center justify-center rounded-full',
+                                            ...getTableIconClasses(table.table_status_id)
                                         ]" 
                                         style="width: 2.5rem; height: 2.5rem">
                                         <i class="pi pi-list text-blue-500 !text-xl" aria-label="Carrinho de Compras"></i>

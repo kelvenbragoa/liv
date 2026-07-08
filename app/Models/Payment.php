@@ -23,5 +23,8 @@ class Payment extends Model
     public function order(){
         return $this->hasOne('App\Models\Order', 'id', 'order_id');
     }
+    public function customer(){
+        return $this->hasOne('App\Models\Customer', 'id', 'customer_id');
+    }
 
 }

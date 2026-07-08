@@ -64,6 +64,15 @@ const total_tables_amount = ref(0)
 const total_quick_sell = ref(0)
 const total_payments = ref(0)
 const total_payments_amount = ref(0)
+const total_revenue = ref(0)
+const total_credit_issued = ref(0)
+const total_credit_count = ref(0)
+const total_credit_settled = ref(0)
+const total_credit_settlements_count = ref(0)
+const total_credit_open_balance = ref(0)
+const total_credit_open_count = ref(0)
+const total_internal_consumption = ref(0)
+const total_internal_count = ref(0)
 
 
 const statusCaixa = ref('Aberto')
@@ -265,6 +274,15 @@ const getData = async (page = 1) => {
             total_tables_amount.value = response.data.total_tables_amount;
             total_payments.value = response.data.total_payments;
             total_payments_amount.value = response.data.total_payments_amount;
+            total_revenue.value = response.data.total_revenue ?? 0;
+            total_credit_issued.value = response.data.total_credit_issued ?? 0;
+            total_credit_count.value = response.data.total_credit_count ?? 0;
+            total_credit_settled.value = response.data.total_credit_settled ?? 0;
+            total_credit_settlements_count.value = response.data.total_credit_settlements_count ?? 0;
+            total_credit_open_balance.value = response.data.total_credit_open_balance ?? 0;
+            total_credit_open_count.value = response.data.total_credit_open_count ?? 0;
+            total_internal_consumption.value = response.data.total_internal_consumption ?? 0;
+            total_internal_count.value = response.data.total_internal_count ?? 0;
 
 
             // categories.value = response.data.categories;
@@ -404,13 +422,34 @@ function downloadReport () {
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialogReport.value = true;  // Abre o diálogo modal
             openPrintReport.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Casa gerado com sucesso!', life: 3000 });
 
         })
         .catch((error) => {
             isLoadingDiv.value = false;
             toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
             // goBackUsingBack();
+        });
+};
+
+function downloadReportEvento () {
+    axios
+        .get(`/api/cashregisters/reportevento`, {
+            params: {
+                date: date.value
+            },
+            responseType: 'blob'
+        })
+        .then((response) => {
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            pdfUrl.value = URL.createObjectURL(blob);
+            showDialogReport.value = true;
+            openPrintReport.value = false;
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Evento gerado com sucesso!', life: 3000 });
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
         });
 };
 
@@ -427,7 +466,7 @@ function downloadReportStock () {
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialogReport.value = true;  // Abre o diálogo modal
             openPrintReport.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Stock gerado com sucesso!', life: 3000 });
 
         })
         .catch((error) => {
@@ -450,7 +489,7 @@ function downloadReportTrash () {
             pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
             showDialogReport.value = true;  // Abre o diálogo modal
             openPrintReport.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
+            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatório Lixeira gerado com sucesso!', life: 3000 });
 
         })
         .catch((error) => {
@@ -496,36 +535,45 @@ onMounted(() => {
                 />
                 </div>
 
-                <Button 
-                label="Gerar Relatório" 
-                icon="pi pi-chart-line" 
-                class="p-button-primary mb-2"
-                @click="refreshData" 
-                :disabled="isLoadingData"
-                />
-                <Button 
-                label="Baixar Relatório Geral" 
-                icon="pi pi-download" 
-                class="p-button-primary ml-2 mb-2"
-                @click="downloadReport" 
-                :disabled="isLoadingData"
-                />
-
-                <Button 
-                label="Baixar Relatório Stock" 
-                icon="pi pi-download" 
-                class="p-button-primary ml-2 mb-2"
-                @click="downloadReportStock" 
-                :disabled="isLoadingData"
-                />
-                <Button 
-                label="" 
-                icon="pi pi-trash" 
-                class="p-button-primary ml-2 mb-2"
-                @click="downloadReportTrash" 
-                :disabled="isLoadingData"
-                />
-            </div>
+                <div class="mb-4 flex flex-wrap gap-2 items-end">
+                    <Button
+                        label="Actualizar Dashboard"
+                        icon="pi pi-refresh"
+                        class="p-button-primary mb-2"
+                        @click="refreshData"
+                        :disabled="isLoadingData"
+                    />
+                    <Button
+                        label="Relatório Casa"
+                        icon="pi pi-building"
+                        class="p-button-help mb-2"
+                        @click="downloadReport"
+                        :disabled="isLoadingData"
+                        v-tooltip.top="'Relatório interno completo (receita, crédito, interno, caixas)'"
+                    />
+                    <Button
+                        label="Relatório Evento / Promotor"
+                        icon="pi pi-users"
+                        class="p-button-success mb-2"
+                        @click="downloadReportEvento"
+                        :disabled="isLoadingData"
+                        v-tooltip.top="'PDF partilhável por produto: pago, crédito e base de partilha'"
+                    />
+                    <Button
+                        label="Relatório Stock"
+                        icon="pi pi-box"
+                        class="p-button-info mb-2"
+                        @click="downloadReportStock"
+                        :disabled="isLoadingData"
+                    />
+                    <Button
+                        label="Lixeira"
+                        icon="pi pi-trash"
+                        class="p-button-secondary mb-2"
+                        @click="downloadReportTrash"
+                        :disabled="isLoadingData"
+                    />
+                </div>            </div>
             
             
             <div class="grid grid-cols-12 gap-8 mb-3">
@@ -546,8 +594,23 @@ onMounted(() => {
                     <div class="card mb-0">
                         <div class="flex justify-between mb-4">
                             <div>
-                                <span class="block text-muted-color font-medium mb-4">Total de Vendas</span>
+                                <span class="block text-muted-color font-medium mb-4">Receita Real</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_revenue}} MT</div>
+                                <small class="text-muted-color">Pagamentos + liquidações</small>
+                            </div>
+                            <div class="flex items-center justify-center bg-green-100 dark:bg-green-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-wallet text-green-500 !text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+                    <div class="card mb-0">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <span class="block text-muted-color font-medium mb-4">Consumo Total</span>
                                 <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_sales}} MT</div>
+                                <small class="text-muted-color">Inclui crédito e interno</small>
                             </div>
                             <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
                                 <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
@@ -563,7 +626,7 @@ onMounted(() => {
                                 <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_orders}}</div>
                             </div>
                             <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                                <i class="pi pi-list text-blue-500 !text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -574,9 +637,10 @@ onMounted(() => {
                             <div>
                                 <span class="block text-muted-color font-medium mb-4">Ticket Médio</span>
                                 <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{average_ticket}} MT</div>
+                                <small class="text-muted-color">Sobre receita real</small>
                             </div>
                             <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                                <i class="pi pi-chart-line text-blue-500 !text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -585,14 +649,14 @@ onMounted(() => {
                     <div class="card mb-0">
                         <div class="flex justify-between mb-4">
                             <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Mesas Abertas</span>
-                                <div class="flex justify-between mb-4">
+                                <span class="block text-muted-color font-medium mb-4">Total Mesas</span>
+                                <div class="flex justify-between mb-4 gap-4">
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables}}</span>
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables_amount}} MT</span>
                                 </div>
                             </div>
                             <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                                <i class="pi pi-table text-blue-500 !text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -601,15 +665,15 @@ onMounted(() => {
                     <div class="card mb-0">
                         <div class="flex justify-between mb-4">
                             <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pedidos/Venda Rápido</span>
-                                <div class="flex justify-between mb-4">
+                                <span class="block text-muted-color font-medium mb-4">Venda Rápida</span>
+                                <div class="flex justify-between mb-4 gap-4">
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell}}</span>
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell_amount}} MT</span>
                                 </div>
 
                             </div>
                             <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                                <i class="pi pi-bolt text-blue-500 !text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -618,15 +682,83 @@ onMounted(() => {
                     <div class="card mb-0">
                         <div class="flex justify-between mb-4">
                             <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>- -
+                                <span class="block text-muted-color font-medium mb-4">Pagamentos (Receita)</span>
+                                <div class="flex justify-between mb-4 gap-4">
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>
                                     <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
                                 </div>
 
                             </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
+                            <div class="flex items-center justify-center bg-green-100 dark:bg-green-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-money-bill text-green-500 !text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+                    <div class="card mb-0">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <span class="block text-muted-color font-medium mb-4">Crédito Emitido</span>
+                                <div class="flex justify-between mb-4 gap-4">
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_count}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_issued}} MT</span>
+                                </div>
+                                <small class="text-muted-color">Não entra na receita</small>
+                            </div>
+                            <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-credit-card text-orange-500 !text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+                    <div class="card mb-0">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <span class="block text-muted-color font-medium mb-4">Crédito Liquidado</span>
+                                <div class="flex justify-between mb-4 gap-4">
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_settlements_count}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_settled}} MT</span>
+                                </div>
+                                <small class="text-muted-color">Entra na receita</small>
+                            </div>
+                            <div class="flex items-center justify-center bg-teal-100 dark:bg-teal-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-check-circle text-teal-500 !text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+                    <div class="card mb-0">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <span class="block text-muted-color font-medium mb-4">Crédito em Aberto</span>
+                                <div class="flex justify-between mb-4 gap-4">
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_open_count}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_credit_open_balance}} MT</span>
+                                </div>
+                                <small class="text-muted-color">Pedidos status Crédito</small>
+                            </div>
+                            <div class="flex items-center justify-center bg-yellow-100 dark:bg-yellow-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-exclamation-triangle text-yellow-500 !text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+                    <div class="card mb-0">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <span class="block text-muted-color font-medium mb-4">Consumo Interno</span>
+                                <div class="flex justify-between mb-4 gap-4">
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_internal_count}}</span>
+                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_internal_consumption}} MT</span>
+                                </div>
+                                <small class="text-muted-color">Não entra na receita</small>
+                            </div>
+                            <div class="flex items-center justify-center bg-gray-200 dark:bg-gray-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-users text-gray-500 !text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -736,7 +868,7 @@ onMounted(() => {
                         </Column>
                         <Column header="Estado" style="min-width: 12rem">
                             <template #body="{ data }">
-                                {{ data.status.name }}
+                                {{ data.status.name  }}
                             </template>
                         </Column>
                         <Column header="Itens" style="min-width: 12rem">

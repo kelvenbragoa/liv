@@ -34,7 +34,7 @@ const schema = yup.object({
     name: yup.string().required().trim().label('Name'),
     mobile: yup.string().required().trim().label('mobile'),
     address: yup.string().required().trim().label('address'),
-
+    tax_number: yup.string().required().trim().label('tax_number'),
 
 });
 const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
@@ -44,7 +44,7 @@ const [email] = defineField('email');
 const [name] = defineField('name');
 const [mobile] = defineField('mobile');
 const [address] = defineField('address');
-
+const [tax_number] = defineField('tax_number');
 const image = ref();
 
 
@@ -209,6 +209,12 @@ onMounted(() => {
                         <label for="address">Endereço</label>
                         <InputText v-model="address" id="address" placeholder="Endereço" :class="{ 'p-invalid': errors.address }" type="text" />
                         <small id="address-help" class="p-error">{{ errors.address }}</small>
+                    </div>
+                    
+                    <div class="flex flex-col gap-2">
+                        <label for="tax_number">Número de Identificação Fiscal</label>
+                        <InputText v-model="tax_number" id="tax_number" placeholder="Número de Identificação Fiscal" :class="{ 'p-invalid': errors.tax_number }" type="text" />
+                        <small id="tax_number-help" class="p-error">{{ errors.tax_number }}</small>
                     </div>
                     
                     <Button label="Submeter" class="mr-2 mb-2" @click="onSubmit" :disabled="isLoadingButton"></Button>

@@ -83,39 +83,47 @@
 
     <div class="container">
         <div class="content">
-            <h3>Relatório de Vendas - Bar</h3>
+            <h3>Relatório de Vendas — Casa</h3>
             <table class="details">
                 <tr>
                     <th>Descrição</th>
                     <th>Valor</th>
                 </tr>
                 <tr>
-                    <td>Número de Mesas</td>
-                    <td>{{$totalOrderTables}}</td>
+                    <td>Consumo total (operação)</td>
+                    <td>{{ number_format($totalSales, 2, ',', '.') }} MT</td>
                 </tr>
-                {{-- <tr>
-                    <td>Número de Produtos</td>
-                    <td>0</td>
-                </tr> --}}
                 <tr>
-                    <td>Valor de Venda</td>
-                    <td>{{$totalSales}} MT</td>
+                    <td>Receita real (pagamentos + liquidações)</td>
+                    <td>{{ number_format($totalRevenue ?? $totalPaymentsAmount, 2, ',', '.') }} MT</td>
+                </tr>
+                <tr>
+                    <td>Pagamentos (counts_in_revenue)</td>
+                    <td>{{$totalPayments}} | {{ number_format($totalPaymentsAmount, 2, ',', '.') }} MT</td>
+                </tr>
+                <tr>
+                    <td>Crédito emitido</td>
+                    <td>{{ number_format($totalCreditIssued ?? 0, 2, ',', '.') }} MT</td>
+                </tr>
+                <tr>
+                    <td>Crédito liquidado</td>
+                    <td>{{ number_format($totalCreditSettled ?? 0, 2, ',', '.') }} MT</td>
+                </tr>
+                <tr>
+                    <td>Consumo interno</td>
+                    <td>{{ number_format($totalInternalConsumption ?? 0, 2, ',', '.') }} MT</td>
                 </tr>
                 <tr>
                     <td>Total de Pedidos Em Mesa</td>
-                    <td>{{$totalOrderTables}} | {{$totalOrderTablesAmount}} MT</td>
+                    <td>{{$totalOrderTables}} | {{ number_format($totalOrderTablesAmount, 2, ',', '.') }} MT</td>
                 </tr>
                 <tr>
                     <td>Total de Pedidos Venda Rápida</td>
-                    <td>{{$totalOrderQuickSell}} | {{$totalOrderQuickSellAmount}} MT</td>
+                    <td>{{$totalOrderQuickSell}} | {{ number_format($totalOrderQuickSellAmount, 2, ',', '.') }} MT</td>
                 </tr>
                 <tr>
-                    <td>Média de Venda</td>
+                    <td>Ticket médio (receita)</td>
                     <td>{{$ticket}} MT</td>
-                </tr>
-                <tr>
-                    <td>Total Pagamentos</td>
-                    <td>{{$totalPayments}} | {{$totalPaymentsAmount}} MT</td>
                 </tr>
             </table>
 
@@ -163,7 +171,7 @@
                 
             </table> --}}
 
-            <h3>Pagamentos Efetuados</h3>
+            <h3>Pagamentos (Receita)</h3>
             <table class="details">
                 <tr>
                     <th>ID</th>
@@ -183,7 +191,50 @@
                         <td>{{$item->created_at}}</td>
                     </tr>
                 @endforeach
+            </table>
 
+            <h3>Créditos Emitidos</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Pedido</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+                </tr>
+                @forelse (($creditsReport ?? []) as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>{{$item->customer->name ?? '—'}}</td>
+                        <td>{{$item->order->table->name ?? ('Pedido #'.$item->order_id)}}</td>
+                        <td>{{$item->amount}} MT</td>
+                        <td>{{$item->created_at}}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5">Nenhum crédito neste dia.</td></tr>
+                @endforelse
+            </table>
+
+            <h3>Consumo Interno</h3>
+            <table class="details">
+                <tr>
+                    <th>ID</th>
+                    <th>Pedido</th>
+                    <th>Método</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+                </tr>
+                @forelse (($internalReport ?? []) as $item)
+                    <tr>
+                        <td>{{$item->id}}</td>
+                        <td>{{$item->order->table->name ?? ('Pedido #'.$item->order_id)}}</td>
+                        <td>{{$item->method->name ?? '—'}}</td>
+                        <td>{{$item->amount}} MT</td>
+                        <td>{{$item->created_at}}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5">Nenhum consumo interno neste dia.</td></tr>
+                @endforelse
             </table>
 
             <h3>Vendas Em Mesa</h3>

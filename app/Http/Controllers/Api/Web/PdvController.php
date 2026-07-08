@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Web;
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -568,9 +569,31 @@ class PdvController extends Controller
             ], 404);
         }
 
+        $paymentMethod = PaymentMethod::find($data['payment_method_id']);
+        if (!$paymentMethod) {
+            return response()->json([
+                'message' => 'Método de pagamento não encontrado.'
+            ], 404);
+        }
+
+        $isCredit = (int) $paymentMethod->is_credit === 1 || (int) $paymentMethod->id === 8;
+
+        if ($isCredit) {
+            $customer = Customer::find($data['customer_id'] ?? null);
+            if (!$customer) {
+                return response()->json([
+                    'message' => 'Selecione o cliente para venda a crédito.'
+                ], 422);
+            }
+        }
+
+        // Crédito => order_status_id 4; payment_method crédito = 8; restantes => 3 (Paga)
+        $orderStatusId = $isCredit ? 4 : 3;
+
         $order->update([
-            "order_status_id"=>3,
-            "fineshed_by_user_id"=>Auth::user()->id,
+            "order_status_id" => $orderStatusId,
+            "fineshed_by_user_id" => Auth::user()->id,
+            "customer_id" => $isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null),
         ]);
 
         $table->update([
@@ -590,7 +613,8 @@ class PdvController extends Controller
             "payment_method_id"=>$data["payment_method_id"],
             "amount"=>$order->total,
             "cash_register_id" => $openCashRegister->id,
-            "user_id" => Auth::user()->id
+            "user_id" => Auth::user()->id,
+            "customer_id"=>$isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null)
         ]);
 
         $pdf = Pdf::loadView('pdf.customerreceipt', compact('order','orderitens','payment'))->setOptions([

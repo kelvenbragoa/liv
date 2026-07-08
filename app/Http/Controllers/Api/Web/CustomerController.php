@@ -47,7 +47,7 @@ class CustomerController extends Controller
             'name'=>$data['name'],
             'mobile'=>$data['mobile'],
             'address'=>$data['address'],
-
+            'tax_number'=>$data['tax_number'],
         ]);
         return response()->json($customer);
     }
