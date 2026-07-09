@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatus;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -21,6 +22,55 @@ use RuntimeException;
 class OrderController extends Controller
 {
     use ManagesPrincipalStock;
+
+    private function buildFilteredQuery(Request $request)
+    {
+        $sortBy = $request->input('sort_by', 'created_at');
+        $allowedSort = ['id', 'total', 'table_id', 'order_status_id', 'user_id', 'created_at'];
+
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        return Order::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('id', 'like', "%{$search}%")
+                        ->orWhere('total', 'like', "%{$search}%")
+                        ->orWhereHas('table', function ($tableQuery) use ($search) {
+                            $tableQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->filled('order_status_id'), function ($query) use ($request) {
+                $query->where('order_status_id', $request->integer('order_status_id'));
+            })
+            ->when($request->has('quick_sale') && $request->input('quick_sale') !== null && $request->input('quick_sale') !== '', function ($query) use ($request) {
+                if ($request->boolean('quick_sale')) {
+                    $query->whereNull('table_id');
+                } else {
+                    $query->whereNotNull('table_id');
+                }
+            })
+            ->when($request->filled('table_id'), function ($query) use ($request) {
+                $query->where('table_id', $request->integer('table_id'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
+            })
+            ->with(['table', 'status', 'user'])
+            ->orderBy($sortBy, $sortDir);
+    }
 
     /**
      * Display a listing of the resource.
@@ -44,23 +94,40 @@ class OrderController extends Controller
         ]);
         return $pdf->stream('report.pdf');
     }
-    public function index()
+
+    public function index(Request $request)
     {
-        //
-        $searchQuery = request('query');
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
 
-            $orders = Order::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('id','like',"%{$searchQuery}%");
-            })
-            ->with('table')
-            ->with('itens')
-            ->with('status')
-            ->with('user')
-            ->orderBy('created_at','desc')
-            ->paginate();
+        $orders = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
-            return response()->json($orders);
+        return response()->json($orders);
+    }
+
+    /**
+     * Export filtered orders for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $orders = $this->buildFilteredQuery($request)->get();
+
+        $data = $orders->map(function ($order) {
+            return [
+                'id' => $order->id,
+                'total' => $order->total,
+                'table' => $order->table?->name ?? 'Venda rápida',
+                'status' => $order->status?->name,
+                'user' => $order->user?->name,
+                'created_at' => $order->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
     }
 
     /**
@@ -68,7 +135,10 @@ class OrderController extends Controller
      */
     public function create()
     {
-        //
+        return response()->json([
+            'order_statuses' => OrderStatus::orderBy('name')->get(),
+            'tables' => Table::orderBy('name')->get(),
+        ]);
     }
 
     /**
@@ -84,10 +154,59 @@ class OrderController extends Controller
      */
     public function show(string $id)
     {
-        //
-        $order = Order::with('table')->with('itens')->with('status')->find($id);
+        $order = Order::query()
+            ->with(['table', 'status', 'user'])
+            ->find($id);
 
-        return response()->json($order);
+        if (! $order) {
+            return response()->json(['message' => 'Pedido não encontrado.'], 404);
+        }
+
+        $items = OrderItem::query()
+            ->where('order_id', $order->id)
+            ->with(['product'])
+            ->get(['id', 'order_id', 'product_id', 'quantity', 'price', 'total', 'created_at']);
+
+        $payments = Payment::query()
+            ->where('order_id', $order->id)
+            ->with('method')
+            ->get(['id', 'order_id', 'payment_method_id', 'amount', 'created_at']);
+
+        $itemsCount = $items->count();
+        $totalQuantity = (int) $items->sum('quantity');
+        $distinctProducts = $items->pluck('product_id')->filter()->unique()->count();
+        $paymentsTotal = (float) $payments->sum('amount');
+        $paymentsCount = $payments->count();
+
+        return response()->json([
+            'order' => [
+                'id' => $order->id,
+                'total' => $order->total,
+                'created_at' => $order->created_at,
+            ],
+            'table' => $order->table ? [
+                'id' => $order->table->id,
+                'name' => $order->table->name,
+            ] : null,
+            'status' => $order->status ? [
+                'id' => $order->status->id,
+                'name' => $order->status->name,
+            ] : null,
+            'user' => $order->user ? [
+                'id' => $order->user->id,
+                'name' => $order->user->name,
+            ] : null,
+            'metrics' => [
+                'items_count' => $itemsCount,
+                'total_quantity' => $totalQuantity,
+                'distinct_products' => $distinctProducts,
+                'payments_count' => $paymentsCount,
+                'payments_total' => $paymentsTotal,
+                'balance_remaining' => (float) ($order->total ?? 0) - $paymentsTotal,
+            ],
+            'items' => $items,
+            'payments' => $payments,
+        ]);
     }
 
     /**

@@ -1,153 +1,137 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-
-// import { debounce } from 'lodash';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-
 import moment from 'moment';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
-const currentPage = ref(1);
-const rowsPerPage = ref(15);
-const totalRecords = ref(0);
-const displayConfirmation = ref(false);
+
+const isLoading = ref(true);
+const details = ref(null);
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
+    router?.back();
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
-
-function getSeverity(status) {
-    switch (status) {
-        case 'unqualified':
-            return 'danger';
-
-        case 'qualified':
-            return 'success';
-
-        case 'new':
-            return 'info';
-
-        case 'negotiation':
-            return 'warn';
-
-        case 'renewal':
-            return null;
-    }
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
 }
 
-const getData = async (page = 1) => {
-    axios
-        .get(`/api/customers/${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            retriviedData.value = response.data;
-            isLoadingDiv.value = false;
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
-            goBackUsingBack();
+function formatMoney(value) {
+    const number = Number(value ?? 0);
+    return number.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function displayValue(value) {
+    return value || '—';
+}
+
+const customer = computed(() => details.value?.customer ?? null);
+const metrics = computed(() => details.value?.metrics ?? {});
+
+const getData = async () => {
+    isLoading.value = true;
+    try {
+        const id = router.currentRoute.value.params.id;
+        const response = await axios.get(`/api/customers/${id}`);
+        details.value = response.data;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível carregar os detalhes do cliente.',
+            life: 3000
         });
+        goBackUsingBack();
+    } finally {
+        isLoading.value = false;
+    }
 };
-
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/customers/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
-};
-
-const onPageChange = (event) => {
-    currentPage.value = event.page + 1;
-    rowsPerPage.value = event.rows;
-    getData(currentPage.value);
-};
-
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
-
-watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
     getData();
 });
-
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
+    <div v-if="isLoading" class="custshow-loading">
+        <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" />
+        <p>A carregar visão do cliente...</p>
     </div>
-    
-    <div class="flex flex-col md:flex-row gap-12" v-else>
-        <div class="w-full">
-            
-            <div class="card flex flex-col gap-4">
-                <div class="w-full">
-                    <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
+
+    <div v-else-if="details" class="custshow-page">
+        <div class="custshow-card">
+            <header class="custshow-header">
+                <div>
+                    <p class="custshow-eyebrow">Gestão de clientes</p>
+                    <h1>{{ customer?.name || 'Cliente' }}</h1>
+                    <p class="custshow-subtitle">Criado em {{ formatDate(customer?.created_at) }}</p>
                 </div>
-                <div class="font-semibold text-xl">Cliente</div>
-                   <p><strong>Cliente:</strong> {{ retriviedData.name }}</p>
-                   <p><strong>Telefone:</strong> {{ retriviedData.mobile }}</p>
-                   <p><strong>Email:</strong> {{ retriviedData.email }}</p>
-                   <p><strong>Endreço:</strong> {{ retriviedData.address }}</p>
+                <div class="custshow-header__actions">
+                    <Button label="Voltar" icon="pi pi-arrow-left" outlined @click="goBackUsingBack" />
+                    <Button label="Editar cliente" icon="pi pi-pencil" severity="info" @click="router.push(`/admin/customers/${customer?.id}/edit`)" />
+                </div>
+            </header>
 
-                   <p><strong>Data:</strong> {{ moment(retriviedData.created_at).format('DD-MM-YYYY H:mm') }}</p>
+            <section class="custshow-kpis">
+                <div class="custshow-kpi">
+                    <span class="custshow-kpi__label">Pagamentos</span>
+                    <strong>{{ metrics.payments_count ?? 0 }}</strong>
+                </div>
+                <div class="custshow-kpi">
+                    <span class="custshow-kpi__label">Total pago</span>
+                    <strong>{{ formatMoney(metrics.payments_total) }} MT</strong>
+                </div>
+                <div class="custshow-kpi">
+                    <span class="custshow-kpi__label">Reservas</span>
+                    <strong>{{ metrics.reservations_count ?? 0 }}</strong>
+                </div>
+                <div class="custshow-kpi">
+                    <span class="custshow-kpi__label">Liquidações crédito</span>
+                    <strong>{{ metrics.credit_settlements_count ?? 0 }}</strong>
+                </div>
+                <div class="custshow-kpi">
+                    <span class="custshow-kpi__label">Crédito em aberto</span>
+                    <strong :class="Number(metrics.credit_remaining) > 0 ? 'custshow-bad' : 'custshow-good'">
+                        {{ formatMoney(metrics.credit_remaining) }} MT
+                    </strong>
+                </div>
+            </section>
 
-            </div>
+            <section class="custshow-info">
+                <h3>Informação do cliente</h3>
+                <div class="custshow-info__grid">
+                    <p><strong>Email:</strong> {{ displayValue(customer?.email) }}</p>
+                    <p><strong>Telefone:</strong> {{ displayValue(customer?.mobile) }}</p>
+                    <p><strong>NIF:</strong> {{ displayValue(customer?.tax_number) }}</p>
+                    <p><strong>Última reserva:</strong> {{ formatDate(metrics.latest_reservation) }}</p>
+                    <p class="custshow-address"><strong>Endereço:</strong> {{ displayValue(customer?.address) }}</p>
+                </div>
+            </section>
         </div>
     </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
-        <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
-        </template>
-    </Dialog>
 </template>
+
+<style scoped>
+.custshow-loading { min-height: 50vh; display: grid; place-items: center; gap: .75rem; color: var(--text-color-secondary); }
+.custshow-page { --b: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%); --bs: color-mix(in srgb, var(--surface-border) 85%, transparent); --bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%); }
+.custshow-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.1rem; border: 1px solid var(--b); border-radius: 1rem; background: var(--surface-card); box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 0 0 1px var(--bs); }
+.custshow-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.custshow-header__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.custshow-eyebrow { margin: 0; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary-color); }
+.custshow-header h1 { margin: .15rem 0 0; font-size: 1.5rem; }
+.custshow-subtitle { margin: .25rem 0 0; color: var(--text-color-secondary); }
+.custshow-kpis { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: .75rem; }
+.custshow-kpi { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border: 1px solid var(--bs); border-radius: .8rem; background: var(--bg); }
+.custshow-kpi__label { font-size: .78rem; color: var(--text-color-secondary); }
+.custshow-info { padding: .9rem; border: 1px solid var(--bs); border-radius: .85rem; background: var(--bg); }
+.custshow-info h3 { margin: 0 0 .6rem; font-size: 1rem; }
+.custshow-info__grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem .9rem; }
+.custshow-info__grid p { margin: 0; }
+.custshow-address { grid-column: span 2; }
+.custshow-good { color: var(--green-500); }
+.custshow-bad { color: var(--red-500); }
+@media (max-width: 1100px) { .custshow-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 640px) { .custshow-kpis, .custshow-info__grid { grid-template-columns: 1fr; } .custshow-address { grid-column: span 1; } }
+</style>

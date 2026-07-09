@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
+use App\Models\StockCenterTransfer;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,22 +15,90 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class CenterStocksController extends Controller
 {
+    private function buildFilteredQuery(Request $request)
+    {
+        $sortBy = $request->input('sort_by', 'name');
+        $allowedSort = [
+            'id',
+            'name',
+            'code',
+            'location',
+            'maximum_capacity',
+            'is_principal_stock',
+            'products_count',
+            'total_stock_quantity',
+            'created_at',
+        ];
+
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'name';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        return StockCenter::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('location', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->has('is_principal_stock') && $request->input('is_principal_stock') !== null && $request->input('is_principal_stock') !== '', function ($query) use ($request) {
+                $query->where('is_principal_stock', (int) $request->input('is_principal_stock'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
+            })
+            ->withCount('stockcenterproducts as products_count')
+            ->withSum('stockcenterproducts as total_stock_quantity', 'quantity')
+            ->orderBy($sortBy, $sortDir);
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        $searchQuery = request('query');
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
 
-            $stockcenter = StockCenter::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('name','like',"%{$searchQuery}%");
-            })
-            ->orderBy('name','asc')
-            ->paginate();
+        $stockCenters = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
-            return response()->json($stockcenter);
+        return response()->json($stockCenters);
+    }
+
+    /**
+     * Export filtered stock centers for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $stockCenters = $this->buildFilteredQuery($request)->get();
+
+        $data = $stockCenters->map(function ($stockCenter) {
+            return [
+                'id' => $stockCenter->id,
+                'name' => $stockCenter->name,
+                'code' => $stockCenter->code,
+                'location' => $stockCenter->location,
+                'maximum_capacity' => $stockCenter->maximum_capacity,
+                'is_principal_stock' => $stockCenter->is_principal_stock ? 'Sim' : 'Não',
+                'products_count' => $stockCenter->products_count ?? 0,
+                'total_stock_quantity' => $stockCenter->total_stock_quantity ?? 0,
+                'created_at' => $stockCenter->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
     }
 
     /**
@@ -37,12 +106,7 @@ class CenterStocksController extends Controller
      */
     public function create()
     {
-        //
-        // $departments = Department::all();
-
-        // return response()->json([
-        //     'departments' => $departments
-        // ]);
+        return response()->noContent();
     }
 
     /**
@@ -145,11 +209,36 @@ class CenterStocksController extends Controller
      */
     public function destroy(string $id)
     {
-        //
-
         $stockcenter = StockCenter::find($id);
+
+        if (! $stockcenter) {
+            return response()->json(['message' => 'Centro de stock não encontrado.'], 404);
+        }
+
+        if ($stockcenter->is_principal_stock) {
+            return response()->json(['message' => 'Não é possível eliminar o centro de stock principal.'], 404);
+        }
+
+        $hasStock = StockCenterProduct::where('stock_center_id', $stockcenter->id)
+            ->where('quantity', '>', 0)
+            ->exists();
+
+        if ($hasStock) {
+            return response()->json(['message' => 'Não é possível eliminar o centro, existem produtos com stock.'], 404);
+        }
+
+        $hasTransfers = StockCenterTransfer::where('stock_center_origin_id', $stockcenter->id)
+            ->orWhere('stock_center_destination_id', $stockcenter->id)
+            ->exists();
+
+        if ($hasTransfers) {
+            return response()->json(['message' => 'Não é possível eliminar o centro, existem transferências associadas.'], 404);
+        }
+
+        StockCenterProduct::where('stock_center_id', $stockcenter->id)->delete();
         $stockcenter->delete();
-        return true;
+
+        return response()->json(['message' => 'Centro de stock removido com sucesso.']);
     }
 
     public function reportstock($id){

@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\InventoryItem;
 use App\Models\StockCenter;
 use App\Models\StockMovement;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,26 +18,117 @@ class InventoriesController extends Controller
 {
     use ManagesPrincipalStock;
 
-    public function index()
+    private function buildFilteredQuery(Request $request)
     {
-        $searchQuery = request('query');
+        $sortBy = $request->input('sort_by', 'created_at');
+        $allowedSort = [
+            'id',
+            'ref',
+            'stock_center_id',
+            'user_id',
+            'products_number',
+            'items_count',
+            'total_quantity',
+            'total_adjustment',
+            'created_at',
+        ];
 
-        $inventories = Inventory::query()
-            ->when(request('query'), function ($query, $searchQuery) {
-                $query->where('ref', 'like', "%{$searchQuery}%");
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $query = Inventory::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('id', 'like', "%{$search}%")
+                        ->orWhere('ref', 'like', "%{$search}%")
+                        ->orWhereHas('stockcenter', function ($centerQuery) use ($search) {
+                            $centerQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
             })
-            ->with('stockcenter')
-            ->orderBy('created_at', 'desc')
-            ->paginate();
+            ->when($request->filled('stock_center_id'), function ($query) use ($request) {
+                $query->where('stock_center_id', $request->integer('stock_center_id'));
+            })
+            ->when($request->filled('user_id'), function ($query) use ($request) {
+                $query->where('user_id', $request->integer('user_id'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
+            })
+            ->with(['stockcenter', 'user'])
+            ->withCount('itens as items_count')
+            ->withSum('itens as total_quantity', 'quantity')
+            ->select('inventories.*')
+            ->selectSub(function ($sub) {
+                $sub->from('inventory_items')
+                    ->selectRaw('COALESCE(SUM(quantity - last_quantity), 0)')
+                    ->whereColumn('inventory_items.inventory_id', 'inventories.id');
+            }, 'total_adjustment');
+
+        if ($sortBy === 'total_adjustment') {
+            $query->orderBy('total_adjustment', $sortDir);
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
+
+        $inventories = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json($inventories);
     }
 
+    /**
+     * Export filtered inventories for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $inventories = $this->buildFilteredQuery($request)->get();
+
+        $data = $inventories->map(function ($inventory) {
+            return [
+                'id' => $inventory->id,
+                'ref' => $inventory->ref,
+                'stock_center' => $inventory->stockcenter?->name,
+                'user' => $inventory->user?->name,
+                'products_number' => $inventory->products_number,
+                'items_count' => $inventory->items_count ?? 0,
+                'total_quantity' => $inventory->total_quantity ?? 0,
+                'total_adjustment' => $inventory->total_adjustment ?? 0,
+                'created_at' => $inventory->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
+    }
+
     public function create()
     {
-        $stockcenters = StockCenter::all();
-
-        return response()->json(["stockcenters" => $stockcenters]);
+        return response()->json([
+            'stockcenters' => StockCenter::orderBy('name')->get(),
+            'users' => User::orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function store(Request $request)
@@ -69,7 +161,7 @@ class InventoriesController extends Controller
                         'inventory_id' => $inventory->id,
                         'product_id' => $productId,
                         'quantity' => $newQty,
-                        'last_quantity' => 0, // actualizado a seguir com o valor real
+                        'last_quantity' => 0,
                     ]);
 
                     $lastQuantity = $this->setStockAbsolute(
@@ -109,7 +201,7 @@ class InventoriesController extends Controller
     {
         $inventory = Inventory::find($id);
 
-        return $inventory;
+        return response()->json($inventory);
     }
 
     public function update(Request $request, string $id)
@@ -118,15 +210,12 @@ class InventoriesController extends Controller
         $inventory = Inventory::find($id);
         $inventory->update($data);
 
-        return $inventory;
+        return response()->json($inventory);
     }
 
     public function destroy(string $id)
     {
-        $inventory = Inventory::find($id);
-        $inventory->delete();
-
-        return true;
+        return response()->json(['message' => 'Operação não permitida.'], 403);
     }
 
     public function center()

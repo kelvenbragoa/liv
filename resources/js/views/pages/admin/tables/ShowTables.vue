@@ -1,171 +1,74 @@
 <script setup>
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-
-// import { debounce } from 'lodash';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-
 import moment from 'moment';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
-const tableLogsData = ref(null);
+
+const isLoading = ref(true);
+const details = ref(null);
 const currentPage = ref(1);
 const rowsPerPage = ref(15);
-const totalRecords = ref(0);
-const displayConfirmation = ref(false);
-// const chartData = ref(null);
-
 
 const documentStyle = getComputedStyle(document.documentElement);
 const borderColor = documentStyle.getPropertyValue('--surface-border');
 const textMutedColor = documentStyle.getPropertyValue('--text-color-primary');
 const chartBarColor = documentStyle.getPropertyValue('--p-button-primary-background');
 
-const chartData = ref({
-  labels: [],
-  datasets: [
-    {
-      label: 'Consumo Mensal',
-      backgroundColor: chartBarColor,
-      data: []
-    }
-  ]
-});
+const table = computed(() => details.value?.table ?? null);
+const status = computed(() => details.value?.status ?? null);
+const metrics = computed(() => details.value?.metrics ?? {});
+const logs = computed(() => details.value?.logs?.data ?? []);
+const orders = computed(() => details.value?.orders ?? []);
+
+const chartData = computed(() => ({
+    labels: (details.value?.chart ?? []).map((item) => item.month_name),
+    datasets: [{ label: 'Consumo Mensal', backgroundColor: chartBarColor, data: (details.value?.chart ?? []).map((item) => item.total) }]
+}));
 
 const chartOptions = {
     maintainAspectRatio: false,
     aspectRatio: 0.8,
-    // onClick: (event, elements, chart) => {
-    //     if (elements.length > 0) {
-    //     const chartElement = elements[0];
-    //     const datasetIndex = chartElement.datasetIndex;
-    //     const index = chartElement.index;
-
-    //     const label = chartData.value.labels[index];
-    //     const value = chartData.value.datasets[datasetIndex].data[index];
-
-    //     console.log('Clicou no ponto:', { label, value });
-    //     // Aqui você pode executar alguma ação, por exemplo:
-    //     // router.push(`/consumo/${label}`);
-    //     }
-    // },
     scales: {
-        x: {
-            stacked: true,
-            ticks: {
-                color: textMutedColor.trim()
-            },
-            grid: {
-                color: 'transparent',
-                borderColor: 'transparent'
-            }
-        },
-        y: {
-            stacked: true,
-            ticks: {
-                color: textMutedColor.trim()
-            },
-            grid: {
-                color: borderColor.trim(),
-                borderColor: 'transparent',
-                drawTicks: false,
-
-            }
-        }
+        x: { ticks: { color: textMutedColor.trim() }, grid: { color: 'transparent', borderColor: 'transparent' } },
+        y: { ticks: { color: textMutedColor.trim() }, grid: { color: borderColor.trim(), borderColor: 'transparent', drawTicks: false } }
     }
 };
-
-
-
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
+    router?.back();
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
+}
 
+function formatMoney(value) {
+    return Number(value ?? 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-function getSeverity(status) {
-    switch (status) {
-        case 1:
-            return 'success';
-
-        case 2:
-            return 'danger';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-
-        case 6:
-            return 'info';
-    }
+function getSeverityById(id) {
+    if (id === 1) return 'success';
+    if (id === 2 || id === 4) return 'danger';
+    if (id === 3) return 'warn';
+    return 'info';
 }
 
 const getData = async (page = 1) => {
-    axios
-        .get(`/api/tables/${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            retriviedData.value = response.data.table;
-            tableLogsData.value = response.data.logs;
-            totalRecords.value = response.data.logs.total;
-            // chartData.value = response.data.chart;
-
-            chartData.value.labels = response.data.chart.map(item => item.month_name);
-            chartData.value.datasets[0].data = response.data.chart.map(item => item.total);
-
-            isLoadingDiv.value = false;
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
-            goBackUsingBack();
-        });
-};
-
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/tables/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
+    isLoading.value = true;
+    try {
+        const id = router.currentRoute.value.params.id;
+        const response = await axios.get(`/api/tables/${id}`, { params: { page, per_page: rowsPerPage.value } });
+        details.value = response.data;
+        currentPage.value = response.data.logs?.current_page ?? page;
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erro', detail: error.response?.data?.message || 'Não foi possível carregar os detalhes da mesa.', life: 3000 });
+        goBackUsingBack();
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const onPageChange = (event) => {
@@ -174,256 +77,103 @@ const onPageChange = (event) => {
     getData(currentPage.value);
 };
 
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
-
-watch(searchQuery,debouncedSearch);
-
 onMounted(() => {
-    getData();
+    getData(1);
 });
 </script>
 
 <template>
-    <div
-        class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"
-        v-if="isLoadingDiv"
-    >
-        <div class="w-full">
-            <div class="flex flex-col gap-4 text-center">
-                <ProgressSpinner
-                    style="width: 50px; height: 50px"
-                    strokeWidth="8"
-                    fill="var(--surface-ground)"
-                    animationDuration=".5s"
-                    aria-label="Custom ProgressSpinner"
-                />
-                <p>Por Favor Aguarde...</p>
-            </div>
-        </div>
+    <div class="tblshow-loading" v-if="isLoading">
+        <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" />
+        <p>A carregar visão da mesa...</p>
     </div>
 
-    <div class="flex flex-col md:flex-row gap-12" v-else>
-        <div class="w-full">
-            <div class="card flex flex-col gap-4">
-                <div class="w-full">
-                    <Button
-                        label="Voltar"
-                        class="mr-2 mb-2"
-                        @click="goBackUsingBack"
-                        ><i class="pi pi-angle-left"></i> Voltar</Button
-                    >
+    <div class="tblshow-page" v-else-if="details">
+        <div class="tblshow-card">
+            <header class="tblshow-header">
+                <div>
+                    <p class="tblshow-eyebrow">Gestão de salas</p>
+                    <h1>{{ table?.name || 'Mesa' }}</h1>
+                    <p class="tblshow-subtitle">Capacidade: <strong>{{ table?.capacity ?? 0 }}</strong></p>
+                    <p class="tblshow-subtitle">Criada em {{ formatDate(table?.created_at) }}</p>
                 </div>
-                <div class="font-semibold text-xl">Mesa</div>
-                <p><strong>Mesa:</strong> {{ retriviedData.name }}</p>
-                <p><strong>Capacidade:</strong> {{ retriviedData.capacity }}</p>
-
-                <p>
-                    <strong>Limite Mensal:</strong>
-                    {{ retriviedData.monthly_limit }} MT
-                </p>
-
-                <p>
-                    <strong>Estado:</strong>
-                    <Tag
-                        :value="retriviedData.status.name"
-                        :severity="getSeverity(retriviedData.status_id)"
-                    />
-                </p>
-
-                <p>
-                    <strong>Data:</strong>
-                    {{
-                        moment(retriviedData.created_at).format(
-                            "DD-MM-YYYY H:mm",
-                        )
-                    }}
-                </p>
-
-                <hr />
-
-                <div class="card">
-                    <div class="font-semibold text-xl mb-4">Consumo Mensal</div>
-                    <Chart
-                        type="bar"
-                        :data="chartData"
-                        :options="chartOptions"
-                        class="h-80"
-                    />
+                <div class="tblshow-actions">
+                    <Button label="Voltar" icon="pi pi-arrow-left" outlined @click="goBackUsingBack" />
+                    <Button label="Editar mesa" icon="pi pi-pencil" severity="info" @click="router.push(`/admin/tables/${table?.id}/edit`)" />
                 </div>
+            </header>
 
-                <hr />
+            <section class="tblshow-kpis">
+                <div class="tblshow-kpi"><span>Estado</span><strong><Tag :value="status?.name || '—'" :severity="getSeverityById(status?.id)" /></strong></div>
+                <div class="tblshow-kpi"><span>Pedidos</span><strong>{{ metrics.orders_count ?? 0 }}</strong></div>
+                <div class="tblshow-kpi"><span>Pedidos abertos</span><strong>{{ metrics.open_orders_count ?? 0 }}</strong></div>
+                <div class="tblshow-kpi"><span>Consumo total</span><strong>{{ formatMoney(metrics.orders_total) }} MT</strong></div>
+                <div class="tblshow-kpi"><span>Ticket médio</span><strong>{{ formatMoney(metrics.average_ticket) }} MT</strong></div>
+                <div class="tblshow-kpi"><span>Consumo mês</span><strong>{{ formatMoney(metrics.monthly_total) }} MT</strong></div>
+                <div class="tblshow-kpi"><span>Limite mês</span><strong>{{ formatMoney(metrics.monthly_limit) }} MT</strong></div>
+                <div class="tblshow-kpi"><span>Saldo limite</span><strong :class="Number(metrics.monthly_balance) >= 0 ? 'tblshow-good':'tblshow-bad'">{{ formatMoney(metrics.monthly_balance) }} MT</strong></div>
+                <div class="tblshow-kpi"><span>Último pedido</span><strong>{{ formatDate(metrics.last_order_at) }}</strong></div>
+            </section>
 
+            <section class="tblshow-panel">
+                <h3>Consumo mensal</h3>
+                <Chart type="bar" :data="chartData" :options="chartOptions" class="h-80" />
+            </section>
+
+            <section class="tblshow-panel">
+                <h3>Pedidos recentes da mesa</h3>
+                <DataTable :value="orders" dataKey="id" rowHover showGridlines>
+                    <template #empty><div class="tblshow-empty">Sem pedidos registados.</div></template>
+                    <Column header="Pedido" style="min-width: 7rem"><template #body="{ data }">#{{ data.id }}</template></Column>
+                    <Column header="Estado" style="min-width: 10rem"><template #body="{ data }"><Tag :value="data.status?.name || '—'" :severity="getSeverityById(data.order_status_id)" /></template></Column>
+                    <Column header="Operador" style="min-width: 12rem"><template #body="{ data }">{{ data.user?.name || '—' }}</template></Column>
+                    <Column header="Total" style="min-width: 8rem"><template #body="{ data }">{{ formatMoney(data.total) }} MT</template></Column>
+                    <Column header="Data" style="min-width: 10rem"><template #body="{ data }">{{ formatDate(data.created_at) }}</template></Column>
+                </DataTable>
+            </section>
+
+            <section class="tblshow-panel">
+                <h3>Histórico de alteração de limite</h3>
                 <DataTable
-                    :value="tableLogsData.data"
+                    :value="logs"
                     :paginator="true"
                     :rows="rowsPerPage"
-                    :totalRecords="totalRecords"
+                    :totalRecords="details.logs?.total ?? 0"
                     dataKey="id"
                     :lazy="true"
                     :rowHover="true"
-                    :loading="isLoadingDiv"
+                    :loading="isLoading"
                     :first="(currentPage - 1) * rowsPerPage"
-                    :onPage="onPageChange"
+                    @page="onPageChange"
                     showGridlines
                 >
-                    <template #empty>Nenhuma registro encontrado. </template>
-                    <template #loading>
-                        Carregando, por favor espere.
-                    </template>
-                    <Column header="ID" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.id }}
-                        </template>
-                    </Column>
-                    <Column header="Limite Anterior" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.old_limit }}
-                        </template>
-                    </Column>
-                    <Column header="Limite Atual" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.new_limit }}
-                        </template>
-                    </Column>
-                    <Column header="Usuario" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.user.name }}
-                        </template>
-                    </Column>
-                    <Column
-                        header="Data"
-                        dataType="date"
-                        style="min-width: 10rem"
-                    >
-                        <template #body="{ data }">
-                            {{
-                                moment(data.created_at).format(
-                                    "DD-MM-YYYY H:mm",
-                                )
-                            }}
-                        </template>
-                    </Column>
+                    <template #empty><div class="tblshow-empty">Sem alterações de limite.</div></template>
+                    <Column header="ID" style="min-width: 6rem"><template #body="{ data }">#{{ data.id }}</template></Column>
+                    <Column header="Limite anterior" style="min-width: 10rem"><template #body="{ data }">{{ formatMoney(data.old_limit) }} MT</template></Column>
+                    <Column header="Limite atual" style="min-width: 10rem"><template #body="{ data }">{{ formatMoney(data.new_limit) }} MT</template></Column>
+                    <Column header="Utilizador" style="min-width: 12rem"><template #body="{ data }">{{ data.user?.name || '—' }}</template></Column>
+                    <Column header="Data" style="min-width: 10rem"><template #body="{ data }">{{ formatDate(data.created_at) }}</template></Column>
                 </DataTable>
-            </div>
+            </section>
         </div>
     </div>
-    <Dialog
-        header="Confirmação"
-        v-model:visible="displayConfirmation"
-        :style="{ width: '350px' }"
-        :modal="true"
-    >
-        <div class="flex align-items-center justify-content-center">
-            <i
-                class="pi pi-exclamation-triangle mr-3"
-                style="font-size: 2rem"
-            />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
-        <template #footer>
-            <Button
-                label="Não"
-                icon="pi pi-times"
-                @click="closeConfirmation"
-                class="p-button-text"
-            />
-            <Button
-                label="Sim"
-                icon="pi pi-check"
-                @click="deleteData"
-                class="p-button-text"
-                autofocus
-            />
-        </template>
-    </Dialog>
-
-
-    <Dialog
-        header="Vendas"
-        v-model:visible="displayConfirmationSales"
-        :style="{ width: '350px' }"
-        :modal="true"
-    >
-        <DataTable
-                    :value="retriviedData.data"
-                    :paginator="true"
-                    :rows="rowsPerPage"
-                    :totalRecords="totalRecords"
-                    dataKey="id"
-                    :lazy="true"
-                    :rowHover="true"
-                    :loading="isLoadingDiv"
-                    :first="(currentPage - 1) * rowsPerPage"
-                    :onPage="onPageChange"
-                    showGridlines
-                    >
-                    <template #header>
-                        <div class="flex justify-between">
-                            
-                                <!-- <Button label="Relatorio" class="mr-2 mb-2" @click="report()">Relatório<i class="pi pi-print"></i></Button> -->
-                            
-                            <IconField>
-                                <InputIcon>
-                                    <i class="pi pi-search" />
-                                </InputIcon>
-                                <InputText v-model="searchQuery" placeholder="Pesquisa" />
-                            </IconField>
-                        </div>
-                    </template>
-                    <template #empty>Nenhuma registro encontrado. </template>
-                    <template #loading> Carregando, por favor espere. </template>
-                    <Column header="ID" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.id }}
-                        </template>
-                    </Column>
-                    <Column header="Valor" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            MZN {{ data.total }}
-                        </template>
-                    </Column>
-                    <Column header="Mesa" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.table ? data.table.name : "Venda Rápida" }}
-                        </template>
-                    </Column>
-                    <Column header="Estado da Encomenda" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <Tag :value="data.status.name" :severity="getSeverity(data.order_status_id)" />
-                        </template>
-                    </Column>
-                    <Column header="Efetuada por" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.user.name }}
-                        </template>
-                    </Column>
-                    <Column header="Data" dataType="date" style="min-width: 10rem">
-                        <template #body="{ data }">
-                            {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                        </template>
-                    </Column>
-                    <Column header="Ações" style="min-width: 12rem">
-                    <template #body="{ data }">
-                         <router-link class="m-3" :to="'/admin/orders/' + data.id"><i class="pi pi-eye"></i></router-link>
-                    </template>
-                </Column>
-                </DataTable>
-        <template #footer>
-            <Button
-                label="Não"
-                icon="pi pi-times"
-                @click="closeConfirmation"
-                class="p-button-text"
-            />
-            <Button
-                label="Sim"
-                icon="pi pi-check"
-                @click="deleteData"
-                class="p-button-text"
-                autofocus
-            />
-        </template>
-    </Dialog>
 </template>
+
+<style scoped>
+.tblshow-loading{min-height:50vh;display:grid;place-items:center;gap:.75rem;color:var(--text-color-secondary)}
+.tblshow-page{--b:color-mix(in srgb,var(--surface-border) 70%,var(--text-color) 30%);--bs:color-mix(in srgb,var(--surface-border) 85%,transparent);--bg:color-mix(in srgb,var(--surface-ground) 75%,var(--text-color) 5%)}
+.tblshow-card{display:flex;flex-direction:column;gap:1rem;padding:1.1rem;border:1px solid var(--b);border-radius:1rem;background:var(--surface-card);box-shadow:0 1px 2px rgba(15,23,42,.05),0 0 0 1px var(--bs)}
+.tblshow-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.tblshow-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.tblshow-eyebrow{margin:0;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary-color)}
+.tblshow-header h1{margin:.15rem 0 0;font-size:1.5rem}
+.tblshow-subtitle{margin:.2rem 0 0;color:var(--text-color-secondary)}
+.tblshow-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
+.tblshow-kpi{display:flex;flex-direction:column;gap:.2rem;padding:.75rem;border:1px solid var(--bs);border-radius:.8rem;background:var(--bg)}
+.tblshow-panel h3{margin:0 0 .6rem;font-size:1rem}
+.tblshow-empty{padding:1.2rem;text-align:center;color:var(--text-color-secondary)}
+.tblshow-good{color:var(--green-500)}
+.tblshow-bad{color:var(--red-500)}
+@media (max-width:900px){.tblshow-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.tblshow-kpis{grid-template-columns:1fr}}
+</style>

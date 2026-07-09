@@ -28,6 +28,10 @@ class StockCenterTransfer extends Model
         return $this->hasOne('App\Models\User','id','user_id');
     }
 
+    public function status(){
+        return $this->hasOne(StockCenterTransferStatus::class, 'id', 'stock_center_transfer_status_id');
+    }
+
 
     public function itens(){
         return $this->hasMany('App\Models\StockCenterTransferItem','stock_center_transfer_id','id');

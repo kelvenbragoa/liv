@@ -8,7 +8,9 @@ use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
 use App\Models\StockCenterTransfer;
 use App\Models\StockCenterTransferItem;
+use App\Models\StockCenterTransferStatus;
 use App\Models\StockMovement;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,27 +20,122 @@ class StockTransferController extends Controller
 {
     use ManagesPrincipalStock;
 
-    public function index()
+    private function buildFilteredQuery(Request $request)
     {
-        $searchQuery = request('query');
+        $sortBy = $request->input('sort_by', 'created_at');
+        $allowedSort = [
+            'id',
+            'ref',
+            'transfer_date',
+            'stock_center_origin_id',
+            'stock_center_destination_id',
+            'stock_center_transfer_status_id',
+            'user_id',
+            'items_count',
+            'total_quantity',
+            'created_at',
+        ];
 
-        $stocktransfers = StockCenterTransfer::query()
-            ->when(request('query'), function ($query, $searchQuery) {
-                $query->where('ref', 'like', "%{$searchQuery}%");
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        return StockCenterTransfer::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('id', 'like', "%{$search}%")
+                        ->orWhere('ref', 'like', "%{$search}%")
+                        ->orWhereHas('stockcenterorigin', function ($originQuery) use ($search) {
+                            $originQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('stockcenterdestination', function ($destinationQuery) use ($search) {
+                            $destinationQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
             })
-            ->with('stockcenterorigin')
-            ->with('stockcenterdestination')
-            ->orderBy('created_at', 'desc')
-            ->paginate();
+            ->when($request->filled('stock_center_origin_id'), function ($query) use ($request) {
+                $query->where('stock_center_origin_id', $request->integer('stock_center_origin_id'));
+            })
+            ->when($request->filled('stock_center_destination_id'), function ($query) use ($request) {
+                $query->where('stock_center_destination_id', $request->integer('stock_center_destination_id'));
+            })
+            ->when($request->filled('stock_center_transfer_status_id'), function ($query) use ($request) {
+                $query->where('stock_center_transfer_status_id', $request->integer('stock_center_transfer_status_id'));
+            })
+            ->when($request->filled('user_id'), function ($query) use ($request) {
+                $query->where('user_id', $request->integer('user_id'));
+            })
+            ->when($request->filled('transfer_from'), function ($query) use ($request) {
+                $query->whereDate('transfer_date', '>=', $request->input('transfer_from'));
+            })
+            ->when($request->filled('transfer_to'), function ($query) use ($request) {
+                $query->whereDate('transfer_date', '<=', $request->input('transfer_to'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
+            })
+            ->with(['stockcenterorigin', 'stockcenterdestination', 'user', 'status'])
+            ->withCount('itens as items_count')
+            ->withSum('itens as total_quantity', 'quantity')
+            ->orderBy($sortBy, $sortDir);
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
+
+        $stocktransfers = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json($stocktransfers);
     }
 
+    /**
+     * Export filtered stock transfers for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $stocktransfers = $this->buildFilteredQuery($request)->get();
+
+        $data = $stocktransfers->map(function ($transfer) {
+            return [
+                'id' => $transfer->id,
+                'ref' => $transfer->ref,
+                'origin' => $transfer->stockcenterorigin?->name,
+                'destination' => $transfer->stockcenterdestination?->name,
+                'user' => $transfer->user?->name,
+                'status' => $transfer->status?->name,
+                'items_count' => $transfer->items_count ?? 0,
+                'total_quantity' => $transfer->total_quantity ?? 0,
+                'transfer_date' => $transfer->transfer_date?->format('d/m/Y'),
+                'created_at' => $transfer->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
+    }
+
     public function create()
     {
-        $stockcenters = StockCenter::all();
-
-        return response()->json(["stockcenters" => $stockcenters]);
+        return response()->json([
+            'stockcenters' => StockCenter::orderBy('name')->get(),
+            'statuses' => StockCenterTransferStatus::orderBy('name')->get(),
+            'users' => User::orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function store(Request $request)
@@ -140,6 +237,7 @@ class StockTransferController extends Controller
             ->with('stockcenterdestination')
             ->with('itens.product')
             ->with('user')
+            ->with('status')
             ->find($id);
 
         return response()->json($stocktransfer);
@@ -161,10 +259,7 @@ class StockTransferController extends Controller
 
     public function destroy(string $id)
     {
-        $category = StockCenterTransfer::find($id);
-        $category->delete();
-
-        return true;
+        return response()->json(['message' => 'Operação não permitida.'], 403);
     }
 
     public function products($id)

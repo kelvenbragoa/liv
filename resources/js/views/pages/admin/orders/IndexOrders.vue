@@ -1,153 +1,189 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-
-// import { debounce } from 'lodash';
+import { computed, ref, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash-es';
-
 import moment from 'moment';
+import * as XLSX from 'xlsx';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
+
+const isInitialLoading = ref(true);
+const isTableLoading = ref(false);
+const isExporting = ref(false);
+
+const orders = ref([]);
+const orderStatuses = ref([]);
+const tables = ref([]);
+const totalRecords = ref(0);
 const currentPage = ref(1);
 const rowsPerPage = ref(15);
-const totalRecords = ref(0);
-const displayConfirmation = ref(false);
-const openPrintReceipt = ref(false); // Controla a visibilidade do dialog
-const showDialog = ref(false);
-const pdfUrl = ref(null);
 
-function closeDialog() {
-    showDialog.value = false;
-}
+const searchQuery = ref('');
+const orderStatusId = ref(null);
+const tableId = ref(null);
+const quickSaleOnly = ref(null);
+const createdFrom = ref(null);
+const createdTo = ref(null);
+const sortBy = ref('created_at');
+const sortDir = ref('desc');
+
+const rowsPerPageOptions = [10, 15, 25, 50];
+const quickSaleOptions = [
+    { label: 'Venda rápida', value: 1 },
+    { label: 'Com mesa', value: 0 }
+];
+const sortOptions = [
+    { label: 'Data', value: 'created_at' },
+    { label: 'ID', value: 'id' },
+    { label: 'Valor', value: 'total' },
+    { label: 'Mesa', value: 'table_id' },
+    { label: 'Estado', value: 'order_status_id' },
+    { label: 'Utilizador', value: 'user_id' }
+];
+
+const hasActiveFilters = computed(
+    () =>
+        !!searchQuery.value ||
+        orderStatusId.value != null ||
+        tableId.value != null ||
+        quickSaleOnly.value != null ||
+        createdFrom.value != null ||
+        createdTo.value != null ||
+        sortBy.value !== 'created_at' ||
+        sortDir.value !== 'desc'
+);
+
+const paginationSummary = computed(() => {
+    if (!totalRecords.value) {
+        return 'Nenhum registo';
+    }
+
+    const from = (currentPage.value - 1) * rowsPerPage.value + 1;
+    const to = Math.min(currentPage.value * rowsPerPage.value, totalRecords.value);
+
+    return `${from}-${to} de ${totalRecords.value}`;
+});
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
+    router?.back();
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
+}
 
-function getSeverity(status) {
-    switch (status) {
+function formatAmount(value) {
+    if (value == null || value === '') {
+        return '—';
+    }
+
+    return `${Number(value).toLocaleString('pt-PT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })} MZN`;
+}
+
+function formatDateParam(value) {
+    if (!value) {
+        return null;
+    }
+
+    return moment(value).format('YYYY-MM-DD');
+}
+
+function getStatusSeverity(statusId) {
+    switch (Number(statusId)) {
         case 1:
-            return 'danger';
-
-        case 2:
             return 'warn';
-
+        case 2:
+            return 'info';
         case 3:
             return 'success';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
+        default:
+            return 'secondary';
     }
 }
 
-const getData = async (page = 1) => {
-    axios
-        .get(`/api/orders?page=${page}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            retriviedData.value = response.data;
-            totalRecords.value = response.data.total;
-            isLoadingDiv.value = false;
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
+function buildParams(page = currentPage.value) {
+    return {
+        page,
+        per_page: rowsPerPage.value,
+        query: searchQuery.value || undefined,
+        order_status_id: orderStatusId.value ?? undefined,
+        table_id: tableId.value ?? undefined,
+        quick_sale: quickSaleOnly.value != null ? quickSaleOnly.value : undefined,
+        created_from: formatDateParam(createdFrom.value),
+        created_to: formatDateParam(createdTo.value),
+        sort_by: sortBy.value,
+        sort_dir: sortDir.value
+    };
+}
+
+function buildExportParams() {
+    const { page, per_page, ...params } = buildParams(1);
+
+    return params;
+}
+
+const getFilterOptions = async () => {
+    try {
+        const response = await axios.get('/api/orders/create');
+        orderStatuses.value = response.data.order_statuses ?? [];
+        tables.value = response.data.tables ?? [];
+    } catch (error) {
+        console.error('Erro ao carregar filtros:', error);
+    }
+};
+
+const getData = async (page = 1, { initial = false } = {}) => {
+    if (initial) {
+        isInitialLoading.value = true;
+    } else {
+        isTableLoading.value = true;
+    }
+
+    try {
+        const response = await axios.get('/api/orders', {
+            params: buildParams(page)
+        });
+
+        orders.value = response.data.data ?? [];
+        totalRecords.value = response.data.total ?? 0;
+        currentPage.value = response.data.current_page ?? page;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível carregar as encomendas.',
+            life: 3000
+        });
+
+        if (initial) {
             goBackUsingBack();
-        });
-};
-
-function printPDF() {
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+        }
+    } finally {
+        isInitialLoading.value = false;
+        isTableLoading.value = false;
     }
-}
-
-function report () {
-    axios
-    .post(`/api/order/report`, {}, { responseType: 'blob' })
-        .then((response) => {
-            // router.back();
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-            // const link = document.createElement('a');
-            // link.href = url;
-            // link.setAttribute('download', 'consumo.pdf');
-            // document.body.appendChild(link);
-            // link.click();
-            // ✅ Garantir o tipo correto do Blob como PDF
-            // const blob = new Blob([response.data], { type: 'application/pdf' });
-            // const url = window.URL.createObjectURL(blob);
-
-            // // 🖨️ Abre o PDF em uma nova aba
-            // const printWindow = window.open(url, '_blank');
-            // if (printWindow) {
-            //     printWindow.onload = () => {
-            //         printWindow.focus();
-            //         printWindow.print();
-            //     };
-            // }
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialog.value = true;  // Abre o diálogo modal
-            openPrintReceipt.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Relatorio Gerado Com sucesso!', life: 3000 });
-
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
-            // goBackUsingBack();
-        });
 };
 
-const deleteData = () => {
-    loadingButtonDelete.value = true;
+const resetFilters = () => {
+    searchQuery.value = '';
+    orderStatusId.value = null;
+    tableId.value = null;
+    quickSaleOnly.value = null;
+    createdFrom.value = null;
+    createdTo.value = null;
+    sortBy.value = 'created_at';
+    sortDir.value = 'desc';
+    currentPage.value = 1;
+    getData(1);
+};
 
-    axios
-        .delete(`/api/orders/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
+const toggleSortDir = () => {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
 };
 
 const onPageChange = (event) => {
@@ -156,115 +192,490 @@ const onPageChange = (event) => {
     getData(currentPage.value);
 };
 
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
+const exportToExcel = async () => {
+    isExporting.value = true;
 
-watch(searchQuery,debouncedSearch);
+    try {
+        const response = await axios.get('/api/orders/export', {
+            params: buildExportParams()
+        });
 
-onMounted(() => {
-    getData();
+        const rows = response.data.data ?? [];
+
+        if (!rows.length) {
+            toast.add({
+                severity: 'warn',
+                summary: 'Sem dados',
+                detail: 'Não há encomendas para exportar com os filtros actuais.',
+                life: 3000
+            });
+            return;
+        }
+
+        const worksheetData = [
+            ['ID', 'Total (MZN)', 'Mesa', 'Estado', 'Utilizador', 'Criado em'],
+            ...rows.map((row) => [
+                row.id,
+                row.total ?? 0,
+                row.table ?? '',
+                row.status ?? '',
+                row.user ?? '',
+                row.created_at ?? ''
+            ])
+        ];
+
+        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+        worksheet['!cols'] = [
+            { wch: 8 },
+            { wch: 14 },
+            { wch: 18 },
+            { wch: 14 },
+            { wch: 22 },
+            { wch: 18 }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Encomendas');
+        XLSX.writeFile(workbook, `encomendas-${moment().format('YYYY-MM-DD_HHmm')}.xlsx`);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Exportação concluída',
+            detail: `${rows.length} encomendas exportadas para Excel.`,
+            life: 3000
+        });
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível exportar as encomendas.',
+            life: 3000
+        });
+    } finally {
+        isExporting.value = false;
+    }
+};
+
+const debouncedReload = debounce(() => {
+    currentPage.value = 1;
+    getData(1);
+}, 350);
+
+watch(tableId, (value) => {
+    if (value != null) {
+        quickSaleOnly.value = null;
+    }
 });
 
+watch(quickSaleOnly, (value) => {
+    if (value === 1) {
+        tableId.value = null;
+    }
+});
+
+watch(
+    [searchQuery, orderStatusId, tableId, quickSaleOnly, createdFrom, createdTo, sortBy, sortDir],
+    debouncedReload
+);
+
+onMounted(async () => {
+    await Promise.all([getFilterOptions(), getData(1, { initial: true })]);
+});
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
+    <div v-if="isInitialLoading" class="ord-loading">
+        <ProgressSpinner
+            style="width: 50px; height: 50px"
+            strokeWidth="8"
+            fill="var(--surface-ground)"
+            animationDuration=".5s"
+        />
+        <p>A carregar encomendas...</p>
     </div>
-    
-    <div class="flex flex-col md:flex-row gap-12" v-else>
-        <div class="w-full">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">Encomendas</div>
-                    <DataTable
-                    :value="retriviedData.data"
-                    :paginator="true"
-                    :rows="rowsPerPage"
-                    :totalRecords="totalRecords"
-                    dataKey="id"
-                    :lazy="true"
-                    :rowHover="true"
-                    :loading="isLoadingDiv"
-                    :first="(currentPage - 1) * rowsPerPage"
-                    :onPage="onPageChange"
-                    showGridlines
-                    >
-                    <template #header>
-                        <div class="flex justify-between">
-                            
-                                <!-- <Button label="Relatorio" class="mr-2 mb-2" @click="report()">Relatório<i class="pi pi-print"></i></Button> -->
-                            
-                            <IconField>
-                                <InputIcon>
-                                    <i class="pi pi-search" />
-                                </InputIcon>
-                                <InputText v-model="searchQuery" placeholder="Pesquisa" />
-                            </IconField>
+
+    <div v-else class="ord-page">
+        <div class="ord-card">
+            <header class="ord-header">
+                <div>
+                    <p class="ord-eyebrow">Operações</p>
+                    <h1>Encomendas</h1>
+                    <p class="ord-subtitle">{{ paginationSummary }}</p>
+                </div>
+
+                <div class="ord-header__actions">
+                    <Button
+                        label="Exportar Excel"
+                        icon="pi pi-file-excel"
+                        severity="success"
+                        outlined
+                        :loading="isExporting"
+                        :disabled="isExporting"
+                        @click="exportToExcel"
+                    />
+                </div>
+            </header>
+
+            <section class="ord-filters">
+                <div class="ord-filters__grid">
+                    <div class="ord-field ord-field--wide">
+                        <label>Pesquisar</label>
+                        <IconField>
+                            <InputIcon class="pi pi-search" />
+                            <InputText
+                                v-model="searchQuery"
+                                placeholder="ID, valor, mesa ou utilizador..."
+                                class="w-full"
+                            />
+                        </IconField>
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Estado</label>
+                        <Select
+                            v-model="orderStatusId"
+                            :options="orderStatuses"
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Todos"
+                            showClear
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Mesa</label>
+                        <Select
+                            v-model="tableId"
+                            :options="tables"
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Todas"
+                            showClear
+                            filter
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Tipo</label>
+                        <Select
+                            v-model="quickSaleOnly"
+                            :options="quickSaleOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Todos"
+                            showClear
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Criado desde</label>
+                        <DatePicker
+                            v-model="createdFrom"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            placeholder="Início"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Criado até</label>
+                        <DatePicker
+                            v-model="createdTo"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            placeholder="Fim"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Ordenar por</label>
+                        <Select
+                            v-model="sortBy"
+                            :options="sortOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="ord-field">
+                        <label>Direção</label>
+                        <div class="ord-sort-dir">
+                            <Button
+                                :label="sortDir === 'asc' ? 'Ascendente' : 'Descendente'"
+                                :icon="sortDir === 'asc' ? 'pi pi-sort-amount-up' : 'pi pi-sort-amount-down'"
+                                severity="secondary"
+                                outlined
+                                class="w-full"
+                                @click="toggleSortDir"
+                            />
                         </div>
-                    </template>
-                    <template #empty>Nenhuma registro encontrado. </template>
-                    <template #loading> Carregando, por favor espere. </template>
-                    <Column header="ID" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.id }}
-                        </template>
-                    </Column>
-                    <Column header="Valor" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            MZN {{ data.total }}
-                        </template>
-                    </Column>
-                    <Column header="Mesa" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.table ? data.table.name : "Venda Rápida" }}
-                        </template>
-                    </Column>
-                    <Column header="Estado da Encomenda" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <Tag :value="data.status.name" :severity="getSeverity(data.order_status_id)" />
-                        </template>
-                    </Column>
-                    <Column header="Efetuada por" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.user.name }}
-                        </template>
-                    </Column>
-                    <Column header="Data" dataType="date" style="min-width: 10rem">
-                        <template #body="{ data }">
-                            {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                        </template>
-                    </Column>
-                    <Column header="Ações" style="min-width: 12rem">
+                    </div>
+                </div>
+
+                <div class="ord-filters__actions">
+                    <Button
+                        v-if="hasActiveFilters"
+                        label="Limpar filtros"
+                        icon="pi pi-filter-slash"
+                        text
+                        @click="resetFilters"
+                    />
+                    <Button
+                        label="Actualizar"
+                        icon="pi pi-refresh"
+                        text
+                        :loading="isTableLoading"
+                        @click="getData(currentPage)"
+                    />
+                </div>
+            </section>
+
+            <DataTable
+                :value="orders"
+                :paginator="true"
+                :rows="rowsPerPage"
+                :rowsPerPageOptions="rowsPerPageOptions"
+                :totalRecords="totalRecords"
+                :lazy="true"
+                :loading="isTableLoading"
+                :first="(currentPage - 1) * rowsPerPage"
+                dataKey="id"
+                rowHover
+                showGridlines
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="{first}-{last} de {totalRecords}"
+                @page="onPageChange"
+            >
+                <template #empty>
+                    <div class="ord-empty">Nenhuma encomenda encontrada.</div>
+                </template>
+
+                <Column header="ID" style="min-width: 5rem">
                     <template #body="{ data }">
-                         <router-link class="m-3" :to="'/admin/orders/' + data.id"><i class="pi pi-eye"></i></router-link>
+                        <span class="ord-id">#{{ data.id }}</span>
                     </template>
                 </Column>
-                </DataTable>
-            </div>
+
+                <Column header="Valor" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <strong class="ord-amount">{{ formatAmount(data.total) }}</strong>
+                    </template>
+                </Column>
+
+                <Column header="Mesa" style="min-width: 11rem">
+                    <template #body="{ data }">
+                        <Tag
+                            v-if="data.table?.name"
+                            :value="data.table.name"
+                            severity="secondary"
+                        />
+                        <Tag v-else value="Venda rápida" severity="info" />
+                    </template>
+                </Column>
+
+                <Column header="Estado" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <Tag
+                            v-if="data.status?.name"
+                            :value="data.status.name"
+                            :severity="getStatusSeverity(data.order_status_id)"
+                        />
+                        <span v-else class="ord-muted">—</span>
+                    </template>
+                </Column>
+
+                <Column header="Efetuada por" style="min-width: 12rem">
+                    <template #body="{ data }">
+                        {{ data.user?.name || '—' }}
+                    </template>
+                </Column>
+
+                <Column header="Criado em" style="min-width: 11rem">
+                    <template #body="{ data }">
+                        {{ formatDate(data.created_at) }}
+                    </template>
+                </Column>
+
+                <Column header="Acções" style="min-width: 6rem" :exportable="false">
+                    <template #body="{ data }">
+                        <div class="ord-actions">
+                            <Button
+                                v-tooltip.top="'Ver'"
+                                icon="pi pi-eye"
+                                text
+                                rounded
+                                severity="secondary"
+                                @click="router.push(`/admin/orders/${data.id}`)"
+                            />
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
         </div>
     </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
-        <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
-        </template>
-    </Dialog>
-    <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
-      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
-      
-      <template #footer>
-        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
-      </template>
-    </Dialog>
 </template>
+
+<style scoped>
+.ord-loading {
+    min-height: 50vh;
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+.ord-page {
+    --ord-border: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%);
+    --ord-border-soft: color-mix(in srgb, var(--surface-border) 85%, transparent);
+    --ord-muted-bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%);
+    --ord-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 1px var(--ord-border-soft);
+}
+
+.ord-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.1rem;
+    border: 1px solid var(--ord-border);
+    border-radius: 1rem;
+    background: var(--surface-card);
+    box-shadow: var(--ord-shadow);
+}
+
+.ord-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ord-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.ord-eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+}
+
+.ord-header h1 {
+    margin: 0.15rem 0 0;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+}
+
+.ord-subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--text-color-secondary);
+    font-size: 0.88rem;
+}
+
+.ord-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid var(--ord-border-soft);
+    border-radius: 0.85rem;
+    background: var(--ord-muted-bg);
+}
+
+.ord-filters__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.ord-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ord-field--wide {
+    grid-column: span 2;
+}
+
+.ord-field label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-color-secondary);
+}
+
+.ord-filters__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.ord-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-color-secondary);
+}
+
+.ord-id {
+    color: var(--text-color-secondary);
+    font-weight: 600;
+}
+
+.ord-amount {
+    color: var(--primary-color);
+}
+
+.ord-muted {
+    color: var(--text-color-secondary);
+}
+
+.ord-actions {
+    display: flex;
+    gap: 0.15rem;
+}
+
+@media (max-width: 1200px) {
+    .ord-filters__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .ord-field--wide {
+        grid-column: span 3;
+    }
+}
+
+@media (max-width: 960px) {
+    .ord-filters__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ord-field--wide {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .ord-filters__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ord-field--wide {
+        grid-column: span 1;
+    }
+}
+</style>

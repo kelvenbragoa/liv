@@ -10,6 +10,7 @@ use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,30 +20,116 @@ class ExitNotesController extends Controller
 {
     use ManagesPrincipalStock;
 
-    public function index()
+    private function buildFilteredQuery(Request $request)
     {
-        $searchQuery = request('query');
+        $sortBy = $request->input('sort_by', 'created_at');
+        $allowedSort = [
+            'id',
+            'ref',
+            'document_ref',
+            'serie',
+            'stock_center_id',
+            'supplier_id',
+            'user_id',
+            'products_number',
+            'items_count',
+            'total_quantity',
+            'created_at',
+        ];
 
-        $exitnotes = ExitNotes::query()
-            ->when(request('query'), function ($query, $searchQuery) {
-                $query->where('ref', 'like', "%{$searchQuery}%");
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        return ExitNotes::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('id', 'like', "%{$search}%")
+                        ->orWhere('ref', 'like', "%{$search}%")
+                        ->orWhere('document_ref', 'like', "%{$search}%")
+                        ->orWhere('serie', 'like', "%{$search}%")
+                        ->orWhereHas('stockcenter', function ($centerQuery) use ($search) {
+                            $centerQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                            $supplierQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
             })
-            ->with('stockcenter')
-            ->with('supplier')
-            ->orderBy('created_at', 'desc')
-            ->paginate();
+            ->when($request->filled('stock_center_id'), function ($query) use ($request) {
+                $query->where('stock_center_id', $request->integer('stock_center_id'));
+            })
+            ->when($request->filled('supplier_id'), function ($query) use ($request) {
+                $query->where('supplier_id', $request->integer('supplier_id'));
+            })
+            ->when($request->filled('user_id'), function ($query) use ($request) {
+                $query->where('user_id', $request->integer('user_id'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
+            })
+            ->with(['stockcenter', 'supplier', 'user'])
+            ->withCount('itens as items_count')
+            ->withSum('itens as total_quantity', 'quantity')
+            ->orderBy($sortBy, $sortDir);
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
+
+        $exitnotes = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json($exitnotes);
     }
 
-    public function create()
+    /**
+     * Export filtered exit notes for Excel download.
+     */
+    public function export(Request $request)
     {
-        $suppliers = Supplier::get();
-        $stockcenters = StockCenter::get();
+        $exitnotes = $this->buildFilteredQuery($request)->get();
+
+        $data = $exitnotes->map(function ($exitnote) {
+            return [
+                'id' => $exitnote->id,
+                'ref' => $exitnote->ref,
+                'stock_center' => $exitnote->stockcenter?->name,
+                'supplier' => $exitnote->supplier?->name,
+                'document_ref' => $exitnote->document_ref,
+                'serie' => $exitnote->serie,
+                'user' => $exitnote->user?->name,
+                'products_number' => $exitnote->products_number,
+                'items_count' => $exitnote->items_count ?? 0,
+                'total_quantity' => $exitnote->total_quantity ?? 0,
+                'created_at' => $exitnote->created_at?->format('d/m/Y H:i'),
+            ];
+        });
 
         return response()->json([
-            'suppliers' => $suppliers,
-            'stockcenters' => $stockcenters
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
+    }
+
+    public function create()
+    {
+        return response()->json([
+            'suppliers' => Supplier::orderBy('name')->get(),
+            'stockcenters' => StockCenter::orderBy('name')->get(),
+            'users' => User::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -60,7 +147,6 @@ class ExitNotesController extends Controller
             $exitnote = DB::transaction(function () use ($data) {
                 $stockCenterId = (int) $data['stock_center_id'];
 
-                // Validação com lock dentro da mesma transação
                 foreach ($data['stockcenterproducts'] as $item) {
                     $qty = (int) ($item['quantity'] ?? 0);
                     if ($qty <= 0) {
@@ -148,7 +234,7 @@ class ExitNotesController extends Controller
     {
         $exitnote = ExitNotes::find($id);
 
-        return $exitnote;
+        return response()->json($exitnote);
     }
 
     public function update(Request $request, string $id)
@@ -162,9 +248,6 @@ class ExitNotesController extends Controller
 
     public function destroy(string $id)
     {
-        $exitnote = ExitNotes::find($id);
-        $exitnote->delete();
-
-        return true;
+        return response()->json(['message' => 'Operação não permitida.'], 403);
     }
 }

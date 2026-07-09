@@ -10,31 +10,99 @@ use App\Models\Product;
 use App\Models\StockCenter;
 use App\Models\StockCenterProduct;
 use App\Models\StockCenterTransferItem;
+use App\Models\StockMovement;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    private function buildFilteredQuery(Request $request)
     {
-        //
-        $searchQuery = request('query');
+        $sortBy = $request->input('sort_by', 'name');
+        $allowedSort = [
+            'id',
+            'name',
+            'created_at',
+            'category_id',
+            'sub_category_id',
+            'department_id',
+            'price',
+            'buy_price',
+            'quantity_in_principal_stock',
+        ];
 
-            $products = Product::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('name','like',"%{$searchQuery}%");
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'name';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        return Product::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('category_id', $request->integer('category_id'));
+            })
+            ->when($request->filled('sub_category_id'), function ($query) use ($request) {
+                $query->where('sub_category_id', $request->integer('sub_category_id'));
+            })
+            ->when($request->filled('department_id'), function ($query) use ($request) {
+                $query->where('department_id', $request->integer('department_id'));
+            })
+            ->when($request->filled('created_from'), function ($query) use ($request) {
+                $query->whereDate('created_at', '>=', $request->input('created_from'));
+            })
+            ->when($request->filled('created_to'), function ($query) use ($request) {
+                $query->whereDate('created_at', '<=', $request->input('created_to'));
             })
             ->with('category.department')
             ->with('subcategory')
             ->withQuantityInPrincipalStock()
-            ->orderBy('name','asc')
-            ->paginate();
+            ->orderBy($sortBy, $sortDir);
+    }
 
-            return response()->json($products);
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
+
+        $products = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return response()->json($products);
+    }
+
+    /**
+     * Export filtered products for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $products = $this->buildFilteredQuery($request)->get();
+
+        $data = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'category' => $product->category?->name,
+                'subcategory' => $product->subcategory?->name,
+                'department' => $product->category?->department?->name,
+                'price' => $product->price,
+                'buy_price' => $product->buy_price,
+                'stock' => $product->quantity_in_principal_stock,
+                'created_at' => $product->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
     }
 
     /**
@@ -43,8 +111,8 @@ class ProductController extends Controller
     public function create()
     {
         //
-        $categories = Category::all();
-        $sub_categories = SubCategory::all();
+        $categories = Category::orderBy('name')->get();
+        $sub_categories = SubCategory::orderBy('name')->get();
 
 
         return response()->json([
@@ -153,14 +221,56 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        //
-        $product = Product::
-        with('category.department')
-        ->with('subcategory')
-        ->withQuantityInPrincipalStock()
-        ->find($id);
+        $product = Product::query()
+            ->with('category.department')
+            ->with('subcategory')
+            ->withQuantityInPrincipalStock()
+            ->find($id);
 
-        return response()->json($product);
+        if (! $product) {
+            return response()->json(['message' => 'Produto não encontrado.'], 404);
+        }
+
+        $movements = StockMovement::query()
+            ->where('product_id', $product->id)
+            ->selectRaw('reason, COUNT(*) as total, SUM(quantity) as quantity_sum')
+            ->groupBy('reason')
+            ->orderByDesc('quantity_sum')
+            ->get();
+
+        return response()->json([
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->price,
+                'buy_price' => $product->buy_price,
+                'image' => $product->image,
+                'created_at' => $product->created_at,
+                'quantity_in_principal_stock' => (int) ($product->quantity_in_principal_stock ?? 0),
+            ],
+            'category' => $product->category ? [
+                'id' => $product->category->id,
+                'name' => $product->category->name,
+            ] : null,
+            'subcategory' => $product->subcategory ? [
+                'id' => $product->subcategory->id,
+                'name' => $product->subcategory->name,
+            ] : null,
+            'department' => $product->category?->department ? [
+                'id' => $product->category->department->id,
+                'name' => $product->category->department->name,
+            ] : null,
+            'metrics' => [
+                'gross_margin' => (float) ($product->price ?? 0) - (float) ($product->buy_price ?? 0),
+                'markup_percent' => (float) ($product->buy_price ?? 0) > 0
+                    ? (((float) ($product->price ?? 0) - (float) ($product->buy_price ?? 0)) / (float) $product->buy_price) * 100
+                    : 0,
+                'stock_status' => (int) ($product->quantity_in_principal_stock ?? 0) <= 0
+                    ? 'ruptura'
+                    : ((int) ($product->quantity_in_principal_stock ?? 0) <= 5 ? 'baixo' : 'normal'),
+            ],
+            'movement_summary' => $movements,
+        ]);
     }
 
     /**
@@ -245,6 +355,7 @@ class ProductController extends Controller
 
 
         $product->delete();
-        return true;
+
+        return response()->json(['message' => 'Produto removido com sucesso.']);
     }
 }

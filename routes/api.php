@@ -40,26 +40,39 @@ Route::middleware([Sanctum::class])->group(function () {
 
     Route::get('auxiliar',[InventoriesController::class,'center']);
 
+    Route::get('entrynotes/export', [EntryNotesController::class, 'export']);
     Route::resource('entrynotes', EntryNotesController::class);
+    Route::get('exitnotes/export', [ExitNotesController::class, 'export']);
     Route::resource('exitnotes', ExitNotesController::class);
 
+    Route::get('inventories/export', [InventoriesController::class, 'export']);
     Route::resource('inventories', InventoriesController::class);
 
+    Route::get('stocktransfers/export', [StockTransferController::class, 'export']);
     Route::resource('stocktransfers', StockTransferController::class);
 
+    Route::get('centerstocks/export', [CenterStocksController::class, 'export']);
     Route::resource('centerstocks', CenterStocksController::class);
+    Route::get('suppliers/export', [SuppliersController::class, 'export']);
     Route::resource('suppliers', SuppliersController::class);
 
+    Route::get('categories/export', [CategoryController::class, 'export']);
     Route::resource('categories', CategoryController::class);
+    Route::get('subcategories/export', [SubCategoryController::class, 'export']);
     Route::resource('subcategories', SubCategoryController::class);
+    Route::get('products/export', [ProductController::class, 'export']);
     Route::resource('products', ProductController::class);
+    Route::get('customers/export', [CustomerController::class, 'export']);
     Route::resource('customers', CustomerController::class);
+    Route::get('tables/export', [TableController::class, 'export']);
     Route::resource('tables', TableController::class);
     Route::post('logout',[AuthWebController::class,'logout']);
 
 
+    Route::get('paymentmethods/export', [PaymentMethodController::class, 'export']);
     Route::resource('paymentmethods', PaymentMethodController::class);
 
+    Route::get('users/export', [UserController::class, 'export']);
     Route::resource('users', UserController::class);
     Route::resource('reservations', ReservationController::class);
 
@@ -86,7 +99,9 @@ Route::middleware([Sanctum::class])->group(function () {
 
 
 
+    Route::get('payments/export', [PaymentController::class, 'export']);
     Route::resource('payments', PaymentController::class);
+    Route::get('orders/export', [OrderController::class, 'export']);
     Route::resource('orders', OrderController::class);
 
     Route::post('orderitem/{id}',[OrderController::class,'deleteorderitem']);
@@ -122,8 +137,10 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('cashregisters/open',[CashRegisterController::class,'open']);
     // Route::resource('cashregisters', CashRegisterController::class);
 
-    Route::get('cashregister',[CashRegisterController::class,'index']);
-    Route::get('cashregister/{id}',[CashRegisterController::class,'show']);
+    Route::get('cashregister/export', [CashRegisterController::class, 'export']);
+    Route::get('cashregister/create', [CashRegisterController::class, 'create']);
+    Route::get('cashregister', [CashRegisterController::class, 'index']);
+    Route::get('cashregister/{id}', [CashRegisterController::class, 'show']);
 
 
     Route::post('cashregisters/close',[CashRegisterController::class,'close']);

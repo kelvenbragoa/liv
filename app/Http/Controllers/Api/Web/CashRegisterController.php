@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
+use App\Models\CashRegisterStatus;
 use App\Models\CreditSettlement;
 use App\Models\DailyStockSnapshot;
 use App\Models\Order;
@@ -21,33 +22,103 @@ use Illuminate\Support\Facades\DB;
 
 class CashRegisterController extends Controller
 {
+    private function buildFilteredQuery(Request $request)
+    {
+        $sortBy = $request->input('sort_by', 'opened_at');
+        $allowedSort = [
+            'id',
+            'opening_balance',
+            'closing_balance',
+            'cash_register_status_id',
+            'user_id',
+            'opened_at',
+            'closed_at',
+            'order_itens_total',
+            'created_at',
+        ];
+
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'opened_at';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        return CashRegister::query()
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('id', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->filled('cash_register_status_id'), function ($query) use ($request) {
+                $query->where('cash_register_status_id', $request->integer('cash_register_status_id'));
+            })
+            ->when($request->filled('user_id'), function ($query) use ($request) {
+                $query->where('user_id', $request->integer('user_id'));
+            })
+            ->when($request->filled('opened_from'), function ($query) use ($request) {
+                $query->whereDate('opened_at', '>=', $request->input('opened_from'));
+            })
+            ->when($request->filled('opened_to'), function ($query) use ($request) {
+                $query->whereDate('opened_at', '<=', $request->input('opened_to'));
+            })
+            ->when($request->filled('closed_from'), function ($query) use ($request) {
+                $query->whereDate('closed_at', '>=', $request->input('closed_from'));
+            })
+            ->when($request->filled('closed_to'), function ($query) use ($request) {
+                $query->whereDate('closed_at', '<=', $request->input('closed_to'));
+            })
+            ->with(['user', 'status'])
+            ->withSum('orderitens as order_itens_total', 'total')
+            ->orderBy($sortBy, $sortDir);
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        $searchQuery = request('query');
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
 
-            $categories = CashRegister::query()
-            ->when(request('query'),function($query,$searchQuery){
-                $query->where('id','like',"%{$searchQuery}%")
-                    ->orWhereHas('user', function($q) use ($searchQuery) {
-                        $q->where('name','like',"%{$searchQuery}%");
-                    });
-            })
-            ->with('orderitens')
-            ->with('user')
-            ->with('status')
-            ->orderBy('id','desc')
-            ->paginate();
+        $cashRegisters = $this->buildFilteredQuery($request)
+            ->paginate($perPage)
+            ->withQueryString();
 
-            $categories->getCollection()->transform(function ($category) {
-                $category->order_itens_total = $category->orderitens->sum('total');
-                return $category;
-            });
+        return response()->json($cashRegisters);
+    }
 
-            return response()->json($categories);
+    /**
+     * Export filtered cash registers for Excel download.
+     */
+    public function export(Request $request)
+    {
+        $cashRegisters = $this->buildFilteredQuery($request)->get();
+
+        $data = $cashRegisters->map(function ($cashRegister) {
+            return [
+                'id' => $cashRegister->id,
+                'user' => $cashRegister->user?->name,
+                'order_itens_total' => $cashRegister->order_itens_total ?? 0,
+                'closing_balance' => $cashRegister->closing_balance,
+                'opening_balance' => $cashRegister->opening_balance,
+                'status' => $cashRegister->status?->name,
+                'opened_at' => $cashRegister->opened_at
+                    ? Carbon::parse($cashRegister->opened_at)->format('d/m/Y H:i')
+                    : null,
+                'closed_at' => $cashRegister->closed_at
+                    ? Carbon::parse($cashRegister->closed_at)->format('d/m/Y H:i')
+                    : null,
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+        ]);
     }
 
     /**
@@ -55,7 +126,10 @@ class CashRegisterController extends Controller
      */
     public function create()
     {
-        //
+        return response()->json([
+            'statuses' => CashRegisterStatus::orderBy('name')->get(),
+            'users' => User::orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function open(Request $request)

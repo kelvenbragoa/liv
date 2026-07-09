@@ -115,7 +115,7 @@ class ReservationController extends Controller
         //
 
         $subcategory = Reservation::find($id);
-        $subcategory->delete();
+        // $subcategory->delete();
         return true;
     }
 }
