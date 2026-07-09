@@ -1,414 +1,131 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-
-// import { debounce } from 'lodash';
+import { computed, ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-
-import moment from 'moment';
-import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
+
 const isLoadingDiv = ref(true);
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
-const currentPage = ref(1);
-const rowsPerPage = ref(15);
-const totalamount = ref(0);
-const displayConfirmation = ref(false);
-const categories = ref(null);
-const selectedProducts = ref([]);
-const total = ref(0);
+const categories = ref([]);
 const total_consumed = ref(0);
-const isLoadingButton = ref(false);
 const order_items = ref([]);
-const loadingprint = ref(false);
-const payment_method_id = ref(1);
-const payment_methods = ref([]);
-const selectedItemToDelete = ref(null);
-const confirmationCode = ref(null);
-const correct_code = '142502';
+const table = ref(null);
+const productSearch = ref('');
+const activeCategoryId = ref(null);
+const activeSubCategoryId = ref(null);
+const compactMode = ref(false);
 const showDialog = ref(false);
 const pdfUrl = ref(null);
-const table = ref(null);
+const openReceiptDialog = ref(false);
 
+const activeCategory = computed(() =>
+    (categories.value || []).find((c) => c.id === activeCategoryId.value) || null
+);
 
-const openFileDialog = ref(false); // Controla a visibilidade do dialog
-const openReceiptDialog = ref(false); // Controla a visibilidade do dialog
-const openPrintReceipt = ref(false); // Controla a visibilidade do dialog
-const closeAccountDialog = ref(false); // Controla a visibilidade do dialog
-const payAccountDialog = ref(false); // Controla a visibilidade
-const deleteDialog = ref(false); // Controla a visibilidade do dialog
+const activeSubCategories = computed(() => activeCategory.value?.sub_categories || []);
 
-// Definindo os itens do Menubar
-const nestedMenuitems = [
-  {
-    label: 'Consumo',
-    items: [
-      { 
-        label: 'Ver consumo', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openReceiptDialog.value = true }  // Abre o dialog ao clicar
-      },
-      { 
-        label: 'Imprimir Consumo', 
-        icon: 'pi pi-fw pi-print', 
-        command: () => { 
-            printReceipt();
-            // openFileDialog.value = true 
-        }  // Abre o dialog ao clicar
-      },
-    ]
-  },
-//   {
-//     label: 'Opções',
-//     items: [
-//       { 
-//         label: 'Agrupar Mesa', 
-//         icon: 'pi pi-fw pi-folder-open', 
-//         command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-//       },
-//     ]
-//   },
-//   {
-//     label: 'Conta',
-//     items: [
-//       { 
-//         label: 'Fechamento da Conta', 
-//         icon: 'pi pi-fw pi-lock', 
-//         command: () => { closeAccountDialog.value = true }  // Abre o dialog ao clicar
-//       },
-//       { 
-//         label: 'Finalizar da Conta', 
-//         icon: 'pi pi-fw pi-check', 
-//         command: () => { payAccountDialog.value = true }  // Abre o dialog ao clicar
-//       },
-//     ]
-//   }
-];
+const displayedProducts = computed(() => {
+    const q = productSearch.value.trim().toLowerCase();
+    const list = [];
+
+    for (const category of categories.value || []) {
+        for (const sub of category.sub_categories || []) {
+            for (const product of sub.products || []) {
+                const matchesSearch = !q || (product.name || '').toLowerCase().includes(q);
+                const matchesCategory = !activeCategoryId.value || category.id === activeCategoryId.value;
+                const matchesSub =
+                    !activeSubCategoryId.value || sub.id === activeSubCategoryId.value;
+
+                if (matchesSearch && matchesCategory && matchesSub) {
+                    list.push(product);
+                }
+            }
+        }
+    }
+
+    return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+});
+
+const groupedProductSections = computed(() => {
+    if (activeCategoryId.value) {
+        return [];
+    }
+
+    const q = productSearch.value.trim().toLowerCase();
+    const sections = [];
+
+    for (const category of categories.value || []) {
+        const subSections = [];
+
+        for (const sub of category.sub_categories || []) {
+            const products = (sub.products || [])
+                .filter((product) => !q || (product.name || '').toLowerCase().includes(q))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            if (products.length) {
+                subSections.push({
+                    id: sub.id,
+                    name: sub.name,
+                    products
+                });
+            }
+        }
+
+        if (subSections.length) {
+            sections.push({
+                id: category.id,
+                name: category.name,
+                subCategories: subSections
+            });
+        }
+    }
+
+    return sections;
+});
+
+const showGroupedProducts = computed(
+    () => !activeCategoryId.value && groupedProductSections.value.length > 0
+);
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
-}
-
-const confirmDelete = (item) => {
-    selectedItemToDelete.value = item;
-    deleteDialog.value = true;
-};
-
-const deleteItem = () => {
-    // loadingButtonDelete.value = true;
-
-    if (confirmationCode.value !== correct_code) {
-        toast.add({ severity: 'error', summary: `Erro`, detail: 'Código de confirmação inválido', life: 3000 });
-        return;
-    }else{
-
-    axios
-        .post(`/api/orderitem/${selectedItemToDelete.value}`)
-        .then((response) => {
-            retriviedData.value = response.data;
-            total_consumed.value = response.data.total_consumed;
-            categories.value = response.data.categories;
-            order_items.value = response.data.order_items;
-            payment_methods.value = response.data.payment_methods;
-            payment_method_id.value = 1;
-            deleteDialog.value = false;
-
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            // loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            // loadingButtonDelete.value = false;
-        });
-    }
-};
-
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
-
-function getSeverity2(status) {
-    switch (status) {
-        case 1:
-            return 'red';
-
-        case 2:
-            return 'red';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
-    }
-}
-function saveCart() {
-    // Exemplo de dados para salvar
-    const cartData = {
-      products: selectedProducts.value.map(product => ({
-        id: product.id,
-        name: product.name,
-        quantity: product.quantity,
-        total: product.price * product.quantity
-      })),
-      total: total.value,
-      table_id: router.currentRoute.value.params.id,
-      request_id: createRequestId(),
-    };
-
-    isLoadingButton.value = true;
-    axios
-        .post(`/api/pdv`, cartData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        })
-        .then(async (response) => {
-            loadingprint.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Produto encomedado sucesso!', life: 3000 });
-            selectedProducts.value = [];
-            updateTotal();
-            await getData(currentPage.value);
-
-            const orderId = response.data.order_id;
-            if (!orderId) {
-                return;
-            }
-
-            try {
-                const pdfResponse = await axios.post(`/api/getorderreceipt/${orderId}`, {}, { responseType: 'blob' });
-                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
-                pdfUrl.value = URL.createObjectURL(blob);
-                showDialog.value = true;
-                openPrintReceipt.value = false;
-            } catch (pdfError) {
-                console.error('Erro ao obter recibo:', pdfError);
-                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Pedido gravado, mas falhou a impressão do recibo.', life: 4000 });
-            }
-        })
-        .catch((error) =>  {
-            isLoadingButton.value = false;
-            let errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
-            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors);
-            }
-        })
-        .finally(() => {
-            isLoadingButton.value = false;
-        });
-  }
-
-  function closeAccount() {
-    isLoadingButton.value = true;
-    axios
-        .get(`/api/pdv/closeaccount/${router.currentRoute.value.params.id}`, {
-            params: { request_id: createRequestId() }
-        })
-        .then(async (response) => {
-            closeAccountDialog.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
-
-            const orderId = response.data.order_id;
-            if (!orderId) {
-                return;
-            }
-
-            try {
-                const pdfResponse = await axios.post(`/api/getfinalreceipt/${orderId}`, {}, { responseType: 'blob' });
-                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
-                pdfUrl.value = URL.createObjectURL(blob);
-                showDialog.value = true;
-            } catch (pdfError) {
-                console.error('Erro ao obter recibo:', pdfError);
-                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Conta fechada, mas falhou a impressão do recibo.', life: 4000 });
-            }
-        })
-        .catch((error) => {
-            isLoadingButton.value = false;
-            const errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
-            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors);
-            }
-        })
-        .finally(() => {
-            isLoadingButton.value = false;
-        });
-  }
-
-function payAccount() {
-    const payData = {
-      payment_method_id: payment_method_id.value,
-      table_id: router.currentRoute.value.params.id,
-      request_id: createRequestId(),
-    };
-
-    isLoadingButton.value = true;
-    axios
-        .post(`/api/payaccount`, payData,{
-            headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
-        .then(async (response) => {
-            openPrintReceipt.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
-
-            const orderId = response.data.order_id;
-            if (!orderId) {
-                return;
-            }
-
-            try {
-                if (pdfUrl.value) {
-                    URL.revokeObjectURL(pdfUrl.value);
-                }
-                const pdfResponse = await axios.post(`/api/getcustomerreceipt/${orderId}`, {}, { responseType: 'blob' });
-                const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
-                pdfUrl.value = URL.createObjectURL(blob);
-                showDialog.value = true;
-            } catch (pdfError) {
-                console.error('Erro ao obter recibo:', pdfError);
-                toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Pagamento gravado, mas falhou a impressão do recibo.', life: 4000 });
-            }
-        })
-        .catch((error) => {
-            console.log(error)
-            isLoadingButton.value = false;
-            const errorMessage = error.response?.data?.message || 'Ocorreu um erro inesperado.';
-            toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors);
-            }
-        })
-        .finally(() => {
-            isLoadingButton.value = false;
-        });
-  }
-
-// function addToCart(product) {
-//     // Verifica se o produto já foi adicionado ao carrinho
-//     const existingProduct = selectedProducts.value.find(item => item.id === product.id);
-
-//     if (existingProduct) {
-//     // Se o produto já estiver no carrinho, aumenta a quantidade
-//     existingProduct.quantity += 1;
-//     } else {
-//     // Caso contrário, adiciona o produto com a quantidade 1
-//     selectedProducts.value.push({ ...product, quantity: 1 });
-//     }
-
-//     // Atualiza o total
-//     updateTotal();
-// }
-function addToCart(product) {
-    // Verifica se o produto já foi adicionado ao carrinho
-    const existingProduct = selectedProducts.value.find(item => item.id === product.id);
-
-    // Verifica o estoque disponível
-    const availableStock = product.quantity_in_principal_stock ?? 0;
-
-    if (existingProduct) {
-        if (existingProduct.quantity < availableStock) {
-            // Se o estoque permitir, aumenta a quantidade
-            existingProduct.quantity += 1;
-        } else {
-            // Exibe um alerta quando o limite do estoque for atingido
-        }
-    } else {
-        if (availableStock > 0) {
-            // Adiciona o produto ao carrinho com a quantidade 1
-            selectedProducts.value.push({ ...product, quantity: 1 });
-        } else {
-            toast.add({ severity: 'error', summary: 'Stock Insuficiente', detail: `Produto sem estoque disponível.`, life: 3000 });
-        }
-    }
-
-    // Atualiza o total
-    updateTotal();
-}
-function removeFromCart(index) {
-    selectedProducts.value.splice(index, 1);
-    updateTotal();
-  }
-
-function updateTotal() {
-    // Calcula o total com base nas quantidades dos produtos
-    total.value = selectedProducts.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-}
-function getSeverity(status) {
-    switch (status) {
-        case 1:
-            return 'success';
-
-        case 2:
-            return 'danger';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
-    }
+    router?.back();
 }
 
 function printPDF() {
     const iframe = document.querySelector('iframe');
     if (iframe) {
         iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
+        iframe.contentWindow.print();
     }
 }
 
-function printReceipt () {
+function closeDialog() {
+    showDialog.value = false;
+    if (pdfUrl.value) {
+        URL.revokeObjectURL(pdfUrl.value);
+        pdfUrl.value = null;
+    }
+}
+
+function printReceipt() {
     axios
-    .post(`/api/getreceipt/${router.currentRoute.value.params.id}`, {}, { responseType: 'blob' })
+        .post(`/api/getreceipt/${router.currentRoute.value.params.id}`, {}, { responseType: 'blob' })
         .then((response) => {
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);  // Armazena o URL do PDF
-            showDialog.value = true;  // Abre o diálogo modal
-            openPrintReceipt.value = false;
-            toast.add({ severity: 'success', summary: `Successo`, detail: 'Consumo Impresso com sucesso!', life: 3000 });
-
+            pdfUrl.value = URL.createObjectURL(blob);
+            showDialog.value = true;
+            toast.add({
+                severity: 'success',
+                summary: 'Sucesso',
+                detail: 'Consumo impresso com sucesso!',
+                life: 2500
+            });
         })
         .catch(async (error) => {
-            isLoadingDiv.value = false;
-            console.log(error)
-            isLoadingButton.value = false;
             let errorMessage = 'Ocorreu um erro inesperado.';
 
-            if (error.response && error.response.data instanceof Blob) {
+            if (error.response?.data instanceof Blob) {
                 try {
                     const text = await error.response.data.text();
                     const json = JSON.parse(text);
@@ -421,296 +138,759 @@ function printReceipt () {
             }
 
             toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage, life: 3000 });
-                    if (error.response.data.errors) {
-                        setErrors(error.response.data.errors);
-                    }
         });
-};
-
-const getData = async (page = 1) => {
-    axios
-        .get(`/api/pdv/${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            retriviedData.value = response.data;
-            table.value = response.data.table;
-            total_consumed.value = response.data.total_consumed;
-            categories.value = response.data.categories;
-            order_items.value = response.data.order_items;
-            payment_methods.value = response.data.payment_methods;
-            payment_method_id.value = 1;
-            isLoadingDiv.value = false;
-        })
-        .catch((error) => {
-            goBackUsingBack();
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-            
-        });
-};
-
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/tables/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
-};
-
-const onPageChange = (event) => {
-    currentPage.value = event.page + 1;
-    rowsPerPage.value = event.rows;
-    getData(currentPage.value);
-};
-
-function closeDialog() {
-    showDialog.value = true;
-    router.back();
-
 }
 
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
+function selectCategory(categoryId) {
+    activeCategoryId.value = categoryId;
+    const category = (categories.value || []).find((c) => c.id === categoryId);
+    activeSubCategoryId.value =
+        category?.sub_categories?.length ? category.sub_categories[0].id : null;
+}
 
-watch(searchQuery,debouncedSearch);
+function selectAllCategories() {
+    activeCategoryId.value = null;
+    activeSubCategoryId.value = null;
+}
+
+const getData = async () => {
+    return axios
+        .get(`/api/pdv/${router.currentRoute.value.params.id}`)
+        .then((response) => {
+            table.value = response.data.table;
+            total_consumed.value = response.data.total_consumed;
+            categories.value = response.data.categories || [];
+            order_items.value = response.data.order_items || [];
+
+            if (categories.value.length && !activeCategoryId.value) {
+                selectCategory(categories.value[0].id);
+            }
+
+            isLoadingDiv.value = false;
+        })
+        .catch((error) => {
+            isLoadingDiv.value = false;
+            toast.add({
+                severity: 'error',
+                summary: 'Erro',
+                detail: error.response?.data?.message || 'Erro ao carregar mesa',
+                life: 3000
+            });
+            goBackUsingBack();
+        });
+};
 
 onMounted(() => {
     getData();
 });
-
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
-    </div>
-    
-        
-        <div v-else>
-            <div class="grid grid-cols-12 gap-4 h-screen">
-                <div class="col-span-12 lg:col-span-3 h-full">
-                    <div class="card flex flex-col gap-4 h-full">
-                    <h2>Resumo da venda 
-                    <div v-if="total > 0">
-                        <strong>Total: {{ total }} MT</strong>
-                    </div>
-                    </h2>
-                    <!-- <div class="grid grid-cols-3 gap-4"> -->
-                    <!-- Exibir produtos selecionados -->
-                    <div v-for="(item, index) in selectedProducts" :key="index" class="card bg-gray-100 p-4">
-                        <div>
-                            <strong>{{ item.name }} </strong> 
-                            <button @click="removeFromCart(index)" class="rounded-full bg-red-100"  style="width: 2.5rem; height: 2.5rem">X</button>
-                            </div>
-                        <div class="flex justify-between mb-4">
-                            <div>{{ item.quantity }} x {{ item.price }} MT</div>
-                            <div>{{ item.price * item.quantity }} MT</div>
-                        </div>
-                        
-                    </div>
-                    <!-- </div> -->
-                    <div v-if="total > 0" class="mt-4">
-                        <strong>Total: {{ total }} MT</strong>
-                        <!-- <button :disabled="isLoadingButton" @click="saveCart" class="bg-blue-500 text-white px-4 py-2 rounded-full mt-1" style="width: 100%">Adicionar a conta<i class="pi pi-print"></i></button> -->
-                        <div class="flex flex-col gap-4 text-center" v-if="isLoadingButton">
-                            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                            <!-- <p>Por Favor Aguarde...</p> -->
-                        </div>
-                    </div>
-                    </div>
-                </div>
-
-                <div class="col-span-12 lg:col-span-9">
-                    <div class="mb-2">
-                        <Menubar :model="nestedMenuitems">
-                            <template #end>
-                                
-                                <p><strong>Mesa:</strong> {{table == null ? '' : table.name}} | <strong>Total Consumo:</strong> {{ total_consumed }} MT</p>
-                            </template>
-                        </Menubar>
-                    </div>
-                    <div class="card flex flex-col gap-4">
-                        <Tabs :value="1">
-                    <TabList class="flex overflow-x-auto space-x-4 pb-2">
-                        <Tab v-for="category in categories" :key="category.id" :value="category.id">
-                        {{ category.name }}
-                        </Tab>
-                    </TabList>
-
-                    <TabPanels>
-                        <TabPanel v-for="category in categories" :key="category.id" :value="category.id">
-                        <!-- Subcategory Tabs -->
-                        <Tabs :value="0">
-                            <TabList class="flex overflow-x-auto space-x-4 pb-2">
-                            <Tab v-for="subcategory in category.sub_categories" :key="subcategory.id" :value="subcategory.id">
-                                {{ subcategory.name }}
-                            </Tab>
-                            </TabList>
-
-                            <TabPanels>
-                            <TabPanel v-for="subcategory in category.sub_categories" :key="subcategory.id" :value="subcategory.id">
-                                <div v-if="subcategory.products.length > 0">
-                                <div class="grid grid-cols-12 gap-8">
-                                    <div v-for="product in subcategory.products" :key="product.id" class="col-span-12 lg:col-span-6 xl:col-span-3">
-                                        <div class="card mb-0 bg-gray-100">
-                                        <!-- Imagem do Produto -->
-                                        <div class="mb-4">
-                                            <img :src="product.image ? `/${product.image}` : '/image/image.png'" alt="Imagem do Produto" class="w-full h-32 rounded-t-lg">
-                                        </div>
-
-                                        <!-- Informações do Produto -->
-                                        <div class="flex justify-between mb-2">
-                                            <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">
-                                                {{ product.name }}
-                                            </div>
-                                        </div>
-                                       
-                                        <div class="flex justify-between mb-2">
-                                            <span class="text-primary font-medium">Preço: {{ product.price }} MT</span>
-                                        </div>
-                                        <div class="flex justify-between mb-2">
-                                            <small>Stock:{{ product.quantity_in_principal_stock }}</small>
-                                        </div>
-                                        <!-- <button @click="addToCart(product)" class="bg-blue-500 text-white px-4 py-2 rounded-full mt-1">
-                                            Adicionar
-                                        </button> -->
-                                        </div>
-                                    </div>
-                                </div>
-                                </div>
-                                <div v-else>
-                                <p>No products available.</p>
-                                </div>
-                            </TabPanel>
-                            </TabPanels>
-                        </Tabs>
-                        </TabPanel>
-                    </TabPanels>
-                    </Tabs>
-                        
-
-                    </div>
-                </div>
-                
-            </div>
+    <div v-if="isLoadingDiv" class="flex min-h-screen items-center justify-center">
+        <div class="flex flex-col gap-4 items-center text-center">
+            <ProgressSpinner
+                style="width: 50px; height: 50px"
+                strokeWidth="8"
+                fill="var(--surface-ground)"
+                animationDuration=".5s"
+            />
+            <p>A preparar a mesa...</p>
         </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
+    </div>
+
+    <div v-else class="qs-shell">
+        <section class="qs-products">
+            <header class="qs-toolbar">
+                <div class="qs-search-wrap">
+                    <i class="pi pi-search qs-search-icon" />
+                    <InputText
+                        v-model="productSearch"
+                        placeholder="Pesquisar produto..."
+                        class="qs-search"
+                    />
+                    <Button
+                        v-if="productSearch"
+                        icon="pi pi-times"
+                        text
+                        rounded
+                        severity="secondary"
+                        @click="productSearch = ''"
+                    />
+                </div>
+
+                <div class="qs-toolbar-actions">
+                    <span class="qs-table-meta">
+                        <strong>{{ table?.name || 'Mesa' }}</strong>
+                        · {{ total_consumed }} MT consumido
+                    </span>
+                    <Button
+                        :label="compactMode ? 'Com foto' : 'Compacto'"
+                        :icon="compactMode ? 'pi pi-image' : 'pi pi-th-large'"
+                        text
+                        severity="secondary"
+                        @click="compactMode = !compactMode"
+                    />
+                    <Button
+                        icon="pi pi-arrow-left"
+                        label="Voltar"
+                        text
+                        severity="secondary"
+                        @click="goBackUsingBack"
+                    />
+                </div>
+            </header>
+
+            <div class="qs-filters">
+                <button
+                    type="button"
+                    class="qs-chip"
+                    :class="{ 'qs-chip--active': !activeCategoryId }"
+                    @click="selectAllCategories"
+                >
+                    Todos
+                </button>
+                <button
+                    v-for="category in categories"
+                    :key="category.id"
+                    type="button"
+                    class="qs-chip"
+                    :class="{ 'qs-chip--active': activeCategoryId === category.id }"
+                    @click="selectCategory(category.id)"
+                >
+                    {{ category.name }}
+                </button>
+            </div>
+
+            <div v-if="activeCategoryId && activeSubCategories.length" class="qs-filters qs-filters--sub">
+                <button
+                    v-for="sub in activeSubCategories"
+                    :key="sub.id"
+                    type="button"
+                    class="qs-chip qs-chip--sub"
+                    :class="{ 'qs-chip--active': activeSubCategoryId === sub.id }"
+                    @click="activeSubCategoryId = sub.id"
+                >
+                    {{ sub.name }}
+                </button>
+            </div>
+
+            <div v-if="showGroupedProducts" class="qs-grid" :class="{ 'qs-grid--compact': compactMode }">
+                <template v-for="section in groupedProductSections" :key="section.id">
+                    <div class="qs-section-header">
+                        <span>{{ section.name }}</span>
+                        <small>
+                            {{
+                                section.subCategories.reduce((sum, sub) => sum + sub.products.length, 0)
+                            }}
+                            produtos
+                        </small>
+                    </div>
+
+                    <template v-for="sub in section.subCategories" :key="`${section.id}-${sub.id}`">
+                        <div class="qs-subsection-header">{{ sub.name }}</div>
+
+                        <article
+                            v-for="product in sub.products"
+                            :key="product.id"
+                            class="qs-product qs-product--readonly"
+                            :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
+                        >
+                            <div v-if="!compactMode" class="qs-product__image">
+                                <img
+                                    :src="product.image ? `/${product.image}` : '/image/image.png'"
+                                    :alt="product.name"
+                                />
+                            </div>
+                            <div class="qs-product__body">
+                                <div class="qs-product__name">{{ product.name }}</div>
+                                <div class="qs-product__meta">
+                                    <span class="qs-product__price">{{ product.price }} MT</span>
+                                    <span class="qs-product__stock">
+                                        {{ (product.quantity_in_principal_stock ?? 0) > 0
+                                            ? `Stock ${product.quantity_in_principal_stock}`
+                                            : 'Sem stock' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    </template>
+                </template>
+            </div>
+
+            <div
+                v-else-if="displayedProducts.length"
+                class="qs-grid"
+                :class="{ 'qs-grid--compact': compactMode }"
+            >
+                <article
+                    v-for="product in displayedProducts"
+                    :key="product.id"
+                    class="qs-product qs-product--readonly"
+                    :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
+                >
+                    <div v-if="!compactMode" class="qs-product__image">
+                        <img
+                            :src="product.image ? `/${product.image}` : '/image/image.png'"
+                            :alt="product.name"
+                        />
+                    </div>
+                    <div class="qs-product__body">
+                        <div class="qs-product__name">{{ product.name }}</div>
+                        <div class="qs-product__meta">
+                            <span class="qs-product__price">{{ product.price }} MT</span>
+                            <span class="qs-product__stock">
+                                {{ (product.quantity_in_principal_stock ?? 0) > 0
+                                    ? `Stock ${product.quantity_in_principal_stock}`
+                                    : 'Sem stock' }}
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div v-else class="qs-empty-products">
+                <i class="pi pi-inbox" />
+                <p>Nenhum produto encontrado</p>
+            </div>
+        </section>
+
+        <aside class="qs-cart">
+            <div class="qs-cart__header">
+                <div>
+                    <h2>Consumo</h2>
+                    <p>{{ order_items.length }} {{ order_items.length === 1 ? 'item' : 'itens' }}</p>
+                </div>
+            </div>
+
+            <div v-if="!order_items.length" class="qs-cart__empty">
+                <i class="pi pi-receipt" />
+                <p>Sem consumo registado nesta mesa</p>
+            </div>
+
+            <div v-else class="qs-cart__list">
+                <div
+                    v-for="item in order_items"
+                    :key="item.id"
+                    class="qs-line qs-line--readonly"
+                >
+                    <div class="qs-line__info">
+                        <strong>{{ item.product.name }}</strong>
+                        <span>{{ item.quantity }} x {{ item.price }} MT</span>
+                    </div>
+                    <div class="qs-line__total">
+                        {{ item.total }} MT
+                    </div>
+                </div>
+            </div>
+
+            <div class="qs-cart__footer">
+                <div class="qs-total">
+                    <span>Total consumido</span>
+                    <strong>{{ total_consumed }} MT</strong>
+                </div>
+
+                <div class="qs-mesa-actions qs-mesa-actions--single">
+                    <button type="button" class="qs-action-chip" @click="openReceiptDialog = true">
+                        <i class="pi pi-list" />
+                        Ver detalhe
+                    </button>
+                    <button type="button" class="qs-action-chip qs-action-chip--primary" @click="printReceipt">
+                        <i class="pi pi-print" />
+                        Imprimir
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <Dialog header="Consumo da mesa" v-model:visible="openReceiptDialog" :style="{ width: '32rem' }" modal>
+        <div class="qs-dialog-list">
+            <div
+                v-for="item in order_items"
+                :key="item.id"
+                class="qs-dialog-line"
+            >
+                <span>{{ item.quantity }} x {{ item.product.name }}</span>
+                <span>{{ item.total }} MT</span>
+            </div>
+            <p v-if="!order_items.length" class="qs-dialog-empty">Sem consumo registado.</p>
+        </div>
+        <div class="qs-dialog-total">
+            <span>Total consumido</span>
+            <strong>{{ total_consumed }} MT</strong>
         </div>
         <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
+            <Button label="Fechar" text @click="openReceiptDialog = false" />
+            <Button label="Imprimir" icon="pi pi-print" @click="printReceipt" />
         </template>
     </Dialog>
-      <!-- Dialog -->
-    <Dialog header="Open File" v-model:visible="openFileDialog" style="width: 30vw">
-        <p>Here you can manage your files or perform specific actions.</p>
-        <Button label="Close" @click="openFileDialog = false" />
-    </Dialog>
 
-    <Dialog header="Consumo da Mesa" v-model:visible="openReceiptDialog" style="width: 30vw">
-    <div class="p-4">
-      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
-      <ul class="space-y-2">
-        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
-            <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total }} 
-                <!-- <i class="pi pi-trash" @click="confirmDelete(item.id)"></i> -->
-            </span>
-        </li>
-      </ul>
-      <p class="mt-4 text-lg font-semibold">
-        <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed }}</span>
-      </p>
-      <div class="mt-4 flex justify-end">
-        <Button label="Fechar" @click="openReceiptDialog = false" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
-      </div>
-    </div>
-  </Dialog>
-
-  <Dialog header="Confirmar Exclusão" v-model:visible="deleteDialog" style="width: 20vw">
-    <div class="p-4">
-      <p class="mb-4">Insira o código para confirmar a exclusão do item <strong></strong>.</p>
-      <input v-model="confirmationCode" type="password" placeholder="Código de confirmação" class="w-full p-2 border rounded" />
-      <div class="mt-4 flex justify-end space-x-2">
-        <Button label="Cancelar" @click="deleteDialog = false" class="bg-gray-300 hover:bg-gray-400 text-black font-semibold px-4 py-2 rounded" />
-        <Button label="Confirmar" @click="deleteItem" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded" />
-      </div>
-    </div>
-  </Dialog>
-
-  <Dialog header="Fechar a conta" v-model:visible="closeAccountDialog" style="width: 30vw">
-    <div class="p-4">
-      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
-      <ul class="space-y-2">
-        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
-            <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total }} 
-                <!-- <i class="pi pi-trash"></i> -->
-            </span>
-        </li>
-      </ul>
-      <p class="mt-4 text-lg font-semibold">
-        <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed }}</span>
-      </p>
-      <div class="mt-4 flex justify-end">
-        <Button label="Fechar Conta" @click="closeAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
-      </div>
-    </div>
-  </Dialog>
-
-
-  <Dialog header="Fechar a conta" v-model:visible="payAccountDialog" style="width: 30vw">
-    <div class="p-4">
-      <h3 class="text-lg font-bold mb-4">Detalhes do Pedido</h3>
-      <ul class="space-y-2">
-        <li v-for="item in order_items" :key="item.id" class="flex justify-between border-b pb-2 mt-5">
-            <span>{{ item.quantity }} x {{ item.product.name }}</span>
-            <span>MZN {{ item.total }}</span>
-        </li>
-      </ul>
-      <Select v-model="payment_method_id" :options="payment_methods" optionLabel="name" optionValue="id" class="mt-2" placeholder="Selecionar" />
-
-      <p class="mt-4 text-lg font-semibold">
-        <span>Total: </span>
-        <span class="text-blue-500">MZN {{ total_consumed }}</span>
-      </p>
-      <div class="mt-4 flex justify-end">
-        <Button label="Pagar a Conta" @click="payAccount()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded" />
-      </div>
-    </div>
-  </Dialog>
-
-  <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
-      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
-      
-      <template #footer>
-        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
-      </template>
+    <Dialog
+        v-model:visible="showDialog"
+        header="Recibo"
+        :modal="true"
+        :style="{ width: '600px' }"
+        :closable="false"
+    >
+        <iframe
+            v-if="pdfUrl"
+            :src="pdfUrl"
+            style="width: 100%; height: 500px"
+            frameborder="0"
+        />
+        <template #footer>
+            <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+            <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
+        </template>
     </Dialog>
 </template>
+
+<style scoped>
+.qs-shell {
+    --qs-border: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%);
+    --qs-border-soft: color-mix(in srgb, var(--surface-border) 85%, transparent);
+    --qs-panel-bg: var(--surface-card);
+    --qs-canvas-bg: color-mix(in srgb, var(--surface-ground) 82%, var(--text-color) 6%);
+    --qs-card-bg: color-mix(in srgb, var(--surface-card) 88%, var(--surface-ground) 12%);
+    --qs-muted-bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%);
+    --qs-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 1px var(--qs-border-soft);
+    --qs-shadow-hover: 0 6px 16px rgba(15, 23, 42, 0.08), 0 0 0 1px color-mix(in srgb, var(--primary-color) 35%, var(--qs-border-soft));
+
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 0.85rem;
+    height: calc(100vh - 7rem);
+    min-height: 560px;
+    padding: 0.25rem;
+}
+
+.qs-products {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--qs-panel-bg);
+    border: 1px solid var(--qs-border);
+    border-radius: 1rem;
+    box-shadow: var(--qs-shadow);
+    overflow: hidden;
+}
+
+.qs-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem 0.5rem;
+    flex-shrink: 0;
+    background: var(--qs-panel-bg);
+    border-bottom: 1px solid var(--qs-border-soft);
+}
+
+.qs-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    background: var(--qs-muted-bg);
+    border: 1px solid var(--qs-border-soft);
+    border-radius: 999px;
+    padding: 0.15rem 0.65rem;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.qs-search-icon {
+    color: var(--text-color-secondary);
+}
+
+.qs-search {
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.qs-toolbar-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.qs-table-meta {
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+    white-space: nowrap;
+    padding: 0 0.35rem;
+}
+
+.qs-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.35rem 1rem 0.75rem;
+    flex-shrink: 0;
+    background: var(--qs-panel-bg);
+    border-bottom: 1px solid var(--qs-border-soft);
+}
+
+.qs-filters--sub {
+    padding-top: 0;
+}
+
+.qs-chip {
+    border: 1px solid var(--qs-border-soft);
+    background: var(--qs-muted-bg);
+    color: var(--text-color);
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    white-space: nowrap;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: var(--qs-shadow);
+    transition: 0.15s ease;
+}
+
+.qs-chip--sub {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.qs-chip--active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--primary-contrast-color, #fff);
+}
+
+.qs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.85rem;
+    padding: 0.85rem 1rem 1rem;
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    align-content: start;
+    background: var(--qs-canvas-bg);
+}
+
+.qs-section-header,
+.qs-subsection-header {
+    grid-column: 1 / -1;
+}
+
+.qs-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.75rem 0.45rem;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-color);
+    background: color-mix(in srgb, var(--qs-panel-bg) 88%, var(--primary-color) 12%);
+    border: 1px solid var(--qs-border-soft);
+    border-radius: 0.65rem;
+    box-shadow: var(--qs-shadow);
+}
+
+.qs-section-header small {
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.qs-subsection-header {
+    padding: 0.35rem 0.5rem 0.15rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-left: 3px solid color-mix(in srgb, var(--primary-color) 55%, var(--qs-border));
+    margin-left: 0.15rem;
+}
+
+.qs-grid--compact {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.qs-product {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    border: 1px solid var(--qs-border-soft);
+    background: var(--qs-card-bg);
+    border-radius: 0.9rem;
+    overflow: hidden;
+    box-shadow: var(--qs-shadow);
+    min-height: 220px;
+}
+
+.qs-product--readonly {
+    cursor: default;
+}
+
+.qs-grid--compact .qs-product {
+    min-height: 88px;
+}
+
+.qs-product--out {
+    opacity: 0.45;
+}
+
+.qs-product__image {
+    height: 132px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--qs-muted-bg) 80%, var(--text-color) 8%);
+    border-bottom: 1px solid var(--qs-border-soft);
+}
+
+.qs-product__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qs-product__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.7rem 0.75rem 0.85rem;
+    background: var(--qs-card-bg);
+    border-top: 1px solid var(--qs-border-soft);
+}
+
+.qs-product__name {
+    font-weight: 700;
+    line-height: 1.2;
+    font-size: 0.95rem;
+}
+
+.qs-product__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: baseline;
+}
+
+.qs-product__price {
+    color: var(--primary-color);
+    font-weight: 800;
+}
+
+.qs-product__stock {
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+}
+
+.qs-empty-products {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    color: var(--text-color-secondary);
+    gap: 0.5rem;
+    padding: 2rem;
+    background: var(--qs-canvas-bg);
+}
+
+.qs-empty-products i {
+    font-size: 2rem;
+}
+
+.qs-cart {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--qs-panel-bg);
+    border: 1px solid var(--qs-border);
+    border-radius: 1rem;
+    box-shadow: var(--qs-shadow);
+    overflow: hidden;
+}
+
+.qs-cart__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--qs-border-soft);
+    background: var(--qs-panel-bg);
+}
+
+.qs-cart__header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.qs-cart__header p {
+    margin: 0.15rem 0 0;
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+}
+
+.qs-cart__empty {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--text-color-secondary);
+    padding: 1.5rem;
+    gap: 0.5rem;
+    background: var(--qs-canvas-bg);
+}
+
+.qs-cart__empty i {
+    font-size: 2rem;
+}
+
+.qs-cart__list {
+    flex: 1;
+    overflow: auto;
+    padding: 0.65rem 0.75rem;
+    background: var(--qs-canvas-bg);
+}
+
+.qs-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.7rem 0.55rem;
+    margin-bottom: 0.45rem;
+    border: 1px solid var(--qs-border-soft);
+    border-radius: 0.75rem;
+    background: var(--qs-card-bg);
+    box-shadow: var(--qs-shadow);
+}
+
+.qs-line__info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.qs-line__info strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qs-line__info span {
+    color: var(--text-color-secondary);
+    font-size: 0.8rem;
+}
+
+.qs-line__total {
+    font-weight: 700;
+    min-width: 4.5rem;
+    text-align: right;
+}
+
+.qs-cart__footer {
+    border-top: 1px solid var(--qs-border-soft);
+    padding: 0.9rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--qs-muted-bg);
+}
+
+.qs-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.qs-total span {
+    color: var(--text-color-secondary);
+    font-weight: 600;
+}
+
+.qs-total strong {
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+}
+
+.qs-mesa-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.qs-action-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 1px solid var(--qs-border-soft);
+    background: var(--qs-card-bg);
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.5rem;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    box-shadow: var(--qs-shadow);
+}
+
+.qs-action-chip--primary {
+    border-color: color-mix(in srgb, var(--primary-color) 55%, var(--qs-border-soft));
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--qs-card-bg));
+    color: var(--primary-color);
+}
+
+.qs-dialog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 18rem;
+    overflow: auto;
+}
+
+.qs-dialog-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--qs-border-soft);
+    border-radius: 0.65rem;
+    background: var(--qs-muted-bg);
+}
+
+.qs-dialog-empty {
+    color: var(--text-color-secondary);
+    text-align: center;
+    padding: 1rem;
+}
+
+.qs-dialog-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--qs-border-soft);
+}
+
+.qs-dialog-total strong {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+@media (max-width: 1100px) {
+    .qs-shell {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .qs-cart {
+        min-height: 420px;
+    }
+
+    .qs-table-meta {
+        display: none;
+    }
+}
+</style>

@@ -317,13 +317,35 @@ class PdvController extends Controller
             ], 403); // Código HTTP 403 - Proibido
         }
 
+        $paymentMethod = PaymentMethod::find($data['payment_method_id'] ?? null);
+        if (!$paymentMethod) {
+            return response()->json([
+                'message' => 'Método de pagamento não encontrado.'
+            ], 404);
+        }
+
+        $isCredit = (int) $paymentMethod->is_credit === 1 || (int) $paymentMethod->id === 8;
+
+        if ($isCredit) {
+            $customer = Customer::find($data['customer_id'] ?? null);
+            if (!$customer) {
+                return response()->json([
+                    'message' => 'Selecione o cliente para venda a crédito.'
+                ], 422);
+            }
+        }
+
+        $orderStatusId = $isCredit ? 4 : 3;
+        $customerId = $isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null);
+
         try {
-            DB::transaction(function () use ($data, $openCashRegister, &$order, &$payment, &$total_consumed) {
+            DB::transaction(function () use ($data, $openCashRegister, &$order, &$payment, &$total_consumed, $orderStatusId, $customerId) {
                 $order = Order::create([
                     'user_id' => Auth::user()->id,
                     'total' => $data['total'],
-                    'order_status_id' => 3,
-                    'cash_register_id' => $openCashRegister->id
+                    'order_status_id' => $orderStatusId,
+                    'cash_register_id' => $openCashRegister->id,
+                    'customer_id' => $customerId,
                 ]);
 
                 foreach ($data['products'] as $item) {
@@ -357,7 +379,8 @@ class PdvController extends Controller
                     "payment_method_id" => $data["payment_method_id"],
                     "amount" => $data['total'],
                     "cash_register_id" => $openCashRegister->id,
-                    "user_id" => Auth::user()->id
+                    "user_id" => Auth::user()->id,
+                    "customer_id" => $customerId,
                 ]);
             });
         } catch (RuntimeException $e) {
