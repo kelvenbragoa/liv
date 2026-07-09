@@ -233,14 +233,59 @@ class StockTransferController extends Controller
 
     public function show(string $id)
     {
-        $stocktransfer = StockCenterTransfer::with('stockcenterorigin')
-            ->with('stockcenterdestination')
-            ->with('itens.product')
-            ->with('user')
-            ->with('status')
-            ->find($id);
+        $stocktransfer = StockCenterTransfer::with([
+            'stockcenterorigin',
+            'stockcenterdestination',
+            'itens.product',
+            'user',
+            'status',
+        ])->find($id);
 
-        return response()->json($stocktransfer);
+        if (! $stocktransfer) {
+            return response()->json(['message' => 'Transferência não encontrada.'], 404);
+        }
+
+        $items = $stocktransfer->itens;
+        $totalQuantity = (int) $items->sum('quantity');
+
+        return response()->json([
+            'transfer' => [
+                'id' => $stocktransfer->id,
+                'ref' => $stocktransfer->ref,
+                'transfer_date' => $stocktransfer->transfer_date,
+                'created_at' => $stocktransfer->created_at,
+            ],
+            'origin' => $stocktransfer->stockcenterorigin ? [
+                'id' => $stocktransfer->stockcenterorigin->id,
+                'name' => $stocktransfer->stockcenterorigin->name,
+            ] : null,
+            'destination' => $stocktransfer->stockcenterdestination ? [
+                'id' => $stocktransfer->stockcenterdestination->id,
+                'name' => $stocktransfer->stockcenterdestination->name,
+            ] : null,
+            'status' => $stocktransfer->status ? [
+                'id' => $stocktransfer->status->id,
+                'name' => $stocktransfer->status->name,
+            ] : null,
+            'user' => $stocktransfer->user ? [
+                'id' => $stocktransfer->user->id,
+                'name' => $stocktransfer->user->name,
+            ] : null,
+            'metrics' => [
+                'items_count' => $items->count(),
+                'total_quantity' => $totalQuantity,
+            ],
+            'items' => $items->map(function ($item) use ($stocktransfer) {
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product?->name,
+                    'quantity' => (int) ($item->quantity ?? 0),
+                    'origin_name' => $stocktransfer->stockcenterorigin?->name,
+                    'destination_name' => $stocktransfer->stockcenterdestination?->name,
+                ];
+            })->values(),
+        ]);
     }
 
     public function edit(string $id)

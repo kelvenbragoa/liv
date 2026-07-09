@@ -10,6 +10,7 @@ use App\Models\DailyStockSnapshot;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\StockSnapshot;
 use App\Models\Table;
@@ -319,61 +320,99 @@ class CashRegisterController extends Controller
      */
     public function show(string $id)
     {
-        //
-            $cashRegister = CashRegister::find($id);
-        
-            if (!$cashRegister) {
-                return response()->json([
-                    'message' => 'Nenhum caixa aberto encontrado para este usuário.'
-                ], 404);
-            }
-        
-            // Consultas agrupadas
-            $orders = Order::with('itens') // Carrega os itens de cada pedido
-                ->where('cash_register_id', $cashRegister->id)
-                ->get();
-        
-            $orderItems = OrderItem::where('cash_register_id', $cashRegister->id)->get();
-        
-            $orderItemsTable = OrderItem::whereHas('order', function ($query) {
-                $query->whereNotNull('table_id');
-            })->where('cash_register_id', $cashRegister->id)->get();
-        
-            // $orderItems = $orders->flatMap->itens; // Coleta todos os itens em uma coleção única
-        
-            // Cálculos gerais
-            $totalSales = $orderItems->sum('total');
-            $totalOrders = $orderItems->count();
-            $averageTicket = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
-        
-            // Separação de vendas rápidas e por mesa
-            $tableOrders = $orders->whereNotNull('table_id');
-            $quickSellOrders = $orders->whereNull('table_id');
-        
-            $totalOrderTables = $tableOrders->count();
-            $totalOrderQuickSell = $quickSellOrders->count();
-        
-            $totalOrderTablesAmount = $orderItemsTable->sum('total');
-            $totalOrderQuickSellAmount = $quickSellOrders->flatMap->itens->sum('total');
-        
-            $payments = Payment::where('cash_register_id',$cashRegister->id);
-            $totalpayments = $payments->count();
-            $totalpaymentsamount = $payments->sum('amount');
-        
-        
+        $cashRegister = CashRegister::with(['user', 'status'])->find($id);
+
+        if (! $cashRegister) {
             return response()->json([
-                'cash_register' => $cashRegister,
+                'message' => 'Caixa não encontrado.',
+            ], 404);
+        }
+
+        $orders = Order::with('itens')
+            ->where('cash_register_id', $cashRegister->id)
+            ->get();
+
+        $orderItems = OrderItem::where('cash_register_id', $cashRegister->id)->get();
+
+        $orderItemsTable = OrderItem::where('cash_register_id', $cashRegister->id)
+            ->whereHas('order', function ($query) {
+                $query->whereNotNull('table_id');
+            })
+            ->get();
+
+        $totalSales = (float) $orderItems->sum('total');
+        $ordersCount = $orders->count();
+        $orderItemsCount = $orderItems->count();
+        $averageTicket = $ordersCount > 0 ? $totalSales / $ordersCount : 0;
+
+        $tableOrders = $orders->whereNotNull('table_id');
+        $quickSellOrders = $orders->whereNull('table_id');
+
+        $totalOrderTables = $tableOrders->count();
+        $totalOrderQuickSell = $quickSellOrders->count();
+        $totalOrderTablesAmount = (float) $orderItemsTable->sum('total');
+        $totalOrderQuickSellAmount = (float) $quickSellOrders->flatMap->itens->sum('total');
+
+        $paymentsQuery = Payment::where('cash_register_id', $cashRegister->id);
+        $totalPayments = $paymentsQuery->count();
+        $totalPaymentsAmount = (float) $paymentsQuery->sum('amount');
+
+        $paymentsByMethod = Payment::query()
+            ->where('cash_register_id', $cashRegister->id)
+            ->selectRaw('payment_method_id, COUNT(*) as payments_count, SUM(amount) as payments_total')
+            ->groupBy('payment_method_id')
+            ->get()
+            ->map(function ($row) {
+                $method = PaymentMethod::find($row->payment_method_id);
+
+                return [
+                    'method_id' => $row->payment_method_id,
+                    'method_name' => $method?->name,
+                    'payments_count' => (int) $row->payments_count,
+                    'payments_total' => (float) $row->payments_total,
+                ];
+            })
+            ->values();
+
+        $expectedBalance = (float) ($cashRegister->opening_balance ?? 0) + $totalSales;
+        $declaredBalance = (float) ($cashRegister->closing_balance ?? 0);
+        $systemBalance = (float) ($cashRegister->automatic_closing_balance ?? 0);
+        $difference = (float) ($cashRegister->difference ?? ($declaredBalance - $systemBalance));
+
+        return response()->json([
+            'cash_register' => [
+                'id' => $cashRegister->id,
+                'opening_balance' => (float) ($cashRegister->opening_balance ?? 0),
+                'closing_balance' => $declaredBalance,
+                'automatic_closing_balance' => $systemBalance,
+                'difference' => $difference,
+                'opened_at' => $cashRegister->opened_at ?? $cashRegister->created_at,
+                'closed_at' => $cashRegister->closed_at,
+                'created_at' => $cashRegister->created_at,
+            ],
+            'user' => $cashRegister->user ? [
+                'id' => $cashRegister->user->id,
+                'name' => $cashRegister->user->name,
+            ] : null,
+            'status' => $cashRegister->status ? [
+                'id' => $cashRegister->status->id,
+                'name' => $cashRegister->status->name,
+            ] : null,
+            'metrics' => [
                 'total_sales' => $totalSales,
-                'total_orders' => $totalOrders,
-                'total_tables' => $totalOrderTables,
-                'total_quick_sell' => $totalOrderQuickSell,
+                'orders_count' => $ordersCount,
+                'order_items_count' => $orderItemsCount,
                 'average_ticket' => round($averageTicket, 2),
-                'total_tables_amount' => $totalOrderTablesAmount,
-                'total_quick_sell_amount' => $totalOrderQuickSellAmount,
-                'total_payments' => $totalpayments,
-                'total_payments_amount' => $totalpaymentsamount,
-        
-            ]);
+                'table_orders_count' => $totalOrderTables,
+                'quick_sell_orders_count' => $totalOrderQuickSell,
+                'table_orders_amount' => $totalOrderTablesAmount,
+                'quick_sell_orders_amount' => $totalOrderQuickSellAmount,
+                'payments_count' => $totalPayments,
+                'payments_amount' => $totalPaymentsAmount,
+                'expected_balance' => round($expectedBalance, 2),
+            ],
+            'payments_by_method' => $paymentsByMethod,
+        ]);
     }
 
     /**

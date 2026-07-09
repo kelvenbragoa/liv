@@ -114,7 +114,56 @@ class PaymentMethodController extends Controller
     {
         $paymentmethod = PaymentMethod::with('status')->find($id);
 
-        return response()->json($paymentmethod);
+        if (! $paymentmethod) {
+            return response()->json(['message' => 'Método de pagamento não encontrado.'], 404);
+        }
+
+        $paymentsQuery = Payment::query()->where('payment_method_id', $paymentmethod->id);
+        $paymentsCount = (clone $paymentsQuery)->count();
+        $paymentsTotal = (float) (clone $paymentsQuery)->sum('amount');
+
+        $paymentsThisMonthQuery = (clone $paymentsQuery)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year);
+
+        $recentPayments = Payment::query()
+            ->where('payment_method_id', $paymentmethod->id)
+            ->with(['customer', 'order'])
+            ->latest()
+            ->take(10)
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => (float) ($payment->amount ?? 0),
+                    'order_id' => $payment->order_id,
+                    'customer_name' => $payment->customer?->name,
+                    'created_at' => $payment->created_at,
+                ];
+            });
+
+        return response()->json([
+            'method' => [
+                'id' => $paymentmethod->id,
+                'name' => $paymentmethod->name,
+                'status_id' => $paymentmethod->status_id,
+                'counts_in_revenue' => (bool) $paymentmethod->counts_in_revenue,
+                'is_credit' => (bool) $paymentmethod->is_credit,
+                'created_at' => $paymentmethod->created_at,
+            ],
+            'status' => $paymentmethod->status ? [
+                'id' => $paymentmethod->status->id,
+                'name' => $paymentmethod->status->name,
+            ] : null,
+            'metrics' => [
+                'payments_count' => $paymentsCount,
+                'payments_total' => $paymentsTotal,
+                'payments_this_month_count' => (clone $paymentsThisMonthQuery)->count(),
+                'payments_this_month_total' => (float) (clone $paymentsThisMonthQuery)->sum('amount'),
+                'latest_payment_at' => Payment::where('payment_method_id', $paymentmethod->id)->latest()->value('created_at'),
+            ],
+            'recent_payments' => $recentPayments,
+        ]);
     }
 
     /**

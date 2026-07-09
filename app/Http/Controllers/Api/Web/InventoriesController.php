@@ -189,12 +189,57 @@ class InventoriesController extends Controller
 
     public function show(string $id)
     {
-        $inventory = Inventory::with('stockcenter')
-            ->with('itens.product')
-            ->with('user')
-            ->find($id);
+        $inventory = Inventory::with(['stockcenter', 'itens.product', 'user'])->find($id);
 
-        return response()->json($inventory);
+        if (! $inventory) {
+            return response()->json(['message' => 'Inventário não encontrado.'], 404);
+        }
+
+        $items = $inventory->itens;
+        $mappedItems = $items->map(function ($item) {
+            $last = (int) ($item->last_quantity ?? 0);
+            $qty = (int) ($item->quantity ?? 0);
+
+            return [
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'product_name' => $item->product?->name,
+                'last_quantity' => $last,
+                'quantity' => $qty,
+                'adjustment' => $qty - $last,
+            ];
+        });
+
+        $positiveAdjustments = (int) $mappedItems->where('adjustment', '>', 0)->sum('adjustment');
+        $negativeAdjustments = (int) abs($mappedItems->where('adjustment', '<', 0)->sum('adjustment'));
+        $netAdjustment = (int) $mappedItems->sum('adjustment');
+
+        return response()->json([
+            'inventory' => [
+                'id' => $inventory->id,
+                'ref' => $inventory->ref,
+                'products_number' => $inventory->products_number,
+                'obs' => $inventory->obs,
+                'created_at' => $inventory->created_at,
+            ],
+            'stock_center' => $inventory->stockcenter ? [
+                'id' => $inventory->stockcenter->id,
+                'name' => $inventory->stockcenter->name,
+            ] : null,
+            'user' => $inventory->user ? [
+                'id' => $inventory->user->id,
+                'name' => $inventory->user->name,
+            ] : null,
+            'metrics' => [
+                'items_count' => $items->count(),
+                'products_number' => (int) ($inventory->products_number ?? 0),
+                'positive_adjustments' => $positiveAdjustments,
+                'negative_adjustments' => $negativeAdjustments,
+                'net_adjustment' => $netAdjustment,
+                'items_with_difference' => $mappedItems->where('adjustment', '!=', 0)->count(),
+            ],
+            'items' => $mappedItems->values(),
+        ]);
     }
 
     public function edit(string $id)

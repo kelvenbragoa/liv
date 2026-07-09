@@ -1,355 +1,152 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { useForm } from 'vee-validate';
-// import { debounce } from 'lodash';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-import * as yup from 'yup';
 import moment from 'moment';
-import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
 
-const isLoadingPaymentTab = ref(false);
+const isLoading = ref(true);
+const details = ref(null);
+
 const isLoadingQuickSellTab = ref(false);
 const isLoadingTableTab = ref(false);
+const isLoadingPaymentTab = ref(false);
 
-const quicksellreport = ref([])
-const tablesellreport = ref([])
-const paymentreport = ref([])
+const quicksellreport = ref({ data: [] });
+const tablesellreport = ref({ data: [] });
+const paymentreport = ref({ data: [] });
+
 const totalRecordsQuickSell = ref(0);
 const totalRecordsTable = ref(0);
 const totalRecordsPayments = ref(0);
 
-
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
 const currentPageQuickSell = ref(1);
 const currentPageTableSell = ref(1);
 const currentPagePayments = ref(1);
-const currentPage = ref(1);
-
 const rowsPerPage = ref(100);
-const totalamount = ref(0);
-const displayConfirmation = ref(false);
-const categories = ref(null);
-const selectedProducts = ref([]);
-const total = ref(0);
-const totalsales = ref(0);
-const payment_methods = ref([]);
-const isLoadingButton = ref(false);
-const payment_method_id = ref(1);
-const showDialog = ref(false);
-const pdfUrl = ref(null);
-const activeIndex = ref(0);
-
-
-const cash_register = ref(0)
-const total_sales = ref(0)
-const total_orders = ref(0)
-const average_ticket = ref(0)
-const total_tables = ref(0)
-const total_quick_sell_amount= ref(0)
-const total_tables_amount = ref(0)
-const total_quick_sell = ref(0)
-const total_payments = ref(0)
-const total_payments_amount = ref(0)
-
-
-const statusCaixa = ref('Aberto')
-const historicoVendas = ref([])
 
 const showDialogOrder = ref(false);
 const selectedOrder = ref(null);
 
-// Função para abrir o dialog com os itens do pedido
-const seeOrderItens = (order) => {
-  selectedOrder.value = order;
-  showDialogOrder.value = true;
-};
+const cashRegister = computed(() => details.value?.cash_register ?? null);
+const user = computed(() => details.value?.user ?? null);
+const status = computed(() => details.value?.status ?? null);
+const metrics = computed(() => details.value?.metrics ?? {});
+const paymentsByMethod = computed(() => details.value?.payments_by_method ?? []);
 
-
-const openFileDialog = ref(false); // Controla a visibilidade do dialog
-
-// Definindo os itens do Menubar
-const nestedMenuitems = [
-  {
-    label: 'Consumo',
-    items: [
-      { 
-        label: 'Ver consumo', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-      { 
-        label: 'Imprimir Consumo', 
-        icon: 'pi pi-fw pi-print', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  },
-];
+const cashRegisterId = computed(() => router.currentRoute.value.params.id);
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
+    router?.back();
+}
+
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
+}
+
+function formatMoney(value) {
+    const number = Number(value ?? 0);
+    return number.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getStatusSeverity(statusId) {
+    switch (Number(statusId)) {
+        case 1: return 'success';
+        case 2: return 'secondary';
+        default: return 'info';
     }
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
-
-function getSeverity2(status) {
-    switch (status) {
-        case 1:
-            return 'red';
-
-        case 2:
-            return 'red';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
-    }
+function differenceClass(value) {
+    const n = Number(value ?? 0);
+    if (n > 0) return 'crshow-good';
+    if (n < 0) return 'crshow-bad';
+    return 'crshow-neutral';
 }
 
-function printPDF() {
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
-    }
-}
-function closeDialog() {
-    showDialog.value = true;
-    router.back();
-
+function seeOrderItens(order) {
+    selectedOrder.value = order;
+    showDialogOrder.value = true;
 }
 
-function saveCart() {
-    // Exemplo de dados para salvar
-    const cartData = {
-      products: selectedProducts.value.map(product => ({
-        id: product.id,
-        name: product.name,
-        quantity: product.quantity,
-        total: product.price * product.quantity
-      })),
-      total: total.value,
-      payment_method_id: payment_method_id.value,
-      request_id: createRequestId(),
-    };
-
-    isLoadingButton.value = true;
-    axios.post(`/api/pdv/quicksell`, cartData, {
-    headers: {
-        'Content-Type': 'multipart/form-data'
-    }
-    })
-    .then(async (response) => {
-        toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
-
-        const orderId = response.data.order_id;
-        if (!orderId) {
-            return;
-        }
-
-        try {
-            const pdfResponse = await axios.post(`/api/getquickreceipt/${orderId}`, {}, { responseType: 'blob' });
-            const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);
-            showDialog.value = true;
-        } catch (pdfError) {
-            console.error('Erro ao obter recibo:', pdfError);
-            toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Venda gravada, mas falhou a impressão do recibo.', life: 4000 });
-        }
-    })
-    .catch((error) => {
-        console.log(error)
-        toast.add({ severity: 'error', summary: 'Erro', detail: error.response?.data?.message || 'Ocorreu um erro inesperado.', life: 3000 });
-        if (error.response?.data?.errors) {
-            setErrors(error.response.data.errors);
-        }
-    })
-    .finally(() => {
-        isLoadingButton.value = false;
-    });
-  }
-
-function addToCart(product) {
-    // Verifica se o produto já foi adicionado ao carrinho
-    const existingProduct = selectedProducts.value.find(item => item.id === product.id);
-
-if (existingProduct) {
-  // Se o produto já estiver no carrinho, aumenta a quantidade
-  existingProduct.quantity += 1;
-} else {
-  // Caso contrário, adiciona o produto com a quantidade 1
-  selectedProducts.value.push({ ...product, quantity: 1 });
-}
-
-// Atualiza o total
-updateTotal();
-}
-
-function removeFromCart(index) {
-    selectedProducts.value.splice(index, 1);
-    updateTotal();
-  }
-
-function updateTotal() {
-    // Calcula o total com base nas quantidades dos produtos
-    total.value = selectedProducts.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-}
-function getSeverity(status) {
-    switch (status) {
-        case 1:
-            return 'success';
-
-        case 2:
-            return 'danger';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
-    }
-}
-
-const getData = async (page = 1) => {
-    axios
-        .get(`/api/cashregister/${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            cash_register.value = response.data.cash_register;
-            total_sales.value = response.data.total_sales;
-            total_orders.value = response.data.total_orders;
-            total_tables.value = response.data.total_tables;
-            total_quick_sell.value = response.data.total_quick_sell;
-            average_ticket.value = response.data.average_ticket;
-            total_quick_sell_amount.value = response.data.total_quick_sell_amount;
-            total_tables_amount.value = response.data.total_tables_amount;
-            total_payments.value = response.data.total_payments;
-            total_payments_amount.value = response.data.total_payments_amount;
-
-
-            // categories.value = response.data.categories;
-            // payment_methods.value = response.data.payment_methods;
-            // payment_method_id.value = 1;
-
-            isLoadingDiv.value = false;
-
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-            goBackUsingBack();
+const getData = async () => {
+    isLoading.value = true;
+    try {
+        const response = await axios.get(`/api/cashregister/${cashRegisterId.value}`);
+        details.value = response.data;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível carregar o caixa.',
+            life: 3000
         });
-};
-
-const getPaymentsData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/paymentreport?page=${page}&user=${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            paymentreport.value = response.data;
-            totalRecordsPayments.value = response.data.total;
-            isLoadingPaymentTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingPaymentTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-        });
-};
-
-const getTableData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/tablesellreport?page=${page}&user=${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            tablesellreport.value = response.data;
-            totalRecordsTable.value = response.data.total;
-            isLoadingTableTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingTableTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-        });
+        goBackUsingBack();
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const getQuickSellData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/quicksellreport?page=${page}&user=${router.currentRoute.value.params.id}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            quicksellreport.value = response.data;
-            totalRecordsQuickSell.value = response.data.total;
-            isLoadingQuickSellTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingQuickSellTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
+    isLoadingQuickSellTab.value = true;
+    try {
+        const response = await axios.get('/api/cashregisters/quicksellreport', {
+            params: { page, user: cashRegisterId.value }
         });
+        quicksellreport.value = response.data;
+        totalRecordsQuickSell.value = response.data.total ?? 0;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Falha ao carregar vendas rápidas.',
+            life: 3000
+        });
+    } finally {
+        isLoadingQuickSellTab.value = false;
+    }
 };
 
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/tables/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
+const getTableData = async (page = 1) => {
+    isLoadingTableTab.value = true;
+    try {
+        const response = await axios.get('/api/cashregisters/tablesellreport', {
+            params: { page, user: cashRegisterId.value }
         });
+        tablesellreport.value = response.data;
+        totalRecordsTable.value = response.data.total ?? 0;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Falha ao carregar vendas em mesa.',
+            life: 3000
+        });
+    } finally {
+        isLoadingTableTab.value = false;
+    }
+};
+
+const getPaymentsData = async (page = 1) => {
+    isLoadingPaymentTab.value = true;
+    try {
+        const response = await axios.get('/api/cashregisters/paymentreport', {
+            params: { page, user: cashRegisterId.value }
+        });
+        paymentreport.value = response.data;
+        totalRecordsPayments.value = response.data.total ?? 0;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Falha ao carregar pagamentos.',
+            life: 3000
+        });
+    } finally {
+        isLoadingPaymentTab.value = false;
+    }
 };
 
 const onPageChangeQuickSell = (event) => {
@@ -357,394 +154,313 @@ const onPageChangeQuickSell = (event) => {
     rowsPerPage.value = event.rows;
     getQuickSellData(currentPageQuickSell.value);
 };
+
 const onPageChangeTableSell = (event) => {
     currentPageTableSell.value = event.page + 1;
     rowsPerPage.value = event.rows;
     getTableData(currentPageTableSell.value);
 };
+
 const onPageChangePayments = (event) => {
     currentPagePayments.value = event.page + 1;
     rowsPerPage.value = event.rows;
     getPaymentsData(currentPagePayments.value);
 };
 
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
-
-watch(searchQuery,debouncedSearch);
-
-onMounted(() => {
-    getData();
-    getPaymentsData();
+onMounted(async () => {
+    await getData();
     getQuickSellData();
     getTableData();
-
+    getPaymentsData();
 });
-
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
+    <div v-if="isLoading" class="crshow-loading">
+        <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" />
+        <p>A carregar visão do caixa...</p>
     </div>
-    
-        
-        <div v-else>
-            <div class="w-full">
-                    <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
-                </div>
-            <div class="grid grid-cols-12 gap-8 mb-3">
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Caixa</span>
-                                <small>Aberto ás: {{ moment(cash_register.created_at).format('DD-MM-YYYY H:mm') }}</small> <br>
-                                <small>Fechado ás: {{cash_register.closed_at ?  moment(cash_register.closed_at).format('DD-MM-YYYY H:mm') : '-' }}</small> <br>
-                                <small>Valor Declarado: {{cash_register.closing_balance }} MT</small> <br>
-                                <small>Valor Sistema: {{cash_register.automatic_closing_balance }} MT</small> <br>
-                                <small>Diferenca: {{cash_register.difference }} MT</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total de Vendas</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_sales}} MT</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Pedidos</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_orders}}</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Ticket Médio</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{average_ticket}} MT</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Mesas Abertas</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables}}</span>
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables_amount}} MT</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pedidos/Venda Rápido</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell}}</span>
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell_amount}} MT</span>
-                                </div>
 
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
+    <div v-else-if="details" class="crshow-page">
+        <div class="crshow-card">
+            <header class="crshow-header">
+                <div>
+                    <p class="crshow-eyebrow">Gestão de caixa</p>
+                    <h1>Caixa #{{ cashRegister?.id }}</h1>
+                    <p class="crshow-subtitle">
+                        Operador: <strong>{{ user?.name || '—' }}</strong>
+                        · Aberto: {{ formatDate(cashRegister?.opened_at) }}
+                        · Fechado: {{ formatDate(cashRegister?.closed_at) }}
+                    </p>
                 </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>- -
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
-                                </div>
+                <div class="crshow-header__actions">
+                    <Button label="Voltar" icon="pi pi-arrow-left" outlined @click="goBackUsingBack" />
+                    <Button
+                        v-if="user?.id"
+                        label="Ver utilizador"
+                        icon="pi pi-user"
+                        severity="secondary"
+                        outlined
+                        @click="router.push(`/admin/users/${user.id}`)"
+                    />
+                </div>
+            </header>
 
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
+            <section class="crshow-status">
+                <Tag
+                    v-if="status?.name"
+                    :value="status.name"
+                    :severity="getStatusSeverity(status?.id)"
+                />
+                <span class="crshow-status__meta">Saldo inicial: {{ formatMoney(cashRegister?.opening_balance) }} MT</span>
+            </section>
+
+            <section class="crshow-kpis">
+                <div class="crshow-kpi crshow-kpi--highlight">
+                    <span class="crshow-kpi__label">Total vendas</span>
+                    <strong>{{ formatMoney(metrics.total_sales) }} MT</strong>
                 </div>
-                
-            </div>
-            <Tabs value="0">
-                <TabList>
-                    <Tab value="0">Vendas Rápidas</Tab>
-                    <Tab value="1">Vendas em Mesas</Tab>
-                    <Tab value="2">Pagamentos Efetuados</Tab>
-                </TabList>
-                <TabPanels>
-                    <TabPanel value="0">
-                        <DataTable
-                        :value="quicksellreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsQuickSell"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingQuickSellTab"
-                        :first="(currentPageQuickSell - 1) * rowsPerPage"
-                        :onPage="onPageChangeQuickSell"
-                        showGridlines
-                        >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                Pedido Rápido
-                            </template>
-                        </Column>
-                        <Column header="Garçom" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.user.name }}
-                            </template>
-                        </Column>
-                        <Column header="Estado" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.status.name }}
-                            </template>
-                        </Column>
-                        <Column header="Itens" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.itens.length }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.total }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <Column header="Ações" style="min-width: 12rem">
+                <div class="crshow-kpi">
+                    <span class="crshow-kpi__label">Pedidos</span>
+                    <strong>{{ metrics.orders_count ?? 0 }}</strong>
+                </div>
+                <div class="crshow-kpi">
+                    <span class="crshow-kpi__label">Ticket médio</span>
+                    <strong>{{ formatMoney(metrics.average_ticket) }} MT</strong>
+                </div>
+                <div class="crshow-kpi">
+                    <span class="crshow-kpi__label">Mesas</span>
+                    <strong>{{ metrics.table_orders_count ?? 0 }} · {{ formatMoney(metrics.table_orders_amount) }} MT</strong>
+                </div>
+                <div class="crshow-kpi">
+                    <span class="crshow-kpi__label">Venda rápida</span>
+                    <strong>{{ metrics.quick_sell_orders_count ?? 0 }} · {{ formatMoney(metrics.quick_sell_orders_amount) }} MT</strong>
+                </div>
+                <div class="crshow-kpi">
+                    <span class="crshow-kpi__label">Pagamentos</span>
+                    <strong>{{ metrics.payments_count ?? 0 }} · {{ formatMoney(metrics.payments_amount) }} MT</strong>
+                </div>
+            </section>
+
+            <section class="crshow-info">
+                <h3>Fecho de caixa</h3>
+                <div class="crshow-info__grid">
+                    <p><strong>Saldo esperado:</strong> {{ formatMoney(metrics.expected_balance) }} MT</p>
+                    <p><strong>Saldo sistema:</strong> {{ formatMoney(cashRegister?.automatic_closing_balance) }} MT</p>
+                    <p><strong>Saldo declarado:</strong> {{ formatMoney(cashRegister?.closing_balance) }} MT</p>
+                    <p>
+                        <strong>Diferença:</strong>
+                        <span :class="differenceClass(cashRegister?.difference)">{{ formatMoney(cashRegister?.difference) }} MT</span>
+                    </p>
+                </div>
+            </section>
+
+            <section v-if="paymentsByMethod.length" class="crshow-panel">
+                <h3>Pagamentos por método</h3>
+                <DataTable :value="paymentsByMethod" dataKey="method_id" rowHover stripedRows responsiveLayout="scroll">
+                    <Column header="Método" style="min-width: 12rem">
                         <template #body="{ data }">
-                            <a class="m-3" href="#" @click.prevent="seeOrderItens(data)"><i class="pi pi-eye"></i></a>
+                            <Button
+                                v-if="data.method_id"
+                                :label="data.method_name || '—'"
+                                link
+                                size="small"
+                                @click="router.push(`/admin/paymentmethods/${data.method_id}`)"
+                            />
+                            <span v-else>—</span>
                         </template>
-                        </Column>
-                    </DataTable>
-                    </TabPanel>
-                    <TabPanel value="1">
-                        <DataTable
-                        :value="tablesellreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsTable"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingTableTab"
-                        :first="(currentPageTableSell - 1) * rowsPerPage"
-                        :onPage="onPageChangeTableSell"
-                        showGridlines
-                        >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{data.table.name}}
-                            </template>
-                        </Column>
-                        <Column header="Garçom" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.user.name }}
-                            </template>
-                        </Column>
-                        <Column header="Estado" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.status.name }}
-                            </template>
-                        </Column>
-                        <Column header="Itens" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.itens.length }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.total }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <Column header="Ações" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <a class="m-3" href="#" @click.prevent="seeOrderItens(data)"><i class="pi pi-eye"></i></a>
-                        </template>
-                        </Column>
-                    </DataTable>
-                    </TabPanel>
-                    <TabPanel value="2">
-                        <DataTable
-                        :value="paymentreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsPayments"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingPaymentTab"
-                        :first="(currentPagePayments - 1) * rowsPerPage"
-                        :onPage="onPageChangePayments"
-                        showGridlines
-                        >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Venda" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.order_id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.order.table_id == null ? "Pedido Rápido" : data.order.table.name}}
-                            </template>
-                        </Column>
-                        <Column header="Metodo de Pagamento" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.method.name }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.amount }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <!-- <Column header="Ações" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <router-link class="m-3" :to="'/admin/entrynotes/' + data.id + '/edit'"><i class="pi pi-file-edit"></i></router-link>  
-                            <router-link class="m-3" :to="'/admin/entrynotes/' + data.id"><i class="pi pi-eye"></i></router-link>
-                            <a class="m-3" href="#" @click.prevent="confirmDeletion(data.id)"><i class="pi pi-trash"></i></a>
-                        </template>
-                        </Column> -->
-                    </DataTable>
-                    </TabPanel>
-                </TabPanels>
-            </Tabs>
+                    </Column>
+                    <Column header="Quantidade" style="min-width: 8rem">
+                        <template #body="{ data }">{{ data.payments_count }}</template>
+                    </Column>
+                    <Column header="Total" style="min-width: 8rem">
+                        <template #body="{ data }">{{ formatMoney(data.payments_total) }} MT</template>
+                    </Column>
+                </DataTable>
+            </section>
+
+            <section class="crshow-panel">
+                <Tabs value="0">
+                    <TabList>
+                        <Tab value="0">Vendas rápidas</Tab>
+                        <Tab value="1">Vendas em mesas</Tab>
+                        <Tab value="2">Pagamentos</Tab>
+                    </TabList>
+                    <TabPanels>
+                        <TabPanel value="0">
+                            <DataTable
+                                :value="quicksellreport.data"
+                                :paginator="true"
+                                :rows="rowsPerPage"
+                                :totalRecords="totalRecordsQuickSell"
+                                dataKey="id"
+                                lazy
+                                rowHover
+                                stripedRows
+                                :loading="isLoadingQuickSellTab"
+                                :first="(currentPageQuickSell - 1) * rowsPerPage"
+                                @page="onPageChangeQuickSell"
+                                responsiveLayout="scroll"
+                            >
+                                <template #empty><div class="crshow-empty">Sem vendas rápidas neste caixa.</div></template>
+                                <Column header="Pedido" style="min-width: 6rem">
+                                    <template #body="{ data }">#{{ data.id }}</template>
+                                </Column>
+                                <Column header="Operador" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ data.user?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Estado" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ data.status?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Itens" style="min-width: 6rem">
+                                    <template #body="{ data }">{{ data.itens?.length ?? 0 }}</template>
+                                </Column>
+                                <Column header="Total" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ formatMoney(data.total) }} MT</template>
+                                </Column>
+                                <Column header="Data" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                                </Column>
+                                <Column header="Ações" style="min-width: 6rem">
+                                    <template #body="{ data }">
+                                        <Button icon="pi pi-eye" text rounded @click="seeOrderItens(data)" />
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </TabPanel>
+
+                        <TabPanel value="1">
+                            <DataTable
+                                :value="tablesellreport.data"
+                                :paginator="true"
+                                :rows="rowsPerPage"
+                                :totalRecords="totalRecordsTable"
+                                dataKey="id"
+                                lazy
+                                rowHover
+                                stripedRows
+                                :loading="isLoadingTableTab"
+                                :first="(currentPageTableSell - 1) * rowsPerPage"
+                                @page="onPageChangeTableSell"
+                                responsiveLayout="scroll"
+                            >
+                                <template #empty><div class="crshow-empty">Sem vendas em mesa neste caixa.</div></template>
+                                <Column header="Pedido" style="min-width: 6rem">
+                                    <template #body="{ data }">#{{ data.id }}</template>
+                                </Column>
+                                <Column header="Mesa" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ data.table?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Operador" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ data.user?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Estado" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ data.status?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Total" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ formatMoney(data.total) }} MT</template>
+                                </Column>
+                                <Column header="Data" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                                </Column>
+                                <Column header="Ações" style="min-width: 6rem">
+                                    <template #body="{ data }">
+                                        <Button icon="pi pi-eye" text rounded @click="seeOrderItens(data)" />
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </TabPanel>
+
+                        <TabPanel value="2">
+                            <DataTable
+                                :value="paymentreport.data"
+                                :paginator="true"
+                                :rows="rowsPerPage"
+                                :totalRecords="totalRecordsPayments"
+                                dataKey="id"
+                                lazy
+                                rowHover
+                                stripedRows
+                                :loading="isLoadingPaymentTab"
+                                :first="(currentPagePayments - 1) * rowsPerPage"
+                                @page="onPageChangePayments"
+                                responsiveLayout="scroll"
+                            >
+                                <template #empty><div class="crshow-empty">Sem pagamentos neste caixa.</div></template>
+                                <Column header="ID" style="min-width: 5rem">
+                                    <template #body="{ data }">#{{ data.id }}</template>
+                                </Column>
+                                <Column header="Pedido" style="min-width: 6rem">
+                                    <template #body="{ data }">#{{ data.order_id }}</template>
+                                </Column>
+                                <Column header="Origem" style="min-width: 10rem">
+                                    <template #body="{ data }">
+                                        {{ data.order?.table_id == null ? 'Venda rápida' : (data.order?.table?.name || 'Mesa') }}
+                                    </template>
+                                </Column>
+                                <Column header="Método" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ data.method?.name || '—' }}</template>
+                                </Column>
+                                <Column header="Valor" style="min-width: 8rem">
+                                    <template #body="{ data }">{{ formatMoney(data.amount) }} MT</template>
+                                </Column>
+                                <Column header="Data" style="min-width: 10rem">
+                                    <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                                </Column>
+                            </DataTable>
+                        </TabPanel>
+                    </TabPanels>
+                </Tabs>
+            </section>
         </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
-        <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
-        </template>
-    </Dialog>
-      <!-- Dialog -->
-    <Dialog header="Open File" v-model:visible="openFileDialog" style="width: 30vw">
-        <p>Here you can manage your files or perform specific actions.</p>
-        <Button label="Close" @click="openFileDialog = false" />
-    </Dialog>
-    <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
-      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
-      
-      <template #footer>
-        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
-      </template>
-    </Dialog>
+    </div>
 
-    <!-- Dialog para exibir os itens do pedido -->
     <Dialog
-      v-model:visible="showDialogOrder"
-      :header="'Itens do Pedido #'"
-      :modal="true"
-      :style="{ width: '50vw' }"
+        v-model:visible="showDialogOrder"
+        :header="selectedOrder ? `Itens do pedido #${selectedOrder.id}` : 'Itens do pedido'"
+        modal
+        :style="{ width: 'min(720px, 95vw)' }"
     >
-      <template v-if="selectedOrder">
-        <DataTable :value="selectedOrder.itens" responsiveLayout="scroll">
-          <Column header="Produto" style="min-width: 12rem">
-            <template #body="{ data }">{{ data.product.name }}</template>
-          </Column>
-
-          <Column header="Quantidade" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.quantity }}</template>
-          </Column>
-
-          <Column header="Preço Unitário" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.price }} MT</template>
-          </Column>
-
-          <Column header="Total" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.total }} MT</template>
-          </Column>
+        <DataTable v-if="selectedOrder" :value="selectedOrder.itens" responsiveLayout="scroll">
+            <Column header="Produto" style="min-width: 12rem">
+                <template #body="{ data }">{{ data.product?.name || '—' }}</template>
+            </Column>
+            <Column header="Qtd" style="min-width: 5rem">
+                <template #body="{ data }">{{ data.quantity }}</template>
+            </Column>
+            <Column header="Preço" style="min-width: 7rem">
+                <template #body="{ data }">{{ formatMoney(data.price) }} MT</template>
+            </Column>
+            <Column header="Total" style="min-width: 7rem">
+                <template #body="{ data }">{{ formatMoney(data.total) }} MT</template>
+            </Column>
         </DataTable>
-      </template>
-
-      <template v-else>
-        <p>Nenhum item encontrado para este pedido.</p>
-      </template>
     </Dialog>
 </template>
+
+<style scoped>
+.crshow-loading { min-height: 50vh; display: grid; place-items: center; gap: .75rem; color: var(--text-color-secondary); }
+.crshow-page { --b: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%); --bs: color-mix(in srgb, var(--surface-border) 85%, transparent); --bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%); }
+.crshow-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.1rem; border: 1px solid var(--b); border-radius: 1rem; background: var(--surface-card); box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 0 0 1px var(--bs); }
+.crshow-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.crshow-header__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.crshow-eyebrow { margin: 0; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary-color); }
+.crshow-header h1 { margin: .15rem 0 0; font-size: 1.5rem; }
+.crshow-subtitle { margin: .25rem 0 0; color: var(--text-color-secondary); }
+.crshow-status { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .65rem .9rem; border: 1px solid var(--bs); border-radius: .75rem; background: var(--bg); }
+.crshow-status__meta { color: var(--text-color-secondary); font-size: .9rem; }
+.crshow-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .75rem; }
+.crshow-kpi { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border: 1px solid var(--bs); border-radius: .8rem; background: var(--bg); }
+.crshow-kpi--highlight { border-color: color-mix(in srgb, var(--primary-color) 35%, var(--bs)); }
+.crshow-kpi__label { font-size: .78rem; color: var(--text-color-secondary); }
+.crshow-info, .crshow-panel { padding: .9rem; border: 1px solid var(--bs); border-radius: .85rem; background: var(--bg); }
+.crshow-info h3, .crshow-panel h3 { margin: 0 0 .6rem; font-size: 1rem; }
+.crshow-info__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .9rem; }
+.crshow-info__grid p { margin: 0; }
+.crshow-empty { padding: 1.2rem; text-align: center; color: var(--text-color-secondary); }
+.crshow-good { color: var(--green-500); font-weight: 600; }
+.crshow-bad { color: var(--red-500); font-weight: 600; }
+.crshow-neutral { color: var(--text-color-secondary); font-weight: 600; }
+@media (max-width: 1200px) { .crshow-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .crshow-kpis, .crshow-info__grid { grid-template-columns: 1fr; } }
+</style>

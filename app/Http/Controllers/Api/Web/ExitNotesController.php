@@ -221,13 +221,56 @@ class ExitNotesController extends Controller
 
     public function show(string $id)
     {
-        $exitnote = ExitNotes::with('stockcenter')
-            ->with('user')
-            ->with('supplier')
-            ->with('itens.product')
-            ->find($id);
+        $exitnote = ExitNotes::with(['stockcenter', 'user', 'supplier', 'itens.product'])->find($id);
 
-        return response()->json($exitnote);
+        if (! $exitnote) {
+            return response()->json(['message' => 'Nota de saída não encontrada.'], 404);
+        }
+
+        $items = $exitnote->itens;
+        $totalQuantity = (int) $items->sum('quantity');
+
+        return response()->json([
+            'note' => [
+                'id' => $exitnote->id,
+                'ref' => $exitnote->ref,
+                'document_ref' => $exitnote->document_ref,
+                'serie' => $exitnote->serie,
+                'products_number' => $exitnote->products_number,
+                'obs' => $exitnote->obs,
+                'created_at' => $exitnote->created_at,
+            ],
+            'stock_center' => $exitnote->stockcenter ? [
+                'id' => $exitnote->stockcenter->id,
+                'name' => $exitnote->stockcenter->name,
+            ] : null,
+            'supplier' => $exitnote->supplier ? [
+                'id' => $exitnote->supplier->id,
+                'name' => $exitnote->supplier->name,
+            ] : null,
+            'user' => $exitnote->user ? [
+                'id' => $exitnote->user->id,
+                'name' => $exitnote->user->name,
+            ] : null,
+            'metrics' => [
+                'items_count' => $items->count(),
+                'products_number' => (int) ($exitnote->products_number ?? 0),
+                'total_quantity' => $totalQuantity,
+            ],
+            'items' => $items->map(function ($item) {
+                $last = (int) ($item->last_quantity ?? 0);
+                $qty = (int) ($item->quantity ?? 0);
+
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product?->name,
+                    'last_quantity' => $last,
+                    'quantity' => $qty,
+                    'stock_after' => max(0, $last - $qty),
+                ];
+            })->values(),
+        ]);
     }
 
     public function edit(string $id)

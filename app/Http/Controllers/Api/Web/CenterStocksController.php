@@ -144,38 +144,123 @@ class CenterStocksController extends Controller
         return response()->json($stockcenter);
     }
 
+    private function buildCenterProductsQuery(Request $request, int $centerId)
+    {
+        $sortBy = $request->input('sort_by', 'quantity');
+        $allowedSort = ['quantity', 'product_name', 'created_at', 'id'];
+
+        if (! in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'quantity';
+        }
+
+        $sortDir = strtolower((string) $request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $query = StockCenterProduct::query()
+            ->where('stock_center_id', $centerId)
+            ->when($request->filled('query'), function ($query) use ($request) {
+                $search = $request->input('query');
+                $query->whereHas('product', function ($productQuery) use ($search) {
+                    $productQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                            $categoryQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('subcategory', function ($subcategoryQuery) use ($search) {
+                            $subcategoryQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->filled('stock_status'), function ($query) use ($request) {
+                $status = $request->input('stock_status');
+
+                if ($status === 'zero') {
+                    $query->where('quantity', '<=', 0);
+                } elseif ($status === 'low') {
+                    $query->where('quantity', '>', 0)->where('quantity', '<=', 5);
+                } elseif ($status === 'available') {
+                    $query->where('quantity', '>', 5);
+                }
+            })
+            ->with(['product.category', 'product.subcategory']);
+
+        if ($sortBy === 'product_name') {
+            $query
+                ->join('products', 'products.id', '=', 'stock_center_products.product_id')
+                ->orderBy('products.name', $sortDir)
+                ->select('stock_center_products.*');
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        return $query;
+    }
+
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        //
-        $stockcenter = StockCenter::
-        with('stockcenterproducts')
-        ->find($id);
+        $stockcenter = StockCenter::query()->find($id);
 
-        $stockcenterProducts = StockCenterProduct::where('stock_center_id', $id)
-        ->when(request('query'),function($query,$searchQuery){
-            $query->whereHas('product',function($q) use ($searchQuery){
-                $q->where('name','like',"%{$searchQuery}%");
-            });
-        })
-        ->with('product.category')
-        ->with('product.subcategory')
-        ->paginate();
-        // $products = Product::query()
-        //     ->when(request('query'),function($query,$searchQuery){
-        //         $query->where('name','like',"%{$searchQuery}%");
-        //     })
-        //     ->with('category.department')
-        //     ->with('subcategory')
-        //     ->orderBy('name','asc')
-        //     ->paginate();
+        if (! $stockcenter) {
+            return response()->json(['message' => 'Centro de stock não encontrado.'], 404);
+        }
 
+        $perPage = min(max((int) $request->input('per_page', 15), 5), 100);
+
+        $productsBase = StockCenterProduct::query()->where('stock_center_id', $stockcenter->id);
+        $productsCount = (clone $productsBase)->count();
+        $totalQuantity = (int) ((clone $productsBase)->sum('quantity') ?? 0);
+        $zeroStockProducts = (clone $productsBase)->where('quantity', '<=', 0)->count();
+        $lowStockProducts = (clone $productsBase)->where('quantity', '>', 0)->where('quantity', '<=', 5)->count();
+
+        $transfersInCount = StockCenterTransfer::query()
+            ->where('stock_center_destination_id', $stockcenter->id)
+            ->count();
+        $transfersOutCount = StockCenterTransfer::query()
+            ->where('stock_center_origin_id', $stockcenter->id)
+            ->count();
+
+        $maximumCapacity = is_numeric($stockcenter->maximum_capacity)
+            ? (float) $stockcenter->maximum_capacity
+            : null;
+        $capacityUsagePercent = $maximumCapacity && $maximumCapacity > 0
+            ? min(($totalQuantity / $maximumCapacity) * 100, 100)
+            : null;
+
+        $topProducts = StockCenterProduct::query()
+            ->where('stock_center_id', $stockcenter->id)
+            ->where('quantity', '>', 0)
+            ->with(['product'])
+            ->orderByDesc('quantity')
+            ->limit(8)
+            ->get(['id', 'product_id', 'quantity']);
+
+        $stockcenterProducts = $this->buildCenterProductsQuery($request, (int) $stockcenter->id)
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json([
-            "stockcenter"=>$stockcenter,
-            "stockcenterproducts"=>$stockcenterProducts
+            'stockcenter' => [
+                'id' => $stockcenter->id,
+                'name' => $stockcenter->name,
+                'code' => $stockcenter->code,
+                'location' => $stockcenter->location,
+                'maximum_capacity' => $stockcenter->maximum_capacity,
+                'is_principal_stock' => (int) $stockcenter->is_principal_stock,
+                'created_at' => $stockcenter->created_at,
+            ],
+            'metrics' => [
+                'products_count' => $productsCount,
+                'total_quantity' => $totalQuantity,
+                'zero_stock_products' => $zeroStockProducts,
+                'low_stock_products' => $lowStockProducts,
+                'transfers_in_count' => $transfersInCount,
+                'transfers_out_count' => $transfersOutCount,
+                'capacity_usage_percent' => $capacityUsagePercent,
+            ],
+            'top_products_by_stock' => $topProducts,
+            'stockcenterproducts' => $stockcenterProducts,
         ]);
     }
 
