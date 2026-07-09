@@ -298,7 +298,7 @@ const router = createRouter({
                     meta: {
                         requiresAuth: true
                     },
-                    component: () => import('@/views/pages/admin/pdv/IndexPDV.vue')
+                    component: () => import('@/views/pages/admin/pdv/IndexPdv.vue')
                 },
                 {
                     path: '/admin/pdv/:id/categories',
