@@ -1195,6 +1195,11 @@ const router = createRouter({
             ]
         },
         {
+            path: '/menu-digital',
+            name: 'menu-digital',
+            component: () => import('@/views/pages/MenuDigital.vue')
+        },
+        {
             path: '/',
             name: 'landing',
             component: () => import('@/views/pages/Landing.vue')

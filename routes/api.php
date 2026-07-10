@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Public\MenuDigitalController;
 use App\Http\Controllers\Api\Mobile\AuthMobileController;
 use App\Http\Controllers\Api\Mobile\TableMobileController;
 use App\Http\Controllers\Api\Web\AuthWebController;
@@ -31,6 +32,8 @@ Route::get('/user', function (Request $request) {
 
 Route::post('login',[AuthWebController::class,'login']);
 Route::post('/barman-login', [AuthMobileController::class, 'login']);
+
+Route::get('menu-digital', [MenuDigitalController::class, 'index']);
 
 
 Route::middleware([Sanctum::class])->group(function () {
