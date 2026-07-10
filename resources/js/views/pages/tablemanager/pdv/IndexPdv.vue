@@ -452,28 +452,31 @@ onUnmounted(() => {
     gap: 0.65rem;
     padding: 1rem;
     border-radius: 1rem;
-    border: 1px solid var(--pdv-border-soft);
-    background: var(--pdv-card-bg);
+    border: 1px solid color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 45%, var(--pdv-border-soft));
+    background:
+        linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 28%, var(--pdv-card-bg)),
+            color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 16%, var(--pdv-card-bg))
+        );
     box-shadow: var(--pdv-shadow);
     text-decoration: none;
     color: inherit;
     position: relative;
     overflow: hidden;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.pdv-table-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 4px;
-    background: var(--pdv-accent, var(--primary-color));
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .pdv-table-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--pdv-shadow-hover);
-    border-color: color-mix(in srgb, var(--primary-color) 35%, var(--pdv-border-soft));
+    border-color: color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 58%, var(--pdv-border-soft));
+    background:
+        linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 36%, var(--pdv-card-bg)),
+            color-mix(in srgb, var(--pdv-accent, var(--primary-color)) 22%, var(--pdv-card-bg))
+        );
 }
 
 .pdv-table-card--free { --pdv-accent: #10b981; }
@@ -488,7 +491,6 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     gap: 0.5rem;
-    padding-left: 0.35rem;
 }
 
 .pdv-table-card__icon {
@@ -497,13 +499,12 @@ onUnmounted(() => {
     border-radius: 0.75rem;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--pdv-accent) 14%, var(--pdv-card-bg));
+    background: color-mix(in srgb, var(--pdv-accent) 32%, var(--pdv-card-bg));
     color: var(--pdv-accent);
-    border: 1px solid color-mix(in srgb, var(--pdv-accent) 25%, var(--pdv-border-soft));
+    border: 1px solid color-mix(in srgb, var(--pdv-accent) 48%, var(--pdv-border-soft));
 }
 
 .pdv-table-card__name {
-    padding-left: 0.35rem;
     font-size: 1.35rem;
     font-weight: 800;
     letter-spacing: -0.03em;
@@ -511,7 +512,6 @@ onUnmounted(() => {
 }
 
 .pdv-table-card__meta {
-    padding-left: 0.35rem;
     color: var(--text-color-secondary);
     font-size: 0.82rem;
 }
@@ -522,11 +522,10 @@ onUnmounted(() => {
 
 .pdv-table-card__consumption {
     margin-top: 0.15rem;
-    margin-left: 0.35rem;
     padding: 0.65rem 0.75rem;
     border-radius: 0.75rem;
-    border: 1px solid var(--pdv-border-soft);
-    background: var(--pdv-muted-bg);
+    border: 1px solid color-mix(in srgb, var(--pdv-accent) 35%, var(--pdv-border-soft));
+    background: color-mix(in srgb, var(--pdv-accent) 22%, var(--pdv-card-bg));
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -543,11 +542,10 @@ onUnmounted(() => {
 
 .pdv-table-card__consumption strong {
     font-size: 1.05rem;
-    color: var(--primary-color);
+    color: var(--pdv-accent);
 }
 
 .pdv-table-card__footer {
-    padding-left: 0.35rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -577,7 +575,7 @@ onUnmounted(() => {
     gap: 0.3rem;
     font-size: 0.8rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--pdv-accent);
     flex-shrink: 0;
 }
 

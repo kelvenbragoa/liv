@@ -314,6 +314,8 @@ function payAccount() {
                 life: 2500
             });
 
+            await getData();
+
             const orderId = response.data.order_id;
             if (!orderId) {
                 return;
@@ -888,16 +890,14 @@ onMounted(() => {
         </div>
 
         <div class="qs-pay-methods qs-pay-methods--dialog">
-            <button
+            <Button
                 v-for="method in payment_methods"
                 :key="method.id"
-                type="button"
-                class="qs-pay-chip"
                 :class="{ 'qs-pay-chip--active': payment_method_id === method.id }"
                 @click="selectPayment(method.id)"
             >
                 {{ method.name }}
-            </button>
+            </Button>
         </div>
 
         <div v-if="isCreditPayment" class="qs-credit">

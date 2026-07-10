@@ -314,6 +314,8 @@ function payAccount() {
             openPrintReceipt.value = false;
             toast.add({ severity: 'success', summary: `Successo`, detail: 'Encomenda fechada sucesso!', life: 3000 });
 
+            await getData();
+
             const orderId = response.data.order_id;
             if (!orderId) {
                 return;
@@ -463,7 +465,7 @@ function printReceipt () {
 };
 
 const getData = async (page = 1) => {
-    axios
+    return axios
         .get(`/api/pdv/${router.currentRoute.value.params.id}`, {
             params: {
                 query: searchQuery.value
