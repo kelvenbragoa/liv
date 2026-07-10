@@ -32,6 +32,7 @@ const stockcenters = ref([]);
 const suppliers = ref([]);
 
 const stockcenterproducts = ref([]);
+const filters = ref({});
 
 
 const schema = yup.object({
@@ -118,8 +119,37 @@ const onSubmit = handleSubmit((values) => {
         })
         .catch((error) => {
             isLoadingButton.value = false;
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error.response.data.message}`, life: 3000 });
-            if (error.response.data.errors) {
+            
+            // Tratar erro de estoque insuficiente
+            if (error.response?.data?.insufficient_stock) {
+                const insufficientProducts = error.response.data.insufficient_stock;
+                let errorDetails = 'Estoque insuficiente:\n';
+                insufficientProducts.forEach(item => {
+                    errorDetails += `\n• ${item.product}: Disponível ${item.available}, Solicitado ${item.requested}`;
+                });
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Estoque Insuficiente', 
+                    detail: errorDetails, 
+                    life: 5000 
+                });
+            } else if (error.response?.data?.message) {
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Erro', 
+                    detail: error.response.data.message, 
+                    life: 3000 
+                });
+            } else {
+                toast.add({ 
+                    severity: 'error', 
+                    summary: 'Erro', 
+                    detail: 'Ocorreu um erro ao processar a solicitação', 
+                    life: 3000 
+                });
+            }
+            
+            if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             }
         })
@@ -169,6 +199,16 @@ const deleteData = () => {
         });
 };
 
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    };
+};
+
+const clearFilter = () => {
+    initFilters();
+};
+
 const getProducts = (stockcenter) => {
     loadingproduct.value=true;
     axios.get(`/api/auxiliar-product/${stockcenter}`)
@@ -178,6 +218,8 @@ const getProducts = (stockcenter) => {
     stockcenterproducts.value.forEach(product => {
         product.transferQuantity = 0;
     });
+    // Ordenar alfabeticamente por nome do produto
+    stockcenterproducts.value.sort((a, b) => a.product.name.localeCompare(b.product.name));
     loadingproduct.value=false;
    })
    .catch((error)=>{
@@ -200,6 +242,7 @@ watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
     getData();
+    initFilters();
 });
 
 </script>
@@ -257,12 +300,24 @@ onMounted(() => {
                     :value="stockcenterproducts"
                     dataKey="id"
                     :rowHover="true"
-                    :loading="isLoadingDiv"
+                    :loading="loadingproduct"
+                    v-model:filters="filters"
+                    filterDisplay="row"
+                    :globalFilterFields="['product.name', 'product.category.name', 'product.subcategory.name']"
                     showGridlines
                     >
                     <template #header>
-                        
+                        <div class="flex justify-between">
+                            <Button type="button" icon="pi pi-filter-slash" label="Clear" outlined @click="clearFilter()" />
+                            <IconField>
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Buscar por nome do produto" />
+                            </IconField>
+                        </div>
                     </template>
+                   
                     <template #empty>Nenhuma registro encontrado. </template>
                     <template #loading> Carregando, por favor espere. </template>
                     <Column header="ID" style="min-width: 12rem">

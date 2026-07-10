@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Http\Controllers\Concerns\HandlesIdempotency;
 use App\Http\Controllers\Concerns\ManagesPrincipalStock;
+use App\Http\Controllers\Concerns\ResolvesOrderCashTender;
 use App\Models\Product;
 use App\Models\Table;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class PdvController extends Controller
 {
     use HandlesIdempotency;
     use ManagesPrincipalStock;
+    use ResolvesOrderCashTender;
 
     /**
      * Display a listing of the resource.
@@ -339,10 +341,14 @@ class PdvController extends Controller
         $customerId = $isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null);
 
         try {
-            DB::transaction(function () use ($data, $openCashRegister, &$order, &$payment, &$total_consumed, $orderStatusId, $customerId) {
+            $cashTender = $this->resolveOrderCashTender($data, (float) $data['total'], $isCredit);
+
+            DB::transaction(function () use ($data, $openCashRegister, &$order, &$payment, &$total_consumed, $orderStatusId, $customerId, $cashTender) {
                 $order = Order::create([
                     'user_id' => Auth::user()->id,
                     'total' => $data['total'],
+                    'amount_tendered' => $cashTender['amount_tendered'],
+                    'change_amount' => $cashTender['change_amount'],
                     'order_status_id' => $orderStatusId,
                     'cash_register_id' => $openCashRegister->id,
                     'customer_id' => $customerId,
@@ -653,11 +659,19 @@ class PdvController extends Controller
         // Crédito => order_status_id 4; payment_method crédito = 8; restantes => 3 (Paga)
         $orderStatusId = $isCredit ? 4 : 3;
 
-        $order->update([
-            "order_status_id" => $orderStatusId,
-            "fineshed_by_user_id" => Auth::user()->id,
-            "customer_id" => $isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null),
-        ]);
+        try {
+            $cashTender = $this->resolveOrderCashTender($data, (float) $order->total, $isCredit);
+
+            $order->update([
+                "order_status_id" => $orderStatusId,
+                "fineshed_by_user_id" => Auth::user()->id,
+                "customer_id" => $isCredit ? $data['customer_id'] : ($data['customer_id'] ?? null),
+                'amount_tendered' => $cashTender['amount_tendered'],
+                'change_amount' => $cashTender['change_amount'],
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         $table->update([
             "table_status_id"=>1

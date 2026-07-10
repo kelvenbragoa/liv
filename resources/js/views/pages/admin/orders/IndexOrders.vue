@@ -213,10 +213,12 @@ const exportToExcel = async () => {
         }
 
         const worksheetData = [
-            ['ID', 'Total (MZN)', 'Mesa', 'Estado', 'Utilizador', 'Criado em'],
+            ['ID', 'Total (MZN)', 'Valor entregue (MZN)', 'Troco (MZN)', 'Mesa', 'Estado', 'Utilizador', 'Criado em'],
             ...rows.map((row) => [
                 row.id,
                 row.total ?? 0,
+                row.amount_tendered ?? '',
+                row.change_amount ?? '',
                 row.table ?? '',
                 row.status ?? '',
                 row.user ?? '',
@@ -228,6 +230,8 @@ const exportToExcel = async () => {
         worksheet['!cols'] = [
             { wch: 8 },
             { wch: 14 },
+            { wch: 16 },
+            { wch: 12 },
             { wch: 18 },
             { wch: 14 },
             { wch: 22 },

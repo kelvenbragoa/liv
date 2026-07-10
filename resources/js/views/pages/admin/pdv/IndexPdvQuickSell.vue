@@ -26,6 +26,16 @@ const CREDIT_PAYMENT_METHOD_ID = 8;
 const selectedCustomer = ref(null);
 const customerSuggestions = ref([]);
 const isCreditPayment = computed(() => Number(payment_method_id.value) === CREDIT_PAYMENT_METHOD_ID);
+const amountTendered = ref(null);
+const showCashFields = computed(() => !isCreditPayment.value);
+const changeAmount = computed(() => {
+    const tendered = Number(amountTendered.value ?? 0);
+    const orderTotal = Number(total.value ?? 0);
+    if (!tendered || tendered < orderTotal) {
+        return 0;
+    }
+    return tendered - orderTotal;
+});
 
 const activeCategory = computed(() =>
     (categories.value || []).find((c) => c.id === activeCategoryId.value) || null
@@ -117,6 +127,7 @@ function clearSale() {
     selectedCustomer.value = null;
     customerSuggestions.value = [];
     productSearch.value = '';
+    amountTendered.value = null;
     updateTotal();
     if (payment_methods.value?.length) {
         payment_method_id.value = payment_methods.value[0].id;
@@ -171,6 +182,16 @@ function saveCart() {
         return;
     }
 
+    if (showCashFields.value && amountTendered.value != null && Number(amountTendered.value) < Number(total.value)) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: 'O valor entregue deve ser maior ou igual ao total.',
+            life: 3000
+        });
+        return;
+    }
+
     const cartData = {
         products: selectedProducts.value.map((product) => ({
             id: product.id,
@@ -181,6 +202,9 @@ function saveCart() {
         total: total.value,
         payment_method_id: payment_method_id.value,
         request_id: createRequestId(),
+        ...(showCashFields.value && amountTendered.value != null && amountTendered.value !== ''
+            ? { amount_tendered: Number(amountTendered.value) }
+            : {}),
         ...(isCreditPayment.value && { customer_id: selectedCustomer.value.id })
     };
 
@@ -321,6 +345,9 @@ function selectAllCategories() {
 
 function selectPayment(methodId) {
     payment_method_id.value = methodId;
+    if (Number(methodId) === CREDIT_PAYMENT_METHOD_ID) {
+        amountTendered.value = null;
+    }
 }
 
 const getData = async () => {
@@ -617,6 +644,24 @@ onMounted(() => {
                     <small v-if="selectedCustomer?.name" class="qs-credit-chip">
                         Crédito · {{ selectedCustomer.name }}
                     </small>
+                </div>
+
+                <div v-if="showCashFields" class="qs-cash">
+                    <label for="amount_tendered">Valor entregue (MZN)</label>
+                    <InputNumber
+                        v-model="amountTendered"
+                        inputId="amount_tendered"
+                        mode="decimal"
+                        :min="0"
+                        :minFractionDigits="2"
+                        :maxFractionDigits="2"
+                        placeholder="Opcional"
+                        class="w-full"
+                    />
+                    <div v-if="changeAmount > 0" class="qs-change">
+                        <span>Troco</span>
+                        <strong>{{ changeAmount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} MT</strong>
+                    </div>
                 </div>
 
                 <Button
@@ -1098,6 +1143,33 @@ onMounted(() => {
 .qs-credit-chip {
     color: var(--primary-color);
     font-weight: 700;
+}
+
+.qs-cash {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.qs-cash label {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.qs-change {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--green-500) 10%, var(--qs-card-bg));
+    border: 1px solid color-mix(in srgb, var(--green-500) 25%, var(--qs-border-soft));
+    font-size: 0.9rem;
+}
+
+.qs-change strong {
+    color: var(--green-600);
+    font-size: 1rem;
 }
 
 .qs-pay-btn {

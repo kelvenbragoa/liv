@@ -27,6 +27,16 @@ const CREDIT_PAYMENT_METHOD_ID = 8;
 const selectedCustomer = ref(null);
 const customerSuggestions = ref([]);
 const isCreditPayment = computed(() => Number(payment_method_id.value) === CREDIT_PAYMENT_METHOD_ID);
+const amountTendered = ref(null);
+const showCashFields = computed(() => !isCreditPayment.value);
+const changeAmount = computed(() => {
+    const tendered = Number(amountTendered.value ?? 0);
+    const orderTotal = Number(total_consumed.value ?? 0);
+    if (!tendered || tendered < orderTotal) {
+        return 0;
+    }
+    return tendered - orderTotal;
+});
 
 const selectedItemToDelete = ref(null);
 const confirmationCode = ref(null);
@@ -293,10 +303,23 @@ function payAccount() {
         return;
     }
 
+    if (showCashFields.value && amountTendered.value != null && Number(amountTendered.value) < Number(total_consumed.value)) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: 'O valor entregue deve ser maior ou igual ao total.',
+            life: 3000
+        });
+        return;
+    }
+
     const payData = {
         payment_method_id: payment_method_id.value,
         table_id: router.currentRoute.value.params.id,
         request_id: createRequestId(),
+        ...(showCashFields.value && amountTendered.value != null && amountTendered.value !== ''
+            ? { amount_tendered: Number(amountTendered.value) }
+            : {}),
         ...(isCreditPayment.value && { customer_id: selectedCustomer.value.id })
     };
 
@@ -441,6 +464,9 @@ function selectAllCategories() {
 
 function selectPayment(methodId) {
     payment_method_id.value = methodId;
+    if (Number(methodId) === CREDIT_PAYMENT_METHOD_ID) {
+        amountTendered.value = null;
+    }
 }
 
 function printReceipt() {
@@ -549,6 +575,7 @@ watch(payAccountDialog, (visible) => {
     if (!visible) {
         selectedCustomer.value = null;
         customerSuggestions.value = [];
+        amountTendered.value = null;
     }
 });
 
@@ -911,6 +938,24 @@ onMounted(() => {
                 forceSelection
                 @complete="searchCustomers"
             />
+        </div>
+
+        <div v-if="showCashFields" class="qs-cash">
+            <label for="pay_amount_tendered">Valor entregue (MZN)</label>
+            <InputNumber
+                v-model="amountTendered"
+                inputId="pay_amount_tendered"
+                mode="decimal"
+                :min="0"
+                :minFractionDigits="2"
+                :maxFractionDigits="2"
+                placeholder="Opcional"
+                class="w-full"
+            />
+            <div v-if="changeAmount > 0" class="qs-change">
+                <span>Troco</span>
+                <strong>{{ changeAmount.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} MT</strong>
+            </div>
         </div>
 
         <div class="qs-dialog-total">
@@ -1399,6 +1444,34 @@ onMounted(() => {
 .qs-credit label {
     font-weight: 600;
     font-size: 0.85rem;
+}
+
+.qs-cash {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.qs-cash label {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.qs-change {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--green-500) 10%, var(--qs-card-bg));
+    border: 1px solid color-mix(in srgb, var(--green-500) 25%, var(--qs-border-soft));
+    font-size: 0.9rem;
+}
+
+.qs-change strong {
+    color: var(--green-600);
+    font-size: 1rem;
 }
 
 .qs-pay-btn {

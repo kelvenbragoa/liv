@@ -1,195 +1,200 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-
-// import { debounce } from 'lodash';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-
 import moment from 'moment';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
-const currentPage = ref(1);
-const rowsPerPage = ref(15);
-const totalRecords = ref(0);
-const displayConfirmation = ref(false);
-const stockcenterproducts = ref([]);
+
+const isLoading = ref(true);
+const details = ref(null);
+const itemSearch = ref('');
 
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
+    router?.back();
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
-
-function getSeverity(status) {
-    switch (status) {
-        case 'unqualified':
-            return 'danger';
-
-        case 'qualified':
-            return 'success';
-
-        case 'new':
-            return 'info';
-
-        case 'negotiation':
-            return 'warn';
-
-        case 'renewal':
-            return null;
-    }
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
 }
 
-const getData = async (page = 1) => {
-    axios
-        .get(`/api/entrynotes/${router.currentRoute.value.params.id}?page=${page}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            retriviedData.value = response.data;
+function displayValue(value) {
+    return value || '—';
+}
 
-            isLoadingDiv.value = false;
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: `${error}`, detail: 'Message Detail', life: 3000 });
-            goBackUsingBack();
+const note = computed(() => details.value?.note ?? null);
+const stockCenter = computed(() => details.value?.stock_center ?? null);
+const supplier = computed(() => details.value?.supplier ?? null);
+const user = computed(() => details.value?.user ?? null);
+const metrics = computed(() => details.value?.metrics ?? {});
+const items = computed(() => details.value?.items ?? []);
+
+const filteredItems = computed(() => {
+    const q = itemSearch.value.trim().toLowerCase();
+    if (!q) return items.value;
+    return items.value.filter((item) => String(item.product_name ?? '').toLowerCase().includes(q));
+});
+
+const getData = async () => {
+    isLoading.value = true;
+    try {
+        const id = router.currentRoute.value.params.id;
+        const response = await axios.get(`/api/entrynotes/${id}`);
+        details.value = response.data;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível carregar a nota de entrada.',
+            life: 3000
         });
+        goBackUsingBack();
+    } finally {
+        isLoading.value = false;
+    }
 };
-
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/entrynotes/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
-};
-
-const onPageChange = (event) => {
-    currentPage.value = event.page + 1;
-    rowsPerPage.value = event.rows;
-    getData(currentPage.value);
-};
-
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
-
-watch(searchQuery,debouncedSearch);
 
 onMounted(() => {
     getData();
 });
-
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
+    <div v-if="isLoading" class="entnshow-loading">
+        <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" />
+        <p>A carregar nota de entrada...</p>
     </div>
-    
-    <div class="flex flex-col md:flex-row gap-12" v-else>
-        <div class="w-full">
-            
-            <div class="card flex flex-col gap-4">
-                <div class="w-full">
-                    <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
+
+    <div v-else-if="details" class="entnshow-page">
+        <div class="entnshow-card">
+            <header class="entnshow-header">
+                <div>
+                    <p class="entnshow-eyebrow">Movimento de stock · Entrada</p>
+                    <h1>{{ note?.ref || 'Nota de entrada' }}</h1>
+                    <p class="entnshow-subtitle">Registada em {{ formatDate(note?.created_at) }}</p>
                 </div>
-                <div class="font-semibold text-xl">Entrada de Stock</div>
-                    <p><strong>Referência:</strong> {{ retriviedData.ref }}</p>
-                   <p><strong>Centro de Stock:</strong> {{ retriviedData.stockcenter.name }}</p>
-                   <p><strong>Data:</strong> {{ moment(retriviedData.transfer_date).format('DD-MM-YYYY H:mm') }}</p>
-                   <p><strong>Usuário:</strong> {{ retriviedData.user.name }}</p>
+                <div class="entnshow-header__actions">
+                    <Button label="Voltar" icon="pi pi-arrow-left" outlined @click="goBackUsingBack" />
+                    <Button
+                        v-if="stockCenter?.id"
+                        label="Ver centro"
+                        icon="pi pi-building"
+                        severity="secondary"
+                        outlined
+                        @click="router.push(`/stock/centerstocks/${stockCenter.id}`)"
+                    />
+                    <Button
+                        v-if="supplier?.id"
+                        label="Ver fornecedor"
+                        icon="pi pi-truck"
+                        severity="info"
+                        outlined
+                        @click="router.push(`/stock/suppliers/${supplier.id}`)"
+                    />
+                </div>
+            </header>
 
-                   <hr>
+            <section class="entnshow-kpis">
+                <div class="entnshow-kpi">
+                    <span class="entnshow-kpi__label">Linhas</span>
+                    <strong>{{ metrics.items_count ?? 0 }}</strong>
+                </div>
+                <div class="entnshow-kpi">
+                    <span class="entnshow-kpi__label">Produtos declarados</span>
+                    <strong>{{ metrics.products_number ?? 0 }}</strong>
+                </div>
+                <div class="entnshow-kpi entnshow-kpi--highlight">
+                    <span class="entnshow-kpi__label">Total recebido</span>
+                    <strong class="entnshow-good">+{{ metrics.total_quantity ?? 0 }}</strong>
+                </div>
+            </section>
 
-                   <DataTable
-                    :value="retriviedData.itens"
+            <section class="entnshow-info">
+                <h3>Detalhes do documento</h3>
+                <div class="entnshow-info__grid">
+                    <p><strong>Referência interna:</strong> {{ displayValue(note?.ref) }}</p>
+                    <p><strong>Documento:</strong> {{ displayValue(note?.document_ref) }}</p>
+                    <p><strong>Série:</strong> {{ displayValue(note?.serie) }}</p>
+                    <p><strong>Centro de stock:</strong> {{ displayValue(stockCenter?.name) }}</p>
+                    <p><strong>Fornecedor:</strong> {{ displayValue(supplier?.name) }}</p>
+                    <p><strong>Registado por:</strong> {{ displayValue(user?.name) }}</p>
+                    <p v-if="note?.obs" class="entnshow-obs"><strong>Observações:</strong> {{ note.obs }}</p>
+                </div>
+            </section>
+
+            <section class="entnshow-table-section">
+                <div class="entnshow-table-header">
+                    <h3>Produtos recebidos</h3>
+                    <IconField>
+                        <InputIcon class="pi pi-search" />
+                        <InputText v-model="itemSearch" placeholder="Pesquisar produto..." />
+                    </IconField>
+                </div>
+
+                <DataTable
+                    :value="filteredItems"
                     dataKey="id"
                     :rowHover="true"
-                    showGridlines
-                    >
-                    <template #header>
-                        
-                    </template>
-                    <template #empty>Nenhuma registro encontrado. </template>
-                    <template #loading> Carregando, por favor espere. </template>
-                    <Column header="ID" style="min-width: 12rem">
+                    stripedRows
+                    responsiveLayout="scroll"
+                    class="entnshow-table"
+                >
+                    <template #empty>Nenhum produto encontrado.</template>
+                    <Column header="Produto" style="min-width: 14rem">
                         <template #body="{ data }">
-                            {{ data.id }}
+                            <div class="entnshow-product">
+                                <span>{{ data.product_name || '—' }}</span>
+                                <Button
+                                    v-if="data.product_id"
+                                    icon="pi pi-external-link"
+                                    text
+                                    rounded
+                                    size="small"
+                                    @click="router.push(`/stock/products/${data.product_id}`)"
+                                />
+                            </div>
                         </template>
                     </Column>
-                    <Column header="Nome" style="min-width: 12rem">
+                    <Column header="Stock anterior" style="min-width: 8rem">
+                        <template #body="{ data }">{{ data.last_quantity }}</template>
+                    </Column>
+                    <Column header="Quantidade recebida" style="min-width: 9rem">
                         <template #body="{ data }">
-                            {{ data.product.name }}
+                            <span class="entnshow-good">+{{ data.quantity }}</span>
                         </template>
                     </Column>
-                    <Column header="Stock Centro" style="min-width: 12rem">
+                    <Column header="Stock após entrada" style="min-width: 9rem">
                         <template #body="{ data }">
-                            {{ retriviedData.stockcenter.name }}
+                            <strong>{{ data.stock_after }}</strong>
                         </template>
                     </Column>
-                    
-                    <Column header="Ultima Quantidade" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.last_quantity }}
-                        </template>
-                    </Column>
-                    <Column header="Quantidade Ajustada" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.quantity }}
-                        </template>
-                    </Column>
-                
                 </DataTable>
-
-            </div>
+            </section>
         </div>
     </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
-        <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
-        </template>
-    </Dialog>
 </template>
+
+<style scoped>
+.entnshow-loading { min-height: 50vh; display: grid; place-items: center; gap: .75rem; color: var(--text-color-secondary); }
+.entnshow-page { --b: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%); --bs: color-mix(in srgb, var(--surface-border) 85%, transparent); --bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%); }
+.entnshow-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.1rem; border: 1px solid var(--b); border-radius: 1rem; background: var(--surface-card); box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 0 0 1px var(--bs); }
+.entnshow-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.entnshow-header__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.entnshow-eyebrow { margin: 0; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary-color); }
+.entnshow-header h1 { margin: .15rem 0 0; font-size: 1.5rem; }
+.entnshow-subtitle { margin: .25rem 0 0; color: var(--text-color-secondary); }
+.entnshow-kpis { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .75rem; }
+.entnshow-kpi { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border: 1px solid var(--bs); border-radius: .8rem; background: var(--bg); }
+.entnshow-kpi--highlight { border-color: color-mix(in srgb, var(--green-500) 35%, var(--bs)); }
+.entnshow-kpi__label { font-size: .78rem; color: var(--text-color-secondary); }
+.entnshow-info, .entnshow-table-section { padding: .9rem; border: 1px solid var(--bs); border-radius: .85rem; background: var(--bg); }
+.entnshow-info h3, .entnshow-table-header h3 { margin: 0; font-size: 1rem; }
+.entnshow-info__grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem .9rem; margin-top: .6rem; }
+.entnshow-info__grid p { margin: 0; }
+.entnshow-obs { grid-column: span 2; }
+.entnshow-table-header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.entnshow-product { display: flex; align-items: center; gap: .25rem; }
+.entnshow-good { color: var(--green-500); font-weight: 600; }
+@media (max-width: 900px) { .entnshow-kpis, .entnshow-info__grid { grid-template-columns: 1fr; } .entnshow-obs { grid-column: span 1; } }
+</style>

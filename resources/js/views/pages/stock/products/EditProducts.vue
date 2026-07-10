@@ -45,6 +45,8 @@ const { defineField, handleSubmit, resetForm, errors, setErrors } = useForm({
 const [category_id] = defineField('category_id');
 const [sub_category_id] = defineField('sub_category_id');
 const [price] = defineField('price');
+const [buy_price] = defineField('buy_price');
+
 const [name] = defineField('name');
 const [_method] = defineField('_method');
 const image = ref();
@@ -122,6 +124,7 @@ const getData = async (page = 1) => {
         .then((response) => {
             retriviedData.value = response.data.product;
             name.value = retriviedData.value.name;
+            buy_price.value = retriviedData.value.buy_price;
             price.value = retriviedData.value.price;
             category_id.value = retriviedData.value.category_id;
             sub_category_id.value = retriviedData.value.sub_category_id;
@@ -217,9 +220,15 @@ onMounted(() => {
 
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label for="name1">Preço</label>
-                        <InputText v-model="price" id="price" placeholder="Preço" :class="{ 'p-invalid': errors.price }" type="number" />
+                        <label for="name1">Preço de Venda</label>
+                        <InputText v-model="price" id="price" placeholder="Preço de Venda" :class="{ 'p-invalid': errors.price }" type="number" />
                         <small id="price-help" class="p-error">{{ errors.price }}</small>
+
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="buy_price">Preço de Compra</label>
+                        <InputText v-model="buy_price" id="buy_price" placeholder="Preço de Compra" :class="{ 'p-invalid': errors.buy_price }" type="number" />
+                        <small id="buy_price-help" class="p-error">{{ errors.buy_price }}</small>
 
                     </div>
                     <div class="flex flex-col gap-2">

@@ -1033,6 +1033,22 @@ const router = createRouter({
                     },
                     component: () => import('@/views/pages/waiter/pdv/IndexCashRegisterDashboard.vue')
                 },
+                {
+                    path: '/waiter/cashregisters',
+                    name: 'waiter.cashregisters',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/waiter/cashregisters/IndexCashRegisters.vue')
+                },
+                {
+                    path: '/waiter/cashregisters/:id',
+                    name: 'waiter.cashregisters.show',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/waiter/cashregisters/ShowCashRegisters.vue')
+                },
             ]
         },
         {

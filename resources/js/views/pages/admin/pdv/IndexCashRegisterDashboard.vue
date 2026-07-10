@@ -1,356 +1,243 @@
 <script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref, onMounted, watch } from 'vue';
-import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { useForm } from 'vee-validate';
-// import { debounce } from 'lodash';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { debounce } from 'lodash-es';
-import * as yup from 'yup';
 import moment from 'moment';
-import { createRequestId } from '@/utils/requestId';
 
 const router = useRouter();
 const toast = useToast();
-const loading1 = ref(null);
-const isLoadingDiv = ref(true);
 
+const isLoadingDiv = ref(true);
 const isLoadingPaymentTab = ref(false);
 const isLoadingQuickSellTab = ref(false);
 const isLoadingTableTab = ref(false);
 
-const quicksellreport = ref([])
-const tablesellreport = ref([])
-const paymentreport = ref([])
+const quicksellreport = ref({ data: [] });
+const tablesellreport = ref({ data: [] });
+const paymentreport = ref({ data: [] });
 const totalRecordsQuickSell = ref(0);
 const totalRecordsTable = ref(0);
 const totalRecordsPayments = ref(0);
 
-
-const loadingButtonDelete = ref(false);
-let dataIdBeingDeleted = ref(null);
-const searchQuery = ref('');
-const retriviedData = ref(null);
 const currentPageQuickSell = ref(1);
 const currentPageTableSell = ref(1);
 const currentPagePayments = ref(1);
-const currentPage = ref(1);
-
 const rowsPerPage = ref(100);
-const totalamount = ref(0);
-const displayConfirmation = ref(false);
-const categories = ref(null);
-const selectedProducts = ref([]);
-const total = ref(0);
-const totalsales = ref(0);
-const payment_methods = ref([]);
-const isLoadingButton = ref(false);
-const payment_method_id = ref(1);
+
+const cash_register = ref(null);
+const total_sales = ref(0);
+const total_orders = ref(0);
+const average_ticket = ref(0);
+const total_tables = ref(0);
+const total_quick_sell_amount = ref(0);
+const total_tables_amount = ref(0);
+const total_quick_sell = ref(0);
+const total_payments = ref(0);
+const total_payments_amount = ref(0);
+
 const showDialog = ref(false);
 const pdfUrl = ref(null);
-const activeIndex = ref(0);
-
-
-const cash_register = ref(0)
-const total_sales = ref(0)
-const total_orders = ref(0)
-const average_ticket = ref(0)
-const total_tables = ref(0)
-const total_quick_sell_amount= ref(0)
-const total_tables_amount = ref(0)
-const total_quick_sell = ref(0)
-const total_payments = ref(0)
-const total_payments_amount = ref(0)
-
-
-const statusCaixa = ref('Aberto')
-const historicoVendas = ref([])
+const printingOrderId = ref(null);
 
 const showDialogOrder = ref(false);
 const selectedOrder = ref(null);
 
-// Função para abrir o dialog com os itens do pedido
-const seeOrderItens = (order) => {
-  selectedOrder.value = order;
-  showDialogOrder.value = true;
-};
-
-
-const openFileDialog = ref(false); // Controla a visibilidade do dialog
-
-// Definindo os itens do Menubar
-const nestedMenuitems = [
-  {
-    label: 'Consumo',
-    items: [
-      { 
-        label: 'Ver consumo', 
-        icon: 'pi pi-fw pi-folder-open', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-      { 
-        label: 'Imprimir Consumo', 
-        icon: 'pi pi-fw pi-print', 
-        command: () => { openFileDialog.value = true }  // Abre o dialog ao clicar
-      },
-    ]
-  },
-];
-
 function goBackUsingBack() {
-    if (router) {
-        router.back();
-    }
+    router?.back();
 }
 
-const closeConfirmation = () => {
-    displayConfirmation.value = false;
-};
-const confirmDeletion = (id) => {
-    displayConfirmation.value = true;
-    dataIdBeingDeleted.value = id;
-};
+function formatMoney(value) {
+    return Number(value ?? 0).toLocaleString('pt-PT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
 
-function getSeverity2(status) {
-    switch (status) {
-        case 1:
-            return 'red';
+function formatDate(value) {
+    return value ? moment(value).format('DD-MM-YYYY HH:mm') : '—';
+}
 
-        case 2:
-            return 'red';
+function canPrintTableReceipt(order) {
+    const statusId = Number(order?.status?.id ?? order?.order_status_id ?? 0);
+    return statusId === 3 || statusId === 4;
+}
 
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
-    }
+function seeOrderItens(order) {
+    selectedOrder.value = order;
+    showDialogOrder.value = true;
 }
 
 function printPDF() {
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
+    const iframe = document.querySelector('.crdash-receipt-frame');
+    if (iframe?.contentWindow) {
         iframe.contentWindow.focus();
-        iframe.contentWindow.print();  // Aciona a impressão do conteúdo do iframe
-    }
-}
-function closeDialog() {
-    showDialog.value = true;
-    router.back();
-
-}
-
-function saveCart() {
-    // Exemplo de dados para salvar
-    const cartData = {
-      products: selectedProducts.value.map(product => ({
-        id: product.id,
-        name: product.name,
-        quantity: product.quantity,
-        total: product.price * product.quantity
-      })),
-      total: total.value,
-      payment_method_id: payment_method_id.value,
-      request_id: createRequestId(),
-    };
-
-    isLoadingButton.value = true;
-    axios.post(`/api/pdv/quicksell`, cartData, {
-    headers: {
-        'Content-Type': 'multipart/form-data'
-    }
-    })
-    .then(async (response) => {
-        toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Produto encomendado com sucesso!', life: 3000 });
-
-        const orderId = response.data.order_id;
-        if (!orderId) {
-            return;
-        }
-
-        try {
-            const pdfResponse = await axios.post(`/api/getquickreceipt/${orderId}`, {}, { responseType: 'blob' });
-            const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
-            pdfUrl.value = URL.createObjectURL(blob);
-            showDialog.value = true;
-        } catch (pdfError) {
-            console.error('Erro ao obter recibo:', pdfError);
-            toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Venda gravada, mas falhou a impressão do recibo.', life: 4000 });
-        }
-    })
-    .catch((error) => {
-        console.log(error)
-        toast.add({ severity: 'error', summary: 'Erro', detail: error.response?.data?.message || 'Ocorreu um erro inesperado.', life: 3000 });
-        if (error.response?.data?.errors) {
-            setErrors(error.response.data.errors);
-        }
-    })
-    .finally(() => {
-        isLoadingButton.value = false;
-    });
-  }
-
-function addToCart(product) {
-    // Verifica se o produto já foi adicionado ao carrinho
-    const existingProduct = selectedProducts.value.find(item => item.id === product.id);
-
-if (existingProduct) {
-  // Se o produto já estiver no carrinho, aumenta a quantidade
-  existingProduct.quantity += 1;
-} else {
-  // Caso contrário, adiciona o produto com a quantidade 1
-  selectedProducts.value.push({ ...product, quantity: 1 });
-}
-
-// Atualiza o total
-updateTotal();
-}
-
-function removeFromCart(index) {
-    selectedProducts.value.splice(index, 1);
-    updateTotal();
-  }
-
-function updateTotal() {
-    // Calcula o total com base nas quantidades dos produtos
-    total.value = selectedProducts.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-}
-function getSeverity(status) {
-    switch (status) {
-        case 1:
-            return 'success';
-
-        case 2:
-            return 'danger';
-
-        case 3:
-            return 'warn';
-
-        case 4:
-            return 'danger';
-
-        case 5:
-            return 'info';
-        
-        case 6:
-            return 'info';
+        iframe.contentWindow.print();
     }
 }
 
-const getData = async (page = 1) => {
-console.log('hello')
-    axios
-        .get(`/api/cashregisters/dashboard`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            cash_register.value = response.data.cash_register;
-            total_sales.value = response.data.total_sales;
-            total_orders.value = response.data.total_orders;
-            total_tables.value = response.data.total_tables;
-            total_quick_sell.value = response.data.total_quick_sell;
-            average_ticket.value = response.data.average_ticket;
-            total_quick_sell_amount.value = response.data.total_quick_sell_amount;
-            total_tables_amount.value = response.data.total_tables_amount;
-            total_payments.value = response.data.total_payments;
-            total_payments_amount.value = response.data.total_payments_amount;
+function closeReceiptDialog() {
+    showDialog.value = false;
+    if (pdfUrl.value) {
+        URL.revokeObjectURL(pdfUrl.value);
+        pdfUrl.value = null;
+    }
+}
 
+async function fetchAndShowReceipt(url, orderId) {
+    printingOrderId.value = orderId;
 
-            // categories.value = response.data.categories;
-            // payment_methods.value = response.data.payment_methods;
-            // payment_method_id.value = 1;
+    try {
+        if (pdfUrl.value) {
+            URL.revokeObjectURL(pdfUrl.value);
+            pdfUrl.value = null;
+        }
 
-            isLoadingDiv.value = false;
-
-        })
-        .catch((error) => {
-            isLoadingDiv.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
-            goBackUsingBack();
+        const pdfResponse = await axios.post(url, {}, { responseType: 'blob' });
+        const blob = new Blob([pdfResponse.data], { type: 'application/pdf' });
+        pdfUrl.value = URL.createObjectURL(blob);
+        showDialog.value = true;
+    } catch (error) {
+        console.error('Erro ao obter recibo:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível gerar o recibo.',
+            life: 3500
         });
+    } finally {
+        printingOrderId.value = null;
+    }
+}
+
+async function printQuickSellReceipt(order) {
+    await fetchAndShowReceipt(`/api/getquickreceipt/${order.id}`, order.id);
+}
+
+async function printTableReceipt(order) {
+    if (!canPrintTableReceipt(order)) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Recibo indisponível',
+            detail: 'Só é possível imprimir o recibo após o pagamento da conta.',
+            life: 3500
+        });
+        return;
+    }
+
+    await fetchAndShowReceipt(`/api/getcustomerreceipt/${order.id}`, order.id);
+}
+
+async function printPaymentReceipt(payment) {
+    const orderId = payment.order_id;
+    const isQuickSell = payment.order?.table_id == null;
+    const url = isQuickSell
+        ? `/api/getquickreceipt/${orderId}`
+        : `/api/getcustomerreceipt/${orderId}`;
+
+    await fetchAndShowReceipt(url, orderId);
+}
+
+async function printSelectedOrderReceipt() {
+    if (!selectedOrder.value) {
+        return;
+    }
+
+    const isQuickSell = selectedOrder.value.table_id == null;
+    if (isQuickSell) {
+        await printQuickSellReceipt(selectedOrder.value);
+    } else {
+        await printTableReceipt(selectedOrder.value);
+    }
+}
+
+const getData = async () => {
+    try {
+        const response = await axios.get('/api/cashregisters/dashboard');
+        cash_register.value = response.data.cash_register;
+        total_sales.value = response.data.total_sales;
+        total_orders.value = response.data.total_orders;
+        total_tables.value = response.data.total_tables;
+        total_quick_sell.value = response.data.total_quick_sell;
+        average_ticket.value = response.data.average_ticket;
+        total_quick_sell_amount.value = response.data.total_quick_sell_amount;
+        total_tables_amount.value = response.data.total_tables_amount;
+        total_payments.value = response.data.total_payments;
+        total_payments_amount.value = response.data.total_payments_amount;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Não foi possível carregar o dashboard.',
+            life: 3000
+        });
+        goBackUsingBack();
+    } finally {
+        isLoadingDiv.value = false;
+    }
 };
 
 const getPaymentsData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/paymentreport?page=${page}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            paymentreport.value = response.data;
-            totalRecordsPayments.value = response.data.total;
-            isLoadingPaymentTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingPaymentTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
+    isLoadingPaymentTab.value = true;
+    try {
+        const response = await axios.get(`/api/cashregisters/paymentreport?page=${page}`);
+        paymentreport.value = response.data;
+        totalRecordsPayments.value = response.data.total;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Erro ao carregar pagamentos.',
+            life: 3000
         });
+    } finally {
+        isLoadingPaymentTab.value = false;
+    }
 };
 
 const getTableData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/tablesellreport?page=${page}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            tablesellreport.value = response.data;
-            totalRecordsTable.value = response.data.total;
-            isLoadingTableTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingTableTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
+    isLoadingTableTab.value = true;
+    try {
+        const response = await axios.get(`/api/cashregisters/tablesellreport?page=${page}`);
+        tablesellreport.value = response.data;
+        totalRecordsTable.value = response.data.total;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Erro ao carregar vendas em mesas.',
+            life: 3000
         });
+    } finally {
+        isLoadingTableTab.value = false;
+    }
 };
 
 const getQuickSellData = async (page = 1) => {
-    axios
-        .get(`/api/cashregisters/quicksellreport?page=${page}`, {
-            params: {
-                query: searchQuery.value
-            }
-        })
-        .then((response) => {
-            quicksellreport.value = response.data;
-            totalRecordsQuickSell.value = response.data.total;
-            isLoadingQuickSellTab.value = false;
-        })
-        .catch((error) => {
-            isLoadingQuickSellTab.value = false;
-            toast.add({ severity: 'error', summary: 'Erro', detail: `${error.response.data.message}`, life: 3000 });
+    isLoadingQuickSellTab.value = true;
+    try {
+        const response = await axios.get(`/api/cashregisters/quicksellreport?page=${page}`);
+        quicksellreport.value = response.data;
+        totalRecordsQuickSell.value = response.data.total;
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: error.response?.data?.message || 'Erro ao carregar vendas rápidas.',
+            life: 3000
         });
+    } finally {
+        isLoadingQuickSellTab.value = false;
+    }
 };
 
-const deleteData = () => {
-    loadingButtonDelete.value = true;
-
-    axios
-        .delete(`/api/tables/${dataIdBeingDeleted.value}`)
-        .then(() => {
-            retriviedData.value.data = retriviedData.value.data.filter((data) => data.id !== dataIdBeingDeleted.value);
-            closeConfirmation();
-            toast.add({ severity: 'success', summary: `Sucesso`, detail: 'Sucesso ao apagar', life: 3000 });
-        })
-        .catch((error) => {
-            toast.add({ severity: 'error', summary: `Erro`, detail: `${error}`, life: 3000 });
-            loadingButtonDelete.value = false;
-        })
-        .finally(() => {
-            loadingButtonDelete.value = false;
-        });
+const refreshAll = async () => {
+    isLoadingDiv.value = true;
+    await Promise.all([
+        getData(),
+        getPaymentsData(currentPagePayments.value),
+        getQuickSellData(currentPageQuickSell.value),
+        getTableData(currentPageTableSell.value)
+    ]);
 };
 
 const onPageChangeQuickSell = (event) => {
@@ -358,387 +245,464 @@ const onPageChangeQuickSell = (event) => {
     rowsPerPage.value = event.rows;
     getQuickSellData(currentPageQuickSell.value);
 };
+
 const onPageChangeTableSell = (event) => {
     currentPageTableSell.value = event.page + 1;
     rowsPerPage.value = event.rows;
     getTableData(currentPageTableSell.value);
 };
+
 const onPageChangePayments = (event) => {
     currentPagePayments.value = event.page + 1;
     rowsPerPage.value = event.rows;
     getPaymentsData(currentPagePayments.value);
 };
 
-const debouncedSearch = debounce(() => {
-    getData(currentPage.value);
-}, 300);
-
-watch(searchQuery,debouncedSearch);
-
 onMounted(() => {
-    getData();
-    getPaymentsData();
-    getQuickSellData();
-    getTableData();
-
+    refreshAll();
 });
-
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-12 min-h-screen items-center justify-center"  v-if="isLoadingDiv">
-            <div class="w-full">
-                <div class="flex flex-col gap-4 text-center">
-                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Custom ProgressSpinner" />
-                    <p>Por Favor Aguarde...</p>
-                </div>
-            </div>
+    <div v-if="isLoadingDiv" class="crdash-loading">
+        <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" />
+        <p>A carregar dashboard do caixa...</p>
     </div>
-    
-        
-        <div v-else>
-            <div class="w-full">
-                    <Button label="Voltar" class="mr-2 mb-2" @click="goBackUsingBack"><i class="pi pi-angle-left"></i> Voltar</Button>
-                </div>
-            <div class="grid grid-cols-12 gap-8 mb-3">
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Caixa</span>
-                                <small>Aberto ás: {{ moment(cash_register.created_at).format('DD-MM-YYYY H:mm') }}</small>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total de Vendas</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_sales}} MT</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Pedidos</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_orders}}</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Ticket Médio</span>
-                                <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{average_ticket}} MT</div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Mesas Abertas</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables}}</span>
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_tables_amount}} MT</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pedidos/Venda Rápido</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell}}</span>
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_quick_sell_amount}} MT</span>
-                                </div>
 
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-                    <div class="card mb-0">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <span class="block text-muted-color font-medium mb-4">Total Pagamentos</span>
-                                <div class="flex justify-between mb-4">
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments}}</span>
-                                    <span class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{total_payments_amount}} MT</span>
-                                </div>
-
-                            </div>
-                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                                <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
+    <div v-else class="crdash-page">
+        <header class="crdash-header">
+            <div>
+                <p class="crdash-eyebrow">Ponto de venda</p>
+                <h1>Dashboard do caixa</h1>
+                <p class="crdash-subtitle">
+                    Aberto às <strong>{{ formatDate(cash_register?.created_at) }}</strong>
+                    · Operador <strong>{{ cash_register?.user?.name || '—' }}</strong>
+                </p>
             </div>
+            <div class="crdash-header__actions">
+                <Button label="Actualizar" icon="pi pi-refresh" outlined :loading="isLoadingDiv" @click="refreshAll" />
+                <Button label="Voltar" icon="pi pi-arrow-left" outlined @click="goBackUsingBack" />
+            </div>
+        </header>
+
+        <section class="crdash-kpis">
+            <div class="crdash-kpi">
+                <span>Total vendas</span>
+                <strong>{{ formatMoney(total_sales) }} MT</strong>
+            </div>
+            <div class="crdash-kpi">
+                <span>Pedidos</span>
+                <strong>{{ total_orders }}</strong>
+            </div>
+            <div class="crdash-kpi">
+                <span>Ticket médio</span>
+                <strong>{{ formatMoney(average_ticket) }} MT</strong>
+            </div>
+            <div class="crdash-kpi">
+                <span>Mesas abertas</span>
+                <strong>{{ total_tables }}</strong>
+                <small>{{ formatMoney(total_tables_amount) }} MT</small>
+            </div>
+            <div class="crdash-kpi">
+                <span>Vendas rápidas</span>
+                <strong>{{ total_quick_sell }}</strong>
+                <small>{{ formatMoney(total_quick_sell_amount) }} MT</small>
+            </div>
+            <div class="crdash-kpi">
+                <span>Pagamentos</span>
+                <strong>{{ total_payments }}</strong>
+                <small>{{ formatMoney(total_payments_amount) }} MT</small>
+            </div>
+        </section>
+
+        <section class="crdash-panel">
             <Tabs value="0">
                 <TabList>
-                    <Tab value="0">Vendas Rápidas</Tab>
-                    <Tab value="1">Vendas em Mesas</Tab>
-                    <Tab value="2">Pagamentos Efetuados</Tab>
+                    <Tab value="0">Vendas rápidas</Tab>
+                    <Tab value="1">Vendas em mesas</Tab>
+                    <Tab value="2">Pagamentos efectuados</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel value="0">
                         <DataTable
-                        :value="quicksellreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsQuickSell"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingQuickSellTab"
-                        :first="(currentPageQuickSell - 1) * rowsPerPage"
-                        :onPage="onPageChangeQuickSell"
-                        showGridlines
+                            :value="quicksellreport.data"
+                            :paginator="true"
+                            :rows="rowsPerPage"
+                            :totalRecords="totalRecordsQuickSell"
+                            dataKey="id"
+                            :lazy="true"
+                            :rowHover="true"
+                            :loading="isLoadingQuickSellTab"
+                            :first="(currentPageQuickSell - 1) * rowsPerPage"
+                            :onPage="onPageChangeQuickSell"
+                            showGridlines
                         >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                Pedido Rápido
-                            </template>
-                        </Column>
-                        <Column header="Garçom" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.user.name }}
-                            </template>
-                        </Column>
-                        <Column header="Estado" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.status.name }}
-                            </template>
-                        </Column>
-                        <Column header="Itens" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.itens.length }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.total }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <Column header="Ações" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <a class="m-3" href="#" @click.prevent="seeOrderItens(data)"><i class="pi pi-eye"></i></a>
-                        </template>
-                        </Column>
-                    </DataTable>
+                            <template #empty>Nenhum registo encontrado.</template>
+                            <template #loading>A carregar vendas rápidas...</template>
+
+                            <Column header="ID" style="min-width: 5rem">
+                                <template #body="{ data }">#{{ data.id }}</template>
+                            </Column>
+                            <Column header="Tipo" style="min-width: 8rem">
+                                <template #body>Pedido rápido</template>
+                            </Column>
+                            <Column header="Operador" style="min-width: 10rem">
+                                <template #body="{ data }">{{ data.user?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Estado" style="min-width: 8rem">
+                                <template #body="{ data }">{{ data.status?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Itens" style="min-width: 5rem">
+                                <template #body="{ data }">{{ data.itens?.length ?? 0 }}</template>
+                            </Column>
+                            <Column header="Valor" style="min-width: 8rem">
+                                <template #body="{ data }">
+                                    <strong>{{ formatMoney(data.total) }} MT</strong>
+                                </template>
+                            </Column>
+                            <Column header="Data" style="min-width: 10rem">
+                                <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                            </Column>
+                            <Column header="Acções" style="min-width: 8rem" :exportable="false">
+                                <template #body="{ data }">
+                                    <div class="crdash-actions">
+                                        <Button
+                                            icon="pi pi-eye"
+                                            text
+                                            rounded
+                                            severity="secondary"
+                                            v-tooltip.top="'Ver itens'"
+                                            @click="seeOrderItens(data)"
+                                        />
+                                        <Button
+                                            icon="pi pi-print"
+                                            text
+                                            rounded
+                                            severity="info"
+                                            v-tooltip.top="'Imprimir recibo'"
+                                            :loading="printingOrderId === data.id"
+                                            @click="printQuickSellReceipt(data)"
+                                        />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
                     </TabPanel>
+
                     <TabPanel value="1">
                         <DataTable
-                        :value="tablesellreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsTable"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingTableTab"
-                        :first="(currentPageTableSell - 1) * rowsPerPage"
-                        :onPage="onPageChangeTableSell"
-                        showGridlines
+                            :value="tablesellreport.data"
+                            :paginator="true"
+                            :rows="rowsPerPage"
+                            :totalRecords="totalRecordsTable"
+                            dataKey="id"
+                            :lazy="true"
+                            :rowHover="true"
+                            :loading="isLoadingTableTab"
+                            :first="(currentPageTableSell - 1) * rowsPerPage"
+                            :onPage="onPageChangeTableSell"
+                            showGridlines
                         >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{data.table.name}}
-                            </template>
-                        </Column>
-                        <Column header="Garçom" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.user.name }}
-                            </template>
-                        </Column>
-                        <Column header="Estado" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.status.name }}
-                            </template>
-                        </Column>
-                        <Column header="Itens" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.itens.length }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.total }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        <Column header="Ações" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <a class="m-3" href="#" @click.prevent="seeOrderItens(data)"><i class="pi pi-eye"></i></a>
-                        </template>
-                        </Column>
-                    </DataTable>
+                            <template #empty>Nenhum registo encontrado.</template>
+                            <template #loading>A carregar vendas em mesas...</template>
+
+                            <Column header="ID" style="min-width: 5rem">
+                                <template #body="{ data }">#{{ data.id }}</template>
+                            </Column>
+                            <Column header="Mesa" style="min-width: 8rem">
+                                <template #body="{ data }">{{ data.table?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Operador" style="min-width: 10rem">
+                                <template #body="{ data }">{{ data.user?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Estado" style="min-width: 8rem">
+                                <template #body="{ data }">{{ data.status?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Itens" style="min-width: 5rem">
+                                <template #body="{ data }">{{ data.itens?.length ?? 0 }}</template>
+                            </Column>
+                            <Column header="Valor" style="min-width: 8rem">
+                                <template #body="{ data }">
+                                    <strong>{{ formatMoney(data.total) }} MT</strong>
+                                </template>
+                            </Column>
+                            <Column header="Data" style="min-width: 10rem">
+                                <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                            </Column>
+                            <Column header="Acções" style="min-width: 8rem" :exportable="false">
+                                <template #body="{ data }">
+                                    <div class="crdash-actions">
+                                        <Button
+                                            icon="pi pi-eye"
+                                            text
+                                            rounded
+                                            severity="secondary"
+                                            v-tooltip.top="'Ver itens'"
+                                            @click="seeOrderItens(data)"
+                                        />
+                                        <Button
+                                            icon="pi pi-print"
+                                            text
+                                            rounded
+                                            :severity="canPrintTableReceipt(data) ? 'info' : 'secondary'"
+                                            v-tooltip.top="canPrintTableReceipt(data) ? 'Imprimir recibo' : 'Disponível após pagamento'"
+                                            :disabled="!canPrintTableReceipt(data)"
+                                            :loading="printingOrderId === data.id"
+                                            @click="printTableReceipt(data)"
+                                        />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
                     </TabPanel>
+
                     <TabPanel value="2">
                         <DataTable
-                        :value="paymentreport.data"
-                        :paginator="true"
-                        :rows="rowsPerPage"
-                        :totalRecords="totalRecordsPayments"
-                        dataKey="id"
-                        :lazy="true"
-                        :rowHover="true"
-                        :loading="isLoadingPaymentTab"
-                        :first="(currentPagePayments - 1) * rowsPerPage"
-                        :onPage="onPageChangePayments"
-                        showGridlines
+                            :value="paymentreport.data"
+                            :paginator="true"
+                            :rows="rowsPerPage"
+                            :totalRecords="totalRecordsPayments"
+                            dataKey="id"
+                            :lazy="true"
+                            :rowHover="true"
+                            :loading="isLoadingPaymentTab"
+                            :first="(currentPagePayments - 1) * rowsPerPage"
+                            :onPage="onPageChangePayments"
+                            showGridlines
                         >
-                        <template #header>
-                        </template>
-                        <template #empty>Nenhuma registro encontrado. </template>
-                        <template #loading> Carregando, por favor espere. </template>
-                        <Column header="ID" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.id }}
-                            </template>
-                        </Column>
-                        <Column header="Venda" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                #{{ data.order_id }}
-                            </template>
-                        </Column>
-                        <Column header="Pedido" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.order.table_id == null ? "Pedido Rápido" : data.order.table.name}}
-                            </template>
-                        </Column>
-                        <Column header="Metodo de Pagamento" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.method.name }}
-                            </template>
-                        </Column>
-                        <Column header="Valor" style="min-width: 12rem">
-                            <template #body="{ data }">
-                                {{ data.amount }} MT
-                            </template>
-                        </Column>
-                        <Column header="Data" dataType="date" style="min-width: 10rem">
-                            <template #body="{ data }">
-                                {{ moment(data.created_at).format('DD-MM-YYYY H:mm') }}
-                            </template>
-                        </Column>
-                        
-                    </DataTable>
+                            <template #empty>Nenhum registo encontrado.</template>
+                            <template #loading>A carregar pagamentos...</template>
+
+                            <Column header="ID" style="min-width: 5rem">
+                                <template #body="{ data }">#{{ data.id }}</template>
+                            </Column>
+                            <Column header="Pedido" style="min-width: 6rem">
+                                <template #body="{ data }">#{{ data.order_id }}</template>
+                            </Column>
+                            <Column header="Origem" style="min-width: 10rem">
+                                <template #body="{ data }">
+                                    {{ data.order?.table_id == null ? 'Venda rápida' : data.order?.table?.name }}
+                                </template>
+                            </Column>
+                            <Column header="Método" style="min-width: 10rem">
+                                <template #body="{ data }">{{ data.method?.name || '—' }}</template>
+                            </Column>
+                            <Column header="Valor" style="min-width: 8rem">
+                                <template #body="{ data }">
+                                    <strong>{{ formatMoney(data.amount) }} MT</strong>
+                                </template>
+                            </Column>
+                            <Column header="Data" style="min-width: 10rem">
+                                <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
+                            </Column>
+                            <Column header="Acções" style="min-width: 6rem" :exportable="false">
+                                <template #body="{ data }">
+                                    <Button
+                                        icon="pi pi-print"
+                                        text
+                                        rounded
+                                        severity="info"
+                                        v-tooltip.top="'Reimprimir recibo'"
+                                        :loading="printingOrderId === data.order_id"
+                                        @click="printPaymentReceipt(data)"
+                                    />
+                                </template>
+                            </Column>
+                        </DataTable>
                     </TabPanel>
                 </TabPanels>
             </Tabs>
-        </div>
-    <Dialog header="Confirmação" v-model:visible="displayConfirmation" :style="{ width: '350px' }" :modal="true">
-        <div class="flex align-items-center justify-content-center">
-            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-            <span>Tem certeza que deseja proceder?</span>
-        </div>
+        </section>
+    </div>
+
+    <Dialog
+        v-model:visible="showDialog"
+        header="Recibo"
+        :modal="true"
+        :style="{ width: 'min(640px, 96vw)' }"
+        @hide="closeReceiptDialog"
+    >
+        <iframe
+            v-if="pdfUrl"
+            :src="pdfUrl"
+            class="crdash-receipt-frame"
+            frameborder="0"
+        />
+
         <template #footer>
-            <Button label="Não" icon="pi pi-times" @click="closeConfirmation" class="p-button-text" />
-            <Button label="Sim" icon="pi pi-check" @click="deleteData" class="p-button-text" autofocus />
+            <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
+            <Button label="Fechar" icon="pi pi-times" text @click="closeReceiptDialog" />
         </template>
     </Dialog>
-      <!-- Dialog -->
-    <Dialog header="Open File" v-model:visible="openFileDialog" style="width: 30vw">
-        <p>Here you can manage your files or perform specific actions.</p>
-        <Button label="Close" @click="openFileDialog = false" />
-    </Dialog>
-    <Dialog v-model:visible="showDialog" header="Recibo" :modal="true" :style="{ width: '600px' }" :closable="false">
-      <iframe v-if="pdfUrl" :src="pdfUrl" style="width: 100%; height: 500px;" frameborder="0"></iframe>
-      
-      <template #footer>
-        <Button label="Imprimir" icon="pi pi-print" @click="printPDF" />
-        <Button label="Fechar" icon="pi pi-times" class="p-button-text" @click="closeDialog" />
-      </template>
-    </Dialog>
 
-    <!-- Dialog para exibir os itens do pedido -->
     <Dialog
-      v-model:visible="showDialogOrder"
-      :header="'Itens do Pedido #'"
-      :modal="true"
-      :style="{ width: '50vw' }"
+        v-model:visible="showDialogOrder"
+        :header="selectedOrder ? `Pedido #${selectedOrder.id}` : 'Itens do pedido'"
+        :modal="true"
+        :style="{ width: 'min(720px, 96vw)' }"
     >
-      <template v-if="selectedOrder">
-        <DataTable :value="selectedOrder.itens" responsiveLayout="scroll">
-          <Column header="Produto" style="min-width: 12rem">
-            <template #body="{ data }">{{ data.product.name }}</template>
-          </Column>
+        <template v-if="selectedOrder">
+            <div class="crdash-order-meta">
+                <span>{{ selectedOrder.table_id == null ? 'Venda rápida' : selectedOrder.table?.name }}</span>
+                <span>{{ selectedOrder.status?.name }}</span>
+                <span>{{ formatMoney(selectedOrder.total) }} MT</span>
+            </div>
 
-          <Column header="Quantidade" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.quantity }}</template>
-          </Column>
+            <DataTable :value="selectedOrder.itens" dataKey="id" rowHover showGridlines>
+                <template #empty>Sem itens registados.</template>
+                <Column header="Produto" style="min-width: 14rem">
+                    <template #body="{ data }">{{ data.product?.name || '—' }}</template>
+                </Column>
+                <Column header="Qtd." style="min-width: 5rem">
+                    <template #body="{ data }">{{ data.quantity }}</template>
+                </Column>
+                <Column header="Preço" style="min-width: 7rem">
+                    <template #body="{ data }">{{ formatMoney(data.price) }} MT</template>
+                </Column>
+                <Column header="Total" style="min-width: 7rem">
+                    <template #body="{ data }">
+                        <strong>{{ formatMoney(data.total) }} MT</strong>
+                    </template>
+                </Column>
+            </DataTable>
+        </template>
 
-          <Column header="Preço Unitário" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.price }} MT</template>
-          </Column>
-
-          <Column header="Total" style="min-width: 8rem">
-            <template #body="{ data }">{{ data.total }} MT</template>
-          </Column>
-        </DataTable>
-      </template>
-
-      <template v-else>
-        <p>Nenhum item encontrado para este pedido.</p>
-      </template>
+        <template #footer>
+            <Button label="Fechar" text @click="showDialogOrder = false" />
+            <Button
+                label="Imprimir recibo"
+                icon="pi pi-print"
+                :loading="printingOrderId === selectedOrder?.id"
+                @click="printSelectedOrderReceipt"
+            />
+        </template>
     </Dialog>
 </template>
+
+<style scoped>
+.crdash-loading {
+    min-height: 50vh;
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+.crdash-page {
+    --b: color-mix(in srgb, var(--surface-border) 70%, var(--text-color) 30%);
+    --bs: color-mix(in srgb, var(--surface-border) 85%, transparent);
+    --bg: color-mix(in srgb, var(--surface-ground) 75%, var(--text-color) 5%);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.crdash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.1rem;
+    border: 1px solid var(--b);
+    border-radius: 1rem;
+    background: var(--surface-card);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 1px var(--bs);
+}
+
+.crdash-header__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.crdash-eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+}
+
+.crdash-header h1 {
+    margin: 0.15rem 0 0;
+    font-size: 1.5rem;
+}
+
+.crdash-subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--text-color-secondary);
+}
+
+.crdash-kpis {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.crdash-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.85rem;
+    border: 1px solid var(--bs);
+    border-radius: 0.85rem;
+    background: var(--bg);
+}
+
+.crdash-kpi span {
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+}
+
+.crdash-kpi strong {
+    font-size: 1.1rem;
+}
+
+.crdash-kpi small {
+    color: var(--text-color-secondary);
+    font-size: 0.78rem;
+}
+
+.crdash-panel {
+    padding: 1rem;
+    border: 1px solid var(--b);
+    border-radius: 1rem;
+    background: var(--surface-card);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 1px var(--bs);
+}
+
+.crdash-actions {
+    display: flex;
+    gap: 0.15rem;
+}
+
+.crdash-order-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    font-size: 0.9rem;
+    color: var(--text-color-secondary);
+}
+
+.crdash-receipt-frame {
+    width: 100%;
+    height: 500px;
+    border: 1px solid var(--bs);
+    border-radius: 0.5rem;
+}
+
+@media (max-width: 1200px) {
+    .crdash-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .crdash-kpis {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

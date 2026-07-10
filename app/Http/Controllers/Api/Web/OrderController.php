@@ -120,6 +120,8 @@ class OrderController extends Controller
                 'table' => $order->table?->name ?? 'Venda rápida',
                 'status' => $order->status?->name,
                 'user' => $order->user?->name,
+                'amount_tendered' => $order->amount_tendered,
+                'change_amount' => $order->change_amount,
                 'created_at' => $order->created_at?->format('d/m/Y H:i'),
             ];
         });
@@ -182,6 +184,8 @@ class OrderController extends Controller
             'order' => [
                 'id' => $order->id,
                 'total' => $order->total,
+                'amount_tendered' => $order->amount_tendered,
+                'change_amount' => $order->change_amount,
                 'created_at' => $order->created_at,
             ],
             'table' => $order->table ? [

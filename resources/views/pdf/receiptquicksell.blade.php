@@ -105,6 +105,12 @@
             </table>
             <div class="total">
                 <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
+                @if($order->amount_tendered !== null)
+                <p>Valor entregue: MZN {{ number_format($order->amount_tendered, 2) }}</p>
+                @endif
+                @if($order->change_amount !== null && $order->change_amount > 0)
+                <p>Troco: MZN {{ number_format($order->change_amount, 2) }}</p>
+                @endif
                 <p>Método Pagamento: {{ $payment->method->name }}</p>
             </div>
         </div>
@@ -155,6 +161,12 @@
             </table>
             <div class="total">
                 <p>Total Geral: MZN {{ number_format($order->total, 2) }}</p>
+                @if($order->amount_tendered !== null)
+                <p>Valor entregue: MZN {{ number_format($order->amount_tendered, 2) }}</p>
+                @endif
+                @if($order->change_amount !== null && $order->change_amount > 0)
+                <p>Troco: MZN {{ number_format($order->change_amount, 2) }}</p>
+                @endif
                 <p>Método Pagamento: {{ $payment->method->name }}</p>
             </div>
         </div>

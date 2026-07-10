@@ -80,6 +80,8 @@ onMounted(() => {
 
             <section class="ordshow-kpis">
                 <div class="ordshow-kpi"><span>Total pedido</span><strong>{{ formatMoney(order?.total) }} MT</strong></div>
+                <div v-if="order?.amount_tendered != null" class="ordshow-kpi"><span>Valor entregue</span><strong>{{ formatMoney(order?.amount_tendered) }} MT</strong></div>
+                <div v-if="order?.change_amount != null" class="ordshow-kpi"><span>Troco</span><strong class="ordshow-good">{{ formatMoney(order?.change_amount) }} MT</strong></div>
                 <div class="ordshow-kpi"><span>Itens</span><strong>{{ metrics.items_count ?? 0 }}</strong></div>
                 <div class="ordshow-kpi"><span>Qtd. total</span><strong>{{ metrics.total_quantity ?? 0 }}</strong></div>
                 <div class="ordshow-kpi"><span>Produtos distintos</span><strong>{{ metrics.distinct_products ?? 0 }}</strong></div>

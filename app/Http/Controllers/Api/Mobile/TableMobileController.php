@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Concerns\ManagesPrincipalStock;
+use App\Http\Controllers\Concerns\ResolvesOrderCashTender;
 use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Category;
@@ -21,6 +22,7 @@ use RuntimeException;
 class TableMobileController extends Controller
 {
     use ManagesPrincipalStock;
+    use ResolvesOrderCashTender;
 
     /**
      * Display a listing of the resource.
@@ -420,10 +422,15 @@ class TableMobileController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data, $openCashRegister) {
+            $isCredit = (int) ($data['payment_method_id'] ?? 0) === 8;
+            $cashTender = $this->resolveOrderCashTender($data, (float) $data['total'], $isCredit);
+
+            DB::transaction(function () use ($data, $openCashRegister, $cashTender) {
                 $order = Order::create([
                     'user_id' => Auth::user()->id,
                     'total' => $data['total'],
+                    'amount_tendered' => $cashTender['amount_tendered'],
+                    'change_amount' => $cashTender['change_amount'],
                     'order_status_id' => 3,
                     'cash_register_id' => $openCashRegister->id
                 ]);

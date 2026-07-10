@@ -375,10 +375,10 @@ onUnmounted(() => {
                         @click="closeCashRegisterDialog = true"
                     />
                     <Button
+                        label="Relatório de caixa"
                         icon="pi pi-chart-bar"
                         severity="secondary"
-                        text
-                        v-tooltip.bottom="'Relatório de caixa'"
+                        outlined
                         @click="router.push('/admin/cashregisters/dashboard')"
                     />
                 </div>

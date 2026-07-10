@@ -29,7 +29,7 @@ const isLoadingQuickSell = ref(false);
 const showDialog = ref(false);
 const selectedItemToDelete = ref(null);
 const confirmationCode = ref(null);
-const correct_code = '142502';
+const correct_code = '012026';
 const expandedRows = ref([]);
 const deleteDialog = ref(false);
 const pdfUrl = ref(null);
@@ -375,6 +375,7 @@ onUnmounted(() => {
                         @click="closeCashRegisterDialog = true"
                     />
                     <Button
+                    label="Relatório de caixa"
                         icon="pi pi-chart-bar"
                         severity="secondary"
                         text

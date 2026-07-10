@@ -441,7 +441,8 @@ class CashRegisterController extends Controller
 
     public function dashboard()
     {
-        $cashRegister = CashRegister::where('user_id', Auth::user()->id)
+        $cashRegister = CashRegister::with('user')
+            ->where('user_id', Auth::user()->id)
             ->where('cash_register_status_id', 1) // 1 = Aberto
             ->first();
 

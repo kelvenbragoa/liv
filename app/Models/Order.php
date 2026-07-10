@@ -18,6 +18,8 @@ class Order extends Model
         'table_id' => 'integer',
         'user_id' => 'integer',
         'total' => 'float',
+        'amount_tendered' => 'float',
+        'change_amount' => 'float',
         'order_status_id' => 'integer',
         'cash_register_id' => 'integer',
         'closed_by_user_id' => 'integer',
