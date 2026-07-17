@@ -346,11 +346,11 @@ onUnmounted(() => {
                 </div>
 
                 <div class="pdv-floor__quick-actions">
-                    <Button
+                    <!-- <Button
                         label="Venda rápida"
                         icon="pi pi-bolt"
                         @click="router.push('/waiter/pdv/quicksell')"
-                    />
+                    /> -->
                     <Button
                         label="Vendas rápidas"
                         icon="pi pi-list"

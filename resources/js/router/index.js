@@ -1005,7 +1005,7 @@ const router = createRouter({
                     meta: {
                         requiresAuth: true
                     },
-                    component: () => import('@/views/pages/admin/pdv/IndexPdvCategories.vue')
+                    component: () => import('@/views/pages/waiter/pdv/IndexPdvCategories.vue')
                 },
                 {
                     path: '/waiter/pdv/quicksell',
@@ -1013,7 +1013,7 @@ const router = createRouter({
                     meta: {
                         requiresAuth: true
                     },
-                    component: () => import('@/views/pages/admin/pdv/IndexPdvQuickSell.vue')
+                    component: () => import('@/views/pages/waiter/pdv/IndexPdvQuickSell.vue')
                 },
 
                 {
