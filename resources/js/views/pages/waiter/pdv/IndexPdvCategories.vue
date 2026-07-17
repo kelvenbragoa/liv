@@ -689,7 +689,7 @@ onMounted(() => {
                     <template v-for="sub in section.subCategories" :key="`${section.id}-${sub.id}`">
                         <div class="qs-subsection-header">{{ sub.name }}</div>
 
-                        <button
+                        <!-- <button
                             v-for="product in sub.products"
                             :key="product.id"
                             type="button"
@@ -697,6 +697,14 @@ onMounted(() => {
                             :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
                             :disabled="(product.quantity_in_principal_stock ?? 0) <= 0"
                             @click="addToCart(product)"
+                        > -->
+                        <button
+                            v-for="product in sub.products"
+                            :key="product.id"
+                            type="button"
+                            class="qs-product"
+                            :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
+                            :disabled="(product.quantity_in_principal_stock ?? 0) <= 0"
                         >
                             <div v-if="!compactMode" class="qs-product__image">
                                 <img
