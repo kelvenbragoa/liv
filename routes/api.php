@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Web\PaymentMethodController;
 use App\Http\Controllers\Api\Web\PdvController;
 use App\Http\Controllers\Api\Web\ProductController;
 use App\Http\Controllers\Api\Web\ReservationController;
+use App\Http\Controllers\Api\Web\StockMovementController;
 use App\Http\Controllers\Api\Web\StockTransferController;
 use App\Http\Controllers\Api\Web\SubCategoryController;
 use App\Http\Controllers\Api\Web\SuppliersController;
@@ -50,6 +51,10 @@ Route::middleware([Sanctum::class])->group(function () {
 
     Route::get('inventories/export', [InventoriesController::class, 'export']);
     Route::resource('inventories', InventoriesController::class);
+
+    Route::get('stockmovements/export', [StockMovementController::class, 'export']);
+    Route::get('stockmovements/create', [StockMovementController::class, 'create']);
+    Route::get('stockmovements', [StockMovementController::class, 'index']);
 
     Route::get('stocktransfers/export', [StockTransferController::class, 'export']);
     Route::resource('stocktransfers', StockTransferController::class);

@@ -56,6 +56,7 @@ const model = ref([
                             { label: 'Nota de Entrada', icon: 'pi pi-fw pi-sign-in', to: '/admin/entrynotes' },
                             { label: 'Nota de Saída', icon: 'pi pi-fw pi-sign-out', to: '/admin/exitnotes' },
                             { label: 'Inventário', icon: 'pi pi-fw pi-clipboard', to: '/admin/inventories' },
+                            { label: 'Movimentos de Stock', icon: 'pi pi-fw pi-history', to: '/admin/stockmovements' },
                             { label: 'Fornecedores', icon: 'pi pi-fw pi-users', to: '/admin/suppliers' },
                         ]
                     }

@@ -458,6 +458,14 @@ const router = createRouter({
 
 
                 {
+                    path: '/admin/stockmovements',
+                    name: 'admin.stockmovements',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stockmovement/IndexStockMovement.vue')
+                },
+                {
                     path: '/admin/inventories',
                     name: 'admin.inventories',
                     meta: {
@@ -832,6 +840,14 @@ const router = createRouter({
 
 
 
+                {
+                    path: '/stock/stockmovements',
+                    name: 'stock.stockmovements',
+                    meta: {
+                        requiresAuth: true
+                    },
+                    component: () => import('@/views/pages/admin/stockmovement/IndexStockMovement.vue')
+                },
                 {
                     path: '/stock/inventories',
                     name: 'stock.inventories',
