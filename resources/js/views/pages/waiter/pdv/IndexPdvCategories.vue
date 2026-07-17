@@ -725,7 +725,7 @@ onMounted(() => {
                 class="qs-grid"
                 :class="{ 'qs-grid--compact': compactMode }"
             >
-                <button
+                <!-- <button
                     v-for="product in displayedProducts"
                     :key="product.id"
                     type="button"
@@ -733,6 +733,14 @@ onMounted(() => {
                     :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
                     :disabled="(product.quantity_in_principal_stock ?? 0) <= 0"
                     @click="addToCart(product)"
+                > --><button
+                    v-for="product in displayedProducts"
+                    :key="product.id"
+                    type="button"
+                    class="qs-product"
+                    :class="{ 'qs-product--out': (product.quantity_in_principal_stock ?? 0) <= 0 }"
+                    :disabled="(product.quantity_in_principal_stock ?? 0) <= 0"
+                    
                 >
                     <div v-if="!compactMode" class="qs-product__image">
                         <img
@@ -812,14 +820,14 @@ onMounted(() => {
                     <strong>{{ total }} MT</strong>
                 </div>
 
-                <Button
+                <!-- <Button
                     :label="isLoadingButton ? 'A processar...' : `Adicionar à conta · ${total} MT`"
                     icon="pi pi-plus"
                     class="qs-pay-btn"
                     :loading="isLoadingButton"
                     :disabled="isLoadingButton || !selectedProducts.length"
                     @click="saveCart"
-                />
+                /> -->
 
                 <div class="qs-mesa-actions">
                     <button type="button" class="qs-action-chip" @click="openReceiptDialog = true">
